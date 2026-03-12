@@ -467,9 +467,9 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
   JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(parent);
 
 
-  jsvObjectSetChildAndUnLock(obj, "writable", jsvNewFromBool(!jsvIsConstant(varName)));
-  jsvObjectSetChildAndUnLock(obj, "enumerable", jsvNewFromBool(!checkerFunction || !checkerFunction(varName)));
-  jsvObjectSetChildAndUnLock(obj, "configurable", jsvNewFromBool(!isBuiltIn));
+  jsvObjectSetBoolChild(obj, "writable", !jsvIsConstant(varName));
+  jsvObjectSetBoolChild(obj, "enumerable", !checkerFunction || !checkerFunction(varName));
+  jsvObjectSetBoolChild(obj, "configurable", !isBuiltIn);
 #ifndef ESPR_NO_GET_SET
   JsVar *getset = jsvGetValueOfName(varName);
   if (jsvIsGetterOrSetter(getset)) {

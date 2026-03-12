@@ -721,6 +721,11 @@ JsVarInt jsvObjectGetIntegerChild(JsVar *obj, const char *name);
 JsVarFloat jsvObjectGetFloatChild(JsVar *obj, const char *name);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
+void jsvObjectSetIntChild(JsVar *obj, const char *name, JsVarInt value);
+void jsvObjectSetFloatChild(JsVar *obj, const char *name, JsVarFloat value);
+void jsvObjectSetBoolChild(JsVar *obj, const char *name, bool value);
+void jsvObjectSetStringChild(JsVar *obj, const char *name, const char *value);
+void jsvObjectSetPinChild(JsVar *obj, const char *name, int value);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChildVar(JsVar *obj, JsVar *name, JsVar *child);
 /// Set the named child of an object, and unlock the child

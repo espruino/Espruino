@@ -912,8 +912,8 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
   // Sorted - now create the object, set it up and create the buffer
   JsVar *img = jsvNewObject();
   if (!img) return 0;
-  jsvObjectSetChildAndUnLock(img,"width",jsvNewFromInteger(width));
-  jsvObjectSetChildAndUnLock(img,"height",jsvNewFromInteger(height));
+  jsvObjectSetIntChild(img,"width", width);
+  jsvObjectSetIntChild(img,"height", height);
   // bpp is 1, no need to set it
   int len = (width*height+7)>>3;
   JsVar *buffer = jsvNewStringOfLength((unsigned)len, NULL);
@@ -1871,8 +1871,8 @@ JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar
   height = height&255;
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, bitmap);
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, width);
-  jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height));
-  jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar));
+  jsvObjectSetIntChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, height);
+  jsvObjectSetIntChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, firstChar);
   gfx.data.fontSize = (unsigned short)((unsigned)scale + fontType);
   graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
@@ -2460,12 +2460,12 @@ JsVar* jswrap_graphics_stringMetrics(JsVar *parent, JsVar *var) {
   JsVar *o = jsvNewObject();
   if (o) {
     _jswrap_graphics_stringMetrics(&gfx, var, -1, &metrics);
-    jsvObjectSetChildAndUnLock(o, "width", jsvNewFromInteger(metrics.stringWidth));
-    jsvObjectSetChildAndUnLock(o, "height", jsvNewFromInteger(metrics.stringHeight));
-    jsvObjectSetChildAndUnLock(o, "unrenderableChars", jsvNewFromBool(metrics.unrenderableChars));
+    jsvObjectSetIntChild(o, "width", metrics.stringWidth);
+    jsvObjectSetIntChild(o, "height", metrics.stringHeight);
+    jsvObjectSetBoolChild(o, "unrenderableChars", metrics.unrenderableChars);
 #ifndef SAVE_ON_FLASH
-    jsvObjectSetChildAndUnLock(o, "imageCount", jsvNewFromInteger(metrics.imageCount));
-    jsvObjectSetChildAndUnLock(o, "maxImageHeight", jsvNewFromInteger(metrics.maxImageHeight));
+    jsvObjectSetIntChild(o, "imageCount", metrics.imageCount);
+    jsvObjectSetIntChild(o, "maxImageHeight", metrics.maxImageHeight);
 #endif
   }
   return o;
@@ -2805,9 +2805,9 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
   // TODO: trim width if not wrapping?
   jsvUnLock3(text, newline, finalLines);
   jsvObjectSetChildAndUnLock(result, "text", finalText);
-  jsvObjectSetChildAndUnLock(result, "font", jsvNewFromString(fontName));
-  jsvObjectSetChildAndUnLock(result, "w", jsvNewFromInteger(stringMetrics.stringWidth));
-  jsvObjectSetChildAndUnLock(result, "h", jsvNewFromInteger(stringMetrics.stringHeight));
+  jsvObjectSetStringChild(result, "font", fontName);
+  jsvObjectSetIntChild(result, "w", stringMetrics.stringWidth);
+  jsvObjectSetIntChild(result, "h", stringMetrics.stringHeight);
   return result;
 }
 #endif
@@ -3546,12 +3546,12 @@ JsVar *jswrap_graphics_imageMetrics(JsVar *parent, JsVar *var) {
   _jswrap_graphics_freeImageInfo(&img);
   JsVar *o = jsvNewObject();
   if (o) {
-    jsvObjectSetChildAndUnLock(o, "width", jsvNewFromInteger(img.width));
-    jsvObjectSetChildAndUnLock(o, "height", jsvNewFromInteger(img.height));
-    jsvObjectSetChildAndUnLock(o, "bpp", jsvNewFromInteger(img.bpp));
-    jsvObjectSetChildAndUnLock(o, "transparent", jsvNewFromBool(img.isTransparent));
+    jsvObjectSetIntChild(o, "width", img.width);
+    jsvObjectSetIntChild(o, "height", img.height);
+    jsvObjectSetIntChild(o, "bpp", img.bpp);
+    jsvObjectSetBoolChild(o, "transparent", img.isTransparent);
     int frames = bufferLen / img.bitmapLength;
-    if (frames>1) jsvObjectSetChildAndUnLock(o, "frames", jsvNewFromInteger(frames));
+    if (frames>1) jsvObjectSetIntChild(o, "frames", frames);
   }
   return o;
 }
@@ -4133,9 +4133,9 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *options) {
   if (isObject) {
     img = jsvNewObject();
     if (!img) return 0;
-    jsvObjectSetChildAndUnLock(img,"width",jsvNewFromInteger(w));
-    jsvObjectSetChildAndUnLock(img,"height",jsvNewFromInteger(h));
-    if (bpp!=1) jsvObjectSetChildAndUnLock(img,"bpp",jsvNewFromInteger(bpp));
+    jsvObjectSetIntChild(img,"width", w);
+    jsvObjectSetIntChild(img,"height", h);
+    if (bpp!=1) jsvObjectSetIntChild(img,"bpp", bpp);
     /* IF we have an arraybuffer of the right form then
     we can return the original buffer directly */
     if (gfx.data.type == JSGRAPHICSTYPE_ARRAYBUFFER &&
@@ -4147,7 +4147,7 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *options) {
       return img;
     }
     if (transparent>=0)
-      jsvObjectSetChildAndUnLock(img,"transparent",jsvNewFromInteger(transparent));
+      jsvObjectSetIntChild(img,"transparent", transparent);
     if (palette) jsvObjectSetChild(img,"palette",palette);
   } else {
 
@@ -4243,10 +4243,10 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
   if (gfx.data.modMinX <= gfx.data.modMaxX) { // do we have a rect?
     obj = jsvNewObject();
     if (obj) {
-      jsvObjectSetChildAndUnLock(obj, "x1", jsvNewFromInteger(gfx.data.modMinX));
-      jsvObjectSetChildAndUnLock(obj, "y1", jsvNewFromInteger(gfx.data.modMinY));
-      jsvObjectSetChildAndUnLock(obj, "x2", jsvNewFromInteger(gfx.data.modMaxX));
-      jsvObjectSetChildAndUnLock(obj, "y2", jsvNewFromInteger(gfx.data.modMaxY));
+      jsvObjectSetIntChild(obj, "x1", gfx.data.modMinX);
+      jsvObjectSetIntChild(obj, "y1", gfx.data.modMinY);
+      jsvObjectSetIntChild(obj, "x2", gfx.data.modMaxX);
+      jsvObjectSetIntChild(obj, "y2", gfx.data.modMaxY);
     }
   }
   if (reset) {
@@ -4921,13 +4921,13 @@ JsVar *jswrap_graphics_theme(JsVar *parent) {
   NOT_USED(parent);
 #ifdef GRAPHICS_THEME
   JsVar *o = jsvNewObject();
-  jsvObjectSetChildAndUnLock(o,"fg",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.fg));
-  jsvObjectSetChildAndUnLock(o,"bg",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.bg));
-  jsvObjectSetChildAndUnLock(o,"fg2",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.fg2));
-  jsvObjectSetChildAndUnLock(o,"bg2",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.bg2));
-  jsvObjectSetChildAndUnLock(o,"fgH",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.fgH));
-  jsvObjectSetChildAndUnLock(o,"bgH",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.bgH));
-  jsvObjectSetChildAndUnLock(o,"dark",jsvNewFromBool((JsVarInt)(uint32_t)graphicsTheme.dark));
+  jsvObjectSetIntChild(o,"fg", (JsVarInt)(uint32_t)graphicsTheme.fg);
+  jsvObjectSetIntChild(o,"bg", (JsVarInt)(uint32_t)graphicsTheme.bg);
+  jsvObjectSetIntChild(o,"fg2", (JsVarInt)(uint32_t)graphicsTheme.fg2);
+  jsvObjectSetIntChild(o,"bg2", (JsVarInt)(uint32_t)graphicsTheme.bg2);
+  jsvObjectSetIntChild(o,"fgH", (JsVarInt)(uint32_t)graphicsTheme.fgH);
+  jsvObjectSetIntChild(o,"bgH", (JsVarInt)(uint32_t)graphicsTheme.bgH);
+  jsvObjectSetBoolChild(o,"dark", (JsVarInt)(uint32_t)graphicsTheme.dark);
   return o;
 #else
   return 0;

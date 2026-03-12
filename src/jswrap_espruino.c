@@ -2752,15 +2752,15 @@ JsVar *jswrap_espruino_getPowerUsage() {
   jsvGetProcessorPowerUsage(devices); // CPU/etc
 #ifdef LED1_PININDEX
   if (jshPinGetState(LED1_PININDEX) & JSHPINSTATE_PIN_IS_ON)
-    jsvObjectSetChildAndUnLock(devices, "LED1", jsvNewFromInteger(8000));
+    jsvObjectSetIntChild(devices, "LED1", 8000);
 #endif
 #ifdef LED2_PININDEX
   if (jshPinGetState(LED2_PININDEX) & JSHPINSTATE_PIN_IS_ON)
-    jsvObjectSetChildAndUnLock(devices, "LED2", jsvNewFromInteger(8000));
+    jsvObjectSetIntChild(devices, "LED2", 8000);
 #endif
 #ifdef LED3_PININDEX
   if (jshPinGetState(LED3_PININDEX) & JSHPINSTATE_PIN_IS_ON)
-    jsvObjectSetChildAndUnLock(devices, "LED3", jsvNewFromInteger(8000));
+    jsvObjectSetIntChild(devices, "LED3", 8000);
 #endif
   // Get data from jswrap_ files
   jswGetPowerUsage(devices);
@@ -2776,7 +2776,7 @@ JsVar *jswrap_espruino_getPowerUsage() {
   // return object
   JsVar *usage = jsvNewObject();
   jsvObjectSetChildAndUnLock(usage, "device", devices);
-  jsvObjectSetChildAndUnLock(usage, "total", jsvNewFromFloat(total));
+  jsvObjectSetFloatChild(usage, "total", total);
   return usage;
 }
 

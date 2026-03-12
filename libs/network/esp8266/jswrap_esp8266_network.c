@@ -748,7 +748,7 @@ JsVar *jswrap_wifi_getDetails(JsVar *jsCallback) {
 
   int8 conn = wifi_station_get_connect_status();
   if (conn < 0) conn = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "status", jsvNewFromString(wifiConn[conn]));
+  jsvObjectSetStringChild(jsDetails, "status", wifiConn[conn]);
 
   struct station_config config;
   wifi_station_get_config(&config);
@@ -756,18 +756,18 @@ JsVar *jswrap_wifi_getDetails(JsVar *jsCallback) {
   // ssid
   os_strncpy(buf, (char *)config.ssid, 32);
   buf[32] = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
+  jsvObjectSetStringChild(jsDetails, "ssid", buf);
   // password
   os_strncpy(buf, (char *)config.password, 64);
   buf[64] = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "password", jsvNewFromString((char *)config.password));
+  jsvObjectSetStringChild(jsDetails, "password", (char *)config.password);
 
   if (opMode & STATION_MODE) {
     int rssi = wifi_station_get_rssi();
     if (rssi > 0) rssi = 0; // sanity...
-    jsvObjectSetChildAndUnLock(jsDetails, "rssi", jsvNewFromInteger(rssi));
+    jsvObjectSetIntChild(jsDetails, "rssi", rssi);
 
-    //jsvObjectSetChildAndUnLock(jsDetails, "authMode", jsvNewFromString(wifiAuth[config.));
+    //jsvObjectSetStringChild(jsDetails, "authMode", wifiAuth[config.);
   }
 
   jsvObjectSetChildAndUnLock(jsDetails, "savedSsid", jsvNewNull());
@@ -802,18 +802,18 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
 
   struct softap_config config;
   wifi_softap_get_config(&config);
-  jsvObjectSetChildAndUnLock(jsDetails, "authMode", jsvNewFromString(wifiAuth[config.authmode]));
-  jsvObjectSetChildAndUnLock(jsDetails, "hidden", jsvNewFromBool(config.ssid_hidden));
-  jsvObjectSetChildAndUnLock(jsDetails, "maxConn", jsvNewFromInteger(config.max_connection));
+  jsvObjectSetStringChild(jsDetails, "authMode", wifiAuth[config.authmode]);
+  jsvObjectSetBoolChild(jsDetails, "hidden", config.ssid_hidden);
+  jsvObjectSetIntChild(jsDetails, "maxConn", config.max_connection);
   char buf[65];
   // ssid
   os_strncpy(buf, (char *)config.ssid, 32);
   buf[32] = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
+  jsvObjectSetStringChild(jsDetails, "ssid", buf);
   // password
   os_strncpy(buf, (char *)config.password, 64);
   buf[64] = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "password", jsvNewFromString((char *)config.password));
+  jsvObjectSetStringChild(jsDetails, "password", (char *)config.password);
 
   jsvObjectSetChildAndUnLock(jsDetails, "savedSsid", jsvNewNull());
 
@@ -828,7 +828,7 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
       os_sprintf(macAddrString, macFmt,
         station->bssid[0], station->bssid[1], station->bssid[2],
         station->bssid[3], station->bssid[4], station->bssid[5]);
-      jsvObjectSetChildAndUnLock(jsSta, "mac", jsvNewFromString(macAddrString));
+      jsvObjectSetStringChild(jsSta, "mac", macAddrString);
       jsvArrayPush(jsArray, jsSta);
       jsvUnLock(jsSta);
       station = STAILQ_NEXT(station, next);
@@ -864,23 +864,23 @@ void jswrap_wifi_save(JsVar *what) {
   // station stuff
   struct station_config sta_config;
   wifi_station_get_config(&sta_config);
-  jsvObjectSetChildAndUnLock(o, "ssid", jsvNewFromString((char *)sta_config.ssid));
-  jsvObjectSetChildAndUnLock(o, "password", jsvNewFromString((char *)sta_config.password));
-  jsvObjectSetChildAndUnLock(o, "mode", jsvNewFromInteger(wifi_get_opmode()));
-  jsvObjectSetChildAndUnLock(o, "phyMode", jsvNewFromInteger(wifi_get_phy_mode()));
-  jsvObjectSetChildAndUnLock(o, "sleepType", jsvNewFromInteger(wifi_get_sleep_type()));
+  jsvObjectSetStringChild(o, "ssid", (char *)sta_config.ssid);
+  jsvObjectSetStringChild(o, "password", (char *)sta_config.password);
+  jsvObjectSetIntChild(o, "mode", wifi_get_opmode());
+  jsvObjectSetIntChild(o, "phyMode", wifi_get_phy_mode());
+  jsvObjectSetIntChild(o, "sleepType", wifi_get_sleep_type());
 
   char *hostname = wifi_station_get_hostname();
-  if (hostname) jsvObjectSetChildAndUnLock(o, "hostname", jsvNewFromString((char *) hostname));
+  if (hostname) jsvObjectSetStringChild(o, "hostname", (char *) hostname);
 
   // softap stuff
   struct softap_config ap_config;
   wifi_softap_get_config(&ap_config);
-  jsvObjectSetChildAndUnLock(o, "ssidAP", jsvNewFromString((char *)ap_config.ssid));
-  jsvObjectSetChildAndUnLock(o, "passwordAP", jsvNewFromString((char *) ap_config.password));
-  jsvObjectSetChildAndUnLock(o, "authmodeAP", jsvNewFromInteger(ap_config.authmode));
-  jsvObjectSetChildAndUnLock(o, "hiddenAP", jsvNewFromInteger(ap_config.ssid_hidden));
-  jsvObjectSetChildAndUnLock(o, "channelAP", jsvNewFromInteger(ap_config.channel));
+  jsvObjectSetStringChild(o, "ssidAP", (char *)ap_config.ssid);
+  jsvObjectSetStringChild(o, "passwordAP", (char *) ap_config.password);
+  jsvObjectSetIntChild(o, "authmodeAP", ap_config.authmode);
+  jsvObjectSetIntChild(o, "hiddenAP", ap_config.ssid_hidden);
+  jsvObjectSetIntChild(o, "channelAP", ap_config.channel);
 
   savedMode = wifi_get_opmode();
 
@@ -1015,7 +1015,7 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
   char macAddrString[6*3 + 1];
   os_sprintf(macAddrString, macFmt,
     macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
-  jsvObjectSetChildAndUnLock(jsIpInfo, "mac", jsvNewFromString(macAddrString));
+  jsvObjectSetStringChild(jsIpInfo, "mac", macAddrString);
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
@@ -1351,14 +1351,14 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
   os_printf("Received a ping response!\n");
   if (g_jsPingCallback != NULL) {
     JsVar *jsPingResponse = jsvNewObject();
-    jsvObjectSetChildAndUnLock(jsPingResponse, "totalCount",   jsvNewFromInteger(pingResp->total_count));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "totalBytes",   jsvNewFromInteger(pingResp->total_bytes));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "totalTime",    jsvNewFromInteger(pingResp->total_time));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "respTime",     jsvNewFromInteger(pingResp->resp_time));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "seqNo",        jsvNewFromInteger(pingResp->seqno));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "timeoutCount", jsvNewFromInteger(pingResp->timeout_count));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "bytes",        jsvNewFromInteger(pingResp->bytes));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "error",        jsvNewFromInteger(pingResp->ping_err));
+    jsvObjectSetIntChild(jsPingResponse, "totalCount", pingResp->total_count);
+    jsvObjectSetIntChild(jsPingResponse, "totalBytes", pingResp->total_bytes);
+    jsvObjectSetIntChild(jsPingResponse, "totalTime", pingResp->total_time);
+    jsvObjectSetIntChild(jsPingResponse, "respTime", pingResp->resp_time);
+    jsvObjectSetIntChild(jsPingResponse, "seqNo", pingResp->seqno);
+    jsvObjectSetIntChild(jsPingResponse, "timeoutCount", pingResp->timeout_count);
+    jsvObjectSetIntChild(jsPingResponse, "bytes", pingResp->bytes);
+    jsvObjectSetIntChild(jsPingResponse, "error", pingResp->ping_err);
     JsVar *params[1];
     params[0] = jsPingResponse;
     jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
@@ -1506,22 +1506,22 @@ static void scanCB(void *arg, STATUS status) {
     // Create, populate and add a child ...
     JsVar *jsCurrentAccessPoint = jsvNewObject();
     if (bssInfo->rssi > 0) bssInfo->rssi = 0;
-    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
-    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));
-    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromString(wifiAuth[bssInfo->authmode]));
-    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "isHidden", jsvNewFromBool(bssInfo->is_hidden));
+    jsvObjectSetIntChild(jsCurrentAccessPoint, "rssi", bssInfo->rssi);
+    jsvObjectSetIntChild(jsCurrentAccessPoint, "channel", bssInfo->channel);
+    jsvObjectSetStringChild(jsCurrentAccessPoint, "authMode", wifiAuth[bssInfo->authmode]);
+    jsvObjectSetBoolChild(jsCurrentAccessPoint, "isHidden", bssInfo->is_hidden);
 
     // The SSID may **NOT** be NULL terminated ... so handle that.
     char ssid[sizeof(bssInfo->ssid) + 1];
     os_strncpy((char *)ssid, (char *)bssInfo->ssid, sizeof(bssInfo->ssid));
     ssid[sizeof(ssid)-1] = '\0';
-    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "ssid", jsvNewFromString(ssid));
+    jsvObjectSetStringChild(jsCurrentAccessPoint, "ssid", ssid);
 
     char macAddrString[6*3 + 1];
     os_sprintf(macAddrString, macFmt,
       bssInfo->bssid[0], bssInfo->bssid[1], bssInfo->bssid[2],
       bssInfo->bssid[3], bssInfo->bssid[4], bssInfo->bssid[5]);
-    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "mac", jsvNewFromString(macAddrString));
+    jsvObjectSetStringChild(jsCurrentAccessPoint, "mac", macAddrString);
 
     // Add the new record to the array
     jsvArrayPush(jsAccessPointArray, jsCurrentAccessPoint);
@@ -1604,11 +1604,11 @@ static void wifiEventHandler(System_Event_t *evt) {
     // ssid
     os_strncpy(buf, (char *)evt->event_info.connected.ssid, 32);
     buf[evt->event_info.connected.ssid_len] = 0;
-    jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
+    jsvObjectSetStringChild(jsDetails, "ssid", buf);
     // bssid = mac address
     mac = evt->event_info.connected.bssid;
     os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
+    jsvObjectSetStringChild(jsDetails, "mac", macAddrString);
     // channel
     jsvObjectSetChildAndUnLock(jsDetails, "channel",
         jsvNewFromInteger(evt->event_info.connected.channel));
@@ -1662,12 +1662,12 @@ static void wifiEventHandler(System_Event_t *evt) {
     // ssid
     os_strncpy(buf, (char *)evt->event_info.connected.ssid, 32);
     buf[evt->event_info.connected.ssid_len] = 0;
-    jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
+    jsvObjectSetStringChild(jsDetails, "ssid", buf);
     // bssid = mac address
     mac = evt->event_info.connected.bssid;
     os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
-    jsvObjectSetChildAndUnLock(jsDetails, "reason", jsvNewFromString(reason));
+    jsvObjectSetStringChild(jsDetails, "mac", macAddrString);
+    jsvObjectSetStringChild(jsDetails, "reason", reason);
     sendWifiEvent(evt->event, jsDetails);
     break;
 
@@ -1723,7 +1723,7 @@ static void wifiEventHandler(System_Event_t *evt) {
     // "on" event callback
     mac = evt->event_info.sta_connected.mac;
     os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
+    jsvObjectSetStringChild(jsDetails, "mac", macAddrString);
     sendWifiEvent(evt->event, jsDetails);
     break;
 
@@ -1733,7 +1733,7 @@ static void wifiEventHandler(System_Event_t *evt) {
     // "on" event callback
     mac = evt->event_info.sta_disconnected.mac;
     os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
+    jsvObjectSetStringChild(jsDetails, "mac", macAddrString);
     sendWifiEvent(evt->event, jsDetails);
     break;
 
@@ -1743,10 +1743,10 @@ static void wifiEventHandler(System_Event_t *evt) {
     // "on" event callback
     int rssi = evt->event_info.ap_probereqrecved.rssi;
     if (rssi > 0) rssi = 0;
-    jsvObjectSetChildAndUnLock(jsDetails, "rssi", jsvNewFromInteger(rssi));
+    jsvObjectSetIntChild(jsDetails, "rssi", rssi);
     mac = evt->event_info.ap_probereqrecved.mac;
     os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
+    jsvObjectSetStringChild(jsDetails, "mac", macAddrString);
     sendWifiEvent(evt->event, jsDetails);
     break;
 

@@ -320,9 +320,9 @@ void jswrap_microbit_show(JsVar *image) {
 JsVar *getXYZ(int x, int y, int z, JsVarFloat range) {
   JsVar *xyz = jsvNewObject();
   if (xyz) {
-    jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromFloat(((JsVarFloat)x) / range));
-    jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromFloat(((JsVarFloat)y) / range));
-    jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromFloat(((JsVarFloat)z) / range));
+    jsvObjectSetFloatChild(xyz, "x", ((JsVarFloat)x) / range);
+    jsvObjectSetFloatChild(xyz, "y", ((JsVarFloat)y) / range);
+    jsvObjectSetFloatChild(xyz, "z", ((JsVarFloat)z) / range);
   }
   return xyz;
 }
@@ -403,9 +403,9 @@ JsVar *jswrap_microbit_compass() {
     if (y>>15) y-=65536;
     int z = (d[4]<<8) | d[5];
     if (z>>15) z-=65536;
-    jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromInteger(x));
-    jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromInteger(y));
-    jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromInteger(z));
+    jsvObjectSetIntChild(xyz, "x", x);
+    jsvObjectSetIntChild(xyz, "y", y);
+    jsvObjectSetIntChild(xyz, "z", z);
   }
   return xyz;
 }

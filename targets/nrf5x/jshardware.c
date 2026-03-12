@@ -2374,8 +2374,8 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
 static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
   JsVar *jsArea = jsvNewObject();
   if (!jsArea) return;
-  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
-  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvObjectSetIntChild(jsArea, "addr", (JsVarInt)addr);
+  jsvObjectSetIntChild(jsArea, "length", (JsVarInt)length);
   jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
 }
 
@@ -2944,7 +2944,7 @@ void jshRebootToDFU() {
 /* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
 void jsvGetProcessorPowerUsage(JsVar *devices) {
   // draws 4mA flat out, 3uA nothing otherwise
-  jsvObjectSetChildAndUnLock(devices, "CPU", jsvNewFromInteger(3 + ((4000 * 273152) / sysTickTime)));
+  jsvObjectSetIntChild(devices, "CPU", 3 + ((4000 * 273152) / sysTickTime));
   // check UART - draws about 1mA when on
   bool uartOn = false;
 #if ESPR_USART_COUNT>0
@@ -2953,14 +2953,14 @@ void jsvGetProcessorPowerUsage(JsVar *devices) {
       uartOn = true;
 #endif
   if (uartOn)
-    jsvObjectSetChildAndUnLock(devices, "UART", jsvNewFromInteger(1000));
+    jsvObjectSetIntChild(devices, "UART", 1000);
   // check if PWM is being used
   bool pwmOn = false;
   for (int i=0;i<JSH_PIN_COUNT;i++)
     if (JSH_PINFUNCTION_IS_TIMER(pinStates[i]))
       pwmOn = true;
   if (pwmOn)
-    jsvObjectSetChildAndUnLock(devices, "PWM", jsvNewFromInteger(200));
+    jsvObjectSetIntChild(devices, "PWM", 200);
 }
 
 

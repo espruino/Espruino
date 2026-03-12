@@ -163,17 +163,17 @@ void ble_ancs_handle_notif(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
   JsVar *o = jsvNewObject();
   if (!o) return;
   const char * lit_eventid[BLE_ANCS_NB_OF_EVT_ID] = { "add", "modify", "remove" };
-  jsvObjectSetChildAndUnLock(o, "event", jsvNewFromString(lit_eventid[p_notif->evt_id]));
-  jsvObjectSetChildAndUnLock(o, "uid", jsvNewFromInteger(p_notif->notif_uid));
-  jsvObjectSetChildAndUnLock(o, "category", jsvNewFromInteger(p_notif->category_id));
-  jsvObjectSetChildAndUnLock(o, "categoryCnt", jsvNewFromInteger(p_notif->category_count));
-  jsvObjectSetChildAndUnLock(o, "silent", jsvNewFromBool(p_notif->evt_flags.silent));
-  jsvObjectSetChildAndUnLock(o, "important", jsvNewFromBool(p_notif->evt_flags.important));
-  jsvObjectSetChildAndUnLock(o, "preExisting", jsvNewFromBool(p_notif->evt_flags.pre_existing));
+  jsvObjectSetStringChild(o, "event", lit_eventid[p_notif->evt_id]);
+  jsvObjectSetIntChild(o, "uid", p_notif->notif_uid);
+  jsvObjectSetIntChild(o, "category", p_notif->category_id);
+  jsvObjectSetIntChild(o, "categoryCnt", p_notif->category_count);
+  jsvObjectSetBoolChild(o, "silent", p_notif->evt_flags.silent);
+  jsvObjectSetBoolChild(o, "important", p_notif->evt_flags.important);
+  jsvObjectSetBoolChild(o, "preExisting", p_notif->evt_flags.pre_existing);
   if (p_notif->evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_ADDED ||
       p_notif->evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_MODIFIED) {
-    jsvObjectSetChildAndUnLock(o, "positive", jsvNewFromBool(p_notif->evt_flags.positive_action));
-    jsvObjectSetChildAndUnLock(o, "negative", jsvNewFromBool(p_notif->evt_flags.negative_action));
+    jsvObjectSetBoolChild(o, "positive", p_notif->evt_flags.positive_action);
+    jsvObjectSetBoolChild(o, "negative", p_notif->evt_flags.negative_action);
   }
   jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"ANCS", 1, &o);
   jsvUnLock(o);
@@ -184,16 +184,16 @@ void ble_ancs_handle_notif_attr(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif
   // Complete the ANCS notification attribute promise
   JsVar *o = jsvNewObject();
   if (!o) return;
-  jsvObjectSetChildAndUnLock(o, "uid", jsvNewFromInteger(p_notif->notif_uid));
-  jsvObjectSetChildAndUnLock(o, "appId", jsvNewFromString(m_attr_appid));
-  jsvObjectSetChildAndUnLock(o, "title", jsvNewFromString(m_attr_title));
-  jsvObjectSetChildAndUnLock(o, "subtitle", jsvNewFromString(m_attr_subtitle));
-  jsvObjectSetChildAndUnLock(o, "message", jsvNewFromString(m_attr_message));
-  jsvObjectSetChildAndUnLock(o, "messageSize", jsvNewFromString(m_attr_message_size));
-  jsvObjectSetChildAndUnLock(o, "date", jsvNewFromString(m_attr_date));
-  jsvObjectSetChildAndUnLock(o, "posAction", jsvNewFromString(m_attr_posaction));
-  jsvObjectSetChildAndUnLock(o, "negAction", jsvNewFromString(m_attr_negaction));
-  // jsvObjectSetChildAndUnLock(o, "name", jsvNewFromString(m_attr_disp_name));
+  jsvObjectSetIntChild(o, "uid", p_notif->notif_uid);
+  jsvObjectSetStringChild(o, "appId", m_attr_appid);
+  jsvObjectSetStringChild(o, "title", m_attr_title);
+  jsvObjectSetStringChild(o, "subtitle", m_attr_subtitle);
+  jsvObjectSetStringChild(o, "message", m_attr_message);
+  jsvObjectSetStringChild(o, "messageSize", m_attr_message_size);
+  jsvObjectSetStringChild(o, "date", m_attr_date);
+  jsvObjectSetStringChild(o, "posAction", m_attr_posaction);
+  jsvObjectSetStringChild(o, "negAction", m_attr_negaction);
+  // jsvObjectSetStringChild(o, "name", m_attr_disp_name);
   bleCompleteTaskSuccessAndUnLock(BLETASK_ANCS_NOTIF_ATTR, o);
 }
 
@@ -230,9 +230,9 @@ void ble_ams_handle_track_update(BLEPending blep, uint16_t data, char *buffer, s
   };
   JsVar *o = jsvNewObject();
   if (!o) return;
-  jsvObjectSetChildAndUnLock(o, "id", jsvNewFromString(idStr));
+  jsvObjectSetStringChild(o, "id", idStr);
   jsvObjectSetChildAndUnLock(o, "value", jsvNewStringOfLength(bufferLen, buffer));
-  jsvObjectSetChildAndUnLock(o, "truncated", jsvNewFromBool(isTruncated));
+  jsvObjectSetBoolChild(o, "truncated", isTruncated);
   jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"AMS", 1, &o);
   jsvUnLock(o);
 }
@@ -253,9 +253,9 @@ void ble_ams_handle_player_update(BLEPending blep, uint16_t data, char *buffer, 
   };
   JsVar *o = jsvNewObject();
   if (!o) return;
-  jsvObjectSetChildAndUnLock(o, "id", jsvNewFromString(idStr));
+  jsvObjectSetStringChild(o, "id", idStr);
   jsvObjectSetChildAndUnLock(o, "value", jsvNewStringOfLength(bufferLen, buffer));
-  jsvObjectSetChildAndUnLock(o, "truncated", jsvNewFromBool(isTruncated));
+  jsvObjectSetBoolChild(o, "truncated", isTruncated);
   jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"AMS", 1, &o);
   jsvUnLock(o);
 }
@@ -298,14 +298,14 @@ void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen) {
   jsvObjectSetChildAndUnLock(o, "date", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
   if (bufferLen==12) {
     local_time_char_t *p_lt = (local_time_char_t*)&buffer[10];
-    jsvObjectSetChildAndUnLock(o, "timezone", jsvNewFromFloat(p_lt->timezone / 4.0));
-    jsvObjectSetChildAndUnLock(o, "dst", jsvNewFromFloat(p_lt->dst / 4.0));
+    jsvObjectSetFloatChild(o, "timezone", p_lt->timezone / 4.0);
+    jsvObjectSetFloatChild(o, "dst", p_lt->dst / 4.0);
   }
 
   int dow = p_time->exact_time_256.day_date_time.day_of_week;
   if (dow) {
     if (dow==7) dow=0; // sunday, match JS dates
-    jsvObjectSetChildAndUnLock(o, "day", jsvNewFromInteger(dow));
+    jsvObjectSetIntChild(o, "day", dow);
   }
   JsVar *arr = jsvNewEmptyArray();
   if (p_time->adjust_reason.manual_time_update)

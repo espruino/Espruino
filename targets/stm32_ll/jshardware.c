@@ -1836,8 +1836,8 @@ bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize){
 static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
   JsVar *jsArea = jsvNewObject();
   if (!jsArea) return;
-  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
-  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvObjectSetIntChild(jsArea, "addr", (JsVarInt)addr);
+  jsvObjectSetIntChild(jsArea, "length", (JsVarInt)length);
   jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
 }
 

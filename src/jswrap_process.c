@@ -140,35 +140,35 @@ first to ensure the values stay allocated.
 */
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
-  jsvObjectSetChildAndUnLock(obj, "VERSION", jsvNewFromString(JS_VERSION));
+  jsvObjectSetStringChild(obj, "VERSION", JS_VERSION);
 #ifdef GIT_COMMIT
-  jsvObjectSetChildAndUnLock(obj, "GIT_COMMIT", jsvNewFromString(ESPR_STRINGIFY(GIT_COMMIT)));
+  jsvObjectSetStringChild(obj, "GIT_COMMIT", ESPR_STRINGIFY(GIT_COMMIT));
 #endif
-  jsvObjectSetChildAndUnLock(obj, "BOARD", jsvNewFromString(PC_BOARD_ID));
-  jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
-  jsvObjectSetChildAndUnLock(obj, "FLASH", jsvNewFromInteger(FLASH_TOTAL));
+  jsvObjectSetStringChild(obj, "BOARD", PC_BOARD_ID);
+  jsvObjectSetIntChild(obj, "RAM", RAM_TOTAL);
+  jsvObjectSetIntChild(obj, "FLASH", FLASH_TOTAL);
 #ifdef SPIFLASH_LENGTH
-  jsvObjectSetChildAndUnLock(obj, "SPIFLASH", jsvNewFromInteger(SPIFLASH_LENGTH));
+  jsvObjectSetIntChild(obj, "SPIFLASH", SPIFLASH_LENGTH);
 #endif
 #ifdef PUCKJS
   jsvObjectSetChildAndUnLock(obj, "HWVERSION", jswrap_puck_getHardwareVersion());
 #endif
 #ifdef ESPR_HWVERSION
-  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jsvNewFromInteger(ESPR_HWVERSION));
+  jsvObjectSetIntChild(obj, "HWVERSION", ESPR_HWVERSION);
 #endif
-  jsvObjectSetChildAndUnLock(obj, "STORAGE", jsvNewFromInteger(FLASH_SAVED_CODE_LENGTH));
+  jsvObjectSetIntChild(obj, "STORAGE", FLASH_SAVED_CODE_LENGTH);
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
   jsvObjectSetChildAndUnLock(obj, "CONSOLE", jswrap_espruino_getConsole());
-  jsvObjectSetChildAndUnLock(obj, "MODULES", jsvNewFromString(jswGetBuiltInLibraryNames()));
+  jsvObjectSetStringChild(obj, "MODULES", jswGetBuiltInLibraryNames());
 #ifndef SAVE_ON_FLASH
   // Pointer to a list of predefined exports - eventually we'll get rid of the array above
-  jsvObjectSetChildAndUnLock(obj, "EXPTR", jsvNewFromInteger((JsVarInt)(size_t)exportPtrs));
+  jsvObjectSetIntChild(obj, "EXPTR", (JsVarInt)(size_t)exportPtrs);
 #ifdef NRF5X
   extern uint32_t app_ram_base;
   if (app_ram_base)
-    jsvObjectSetChildAndUnLock(obj, "APP_RAM_BASE", jsvNewFromInteger((JsVarInt)app_ram_base));
+    jsvObjectSetIntChild(obj, "APP_RAM_BASE", (JsVarInt)app_ram_base);
   // https://devzone.nordicsemi.com/f/nordic-q-a/1171/how-do-i-access-softdevice-version-string
-  jsvObjectSetChildAndUnLock(obj, "SOFTDEVICE", jsvNewFromInteger(*(uint16_t*)0x0000300C));
+  jsvObjectSetIntChild(obj, "SOFTDEVICE", *(uint16_t*)0x0000300C);
 #endif
 #endif
   return obj;
@@ -243,34 +243,34 @@ JsVar *jswrap_process_memory(JsVar *gc) {
     }
     unsigned int usage = jsvGetMemoryUsage() - history;
     unsigned int total = jsvGetMemoryTotal();
-    jsvObjectSetChildAndUnLock(obj, "free", jsvNewFromInteger((JsVarInt)(total-usage)));
-    jsvObjectSetChildAndUnLock(obj, "usage", jsvNewFromInteger((JsVarInt)usage));
-    jsvObjectSetChildAndUnLock(obj, "total", jsvNewFromInteger((JsVarInt)total));
-    jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
+    jsvObjectSetIntChild(obj, "free", (JsVarInt)(total-usage));
+    jsvObjectSetIntChild(obj, "usage", (JsVarInt)usage);
+    jsvObjectSetIntChild(obj, "total", (JsVarInt)total);
+    jsvObjectSetIntChild(obj, "history", (JsVarInt)history);
     if (varsGCd>=0) {
-      jsvObjectSetChildAndUnLock(obj, "gc", jsvNewFromInteger((JsVarInt)varsGCd));
-      jsvObjectSetChildAndUnLock(obj, "gctime", jsvNewFromFloat(jshGetMillisecondsFromTime(time2-time1)));
+      jsvObjectSetIntChild(obj, "gc", (JsVarInt)varsGCd);
+      jsvObjectSetFloatChild(obj, "gctime", jshGetMillisecondsFromTime(time2-time1));
     }
-    jsvObjectSetChildAndUnLock(obj, "blocksize", jsvNewFromInteger(sizeof(JsVar)));
+    jsvObjectSetIntChild(obj, "blocksize", sizeof(JsVar));
 #ifndef SAVE_ON_FLASH
     JsVar *rx = jsvNewObject();
-    jsvObjectSetChildAndUnLock(rx, "used", jsvNewFromInteger(jshGetEventsUsed()));
-    jsvObjectSetChildAndUnLock(rx, "total", jsvNewFromInteger(IOBUFFERMASK+1));
+    jsvObjectSetIntChild(rx, "used", jshGetEventsUsed());
+    jsvObjectSetIntChild(rx, "total", IOBUFFERMASK+1);
     jsvObjectSetChildAndUnLock(obj, "rx", rx);
     JsVar *tx = jsvNewObject();
-    jsvObjectSetChildAndUnLock(tx, "used", jsvNewFromInteger(jshGetTransmitBufferUsage()));
-    jsvObjectSetChildAndUnLock(tx, "total", jsvNewFromInteger(TXBUFFERMASK+1));
+    jsvObjectSetIntChild(tx, "used", jshGetTransmitBufferUsage());
+    jsvObjectSetIntChild(tx, "total", TXBUFFERMASK+1);
     jsvObjectSetChildAndUnLock(obj, "tx", tx);
 #endif
 #ifdef ARM
     extern uint32_t LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings
     extern uint32_t LINKER_ETEXT_VAR; // end of flash text (binary) section - should be 'void', but 'int' avoids warnings
-    jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));
-    jsvObjectSetChildAndUnLock(obj, "stackFree", jsvNewFromInteger((JsVarInt)(unsigned int)jsuGetFreeStack()));
-    jsvObjectSetChildAndUnLock(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START));
-    jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_ETEXT_VAR));
-    jsvObjectSetChildAndUnLock(obj, "flash_code_start", jsvNewFromInteger((JsVarInt)FLASH_SAVED_CODE_START));
-    jsvObjectSetChildAndUnLock(obj, "flash_length", jsvNewFromInteger((JsVarInt)FLASH_TOTAL));
+    jsvObjectSetIntChild(obj, "stackEndAddress", (JsVarInt)(unsigned int)&LINKER_END_VAR);
+    jsvObjectSetIntChild(obj, "stackFree", (JsVarInt)(unsigned int)jsuGetFreeStack());
+    jsvObjectSetIntChild(obj, "flash_start", (JsVarInt)FLASH_START);
+    jsvObjectSetIntChild(obj, "flash_binary_end", (JsVarInt)(unsigned int)&LINKER_ETEXT_VAR);
+    jsvObjectSetIntChild(obj, "flash_code_start", (JsVarInt)FLASH_SAVED_CODE_START);
+    jsvObjectSetIntChild(obj, "flash_length", (JsVarInt)FLASH_TOTAL);
 #endif
   }
   return obj;

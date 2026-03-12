@@ -303,7 +303,7 @@ void bluetooth_initDeviceName(){
   deviceName[len++] = itoch(macnr[5]&15);
   deviceName[len++] = 0;
 
-  jsvObjectSetChild(execInfo.hiddenRoot, BLE_DEVICE_NAME,jsvNewFromString(deviceName));
+  jsvObjectSetStringChild(execInfo.hiddenRoot, BLE_DEVICE_NAME, deviceName);
 }
 
 void gap_init_security(){

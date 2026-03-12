@@ -410,17 +410,17 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
         if (o) {
           jsvObjectSetChild(o,"service", bleTaskInfo);
           jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(p_chr->uuid));
-          jsvObjectSetChildAndUnLock(o,"handle_value", jsvNewFromInteger(p_chr->handle_value));
-          jsvObjectSetChildAndUnLock(o,"handle_decl", jsvNewFromInteger(p_chr->handle_decl));
+          jsvObjectSetIntChild(o,"handle_value", p_chr->handle_value);
+          jsvObjectSetIntChild(o,"handle_decl", p_chr->handle_decl);
           JsVar *p = jsvNewObject();
           if (p) {
-            jsvObjectSetChildAndUnLock(p,"broadcast",jsvNewFromBool(p_chr->char_props.broadcast));
-            jsvObjectSetChildAndUnLock(p,"read",jsvNewFromBool(p_chr->char_props.read));
-            jsvObjectSetChildAndUnLock(p,"writeWithoutResponse",jsvNewFromBool(p_chr->char_props.write_wo_resp));
-            jsvObjectSetChildAndUnLock(p,"write",jsvNewFromBool(p_chr->char_props.write));
-            jsvObjectSetChildAndUnLock(p,"notify",jsvNewFromBool(p_chr->char_props.notify));
-            jsvObjectSetChildAndUnLock(p,"indicate",jsvNewFromBool(p_chr->char_props.indicate));
-            jsvObjectSetChildAndUnLock(p,"authenticatedSignedWrites",jsvNewFromBool(p_chr->char_props.auth_signed_wr));
+            jsvObjectSetBoolChild(p,"broadcast", p_chr->char_props.broadcast);
+            jsvObjectSetBoolChild(p,"read", p_chr->char_props.read);
+            jsvObjectSetBoolChild(p,"writeWithoutResponse", p_chr->char_props.write_wo_resp);
+            jsvObjectSetBoolChild(p,"write", p_chr->char_props.write);
+            jsvObjectSetBoolChild(p,"notify", p_chr->char_props.notify);
+            jsvObjectSetBoolChild(p,"indicate", p_chr->char_props.indicate);
+            jsvObjectSetBoolChild(p,"authenticatedSignedWrites", p_chr->char_props.auth_signed_wr);
             jsvObjectSetChildAndUnLock(o,"properties", p);
           }
           // char_props?
@@ -444,7 +444,7 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
      uint16_t cccd_handle = data;
      if (cccd_handle) {
        if(bleTaskInfo)
-         jsvObjectSetChildAndUnLock(bleTaskInfo, "handle_cccd", jsvNewFromInteger(cccd_handle));
+         jsvObjectSetIntChild(bleTaskInfo, "handle_cccd", cccd_handle);
        // Switch task here rather than completing...
        bleSwitchTask(BLETASK_CHARACTERISTIC_NOTIFY);
        jsble_central_characteristicNotify(jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(bleTaskInfo), bleTaskInfo, true);
@@ -580,7 +580,7 @@ uint8_t match_request : 1;               If 1 requires the application to report
         int centralIdx = jsble_get_central_connection_idx(conn_handle);
         JsVar *gattServer = bleGetActiveBluetoothGattServer(centralIdx);
         if (gattServer) {
-          jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
+          jsvObjectSetBoolChild(gattServer, "connected", false);
           JsVar *bluetoothDevice = jsvObjectGetChildIfExists(gattServer, "device");
           if (bluetoothDevice) {
             // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
@@ -641,10 +641,10 @@ uint8_t match_request : 1;               If 1 requires the application to report
           }
 #endif // ESPR_NO_BLUETOOTH_MESSAGES
           jsvObjectSetChildAndUnLock(o,"auth_status",str?jsvNewFromString(str):jsvNewFromInteger(auth_status->auth_status));
-          jsvObjectSetChildAndUnLock(o, "bonded", jsvNewFromBool(auth_status->bonded));
-          jsvObjectSetChildAndUnLock(o, "lv4", jsvNewFromInteger(auth_status->sm1_levels.lv4));
-          jsvObjectSetChildAndUnLock(o, "kdist_own", jsvNewFromInteger(*((uint8_t *)&auth_status->kdist_own)));
-          jsvObjectSetChildAndUnLock(o, "kdist_peer", jsvNewFromInteger(*((uint8_t *)&auth_status->kdist_peer)));
+          jsvObjectSetBoolChild(o, "bonded", auth_status->bonded);
+          jsvObjectSetIntChild(o, "lv4", auth_status->sm1_levels.lv4);
+          jsvObjectSetIntChild(o, "kdist_own", *((uint8_t *)&auth_status->kdist_own));
+          jsvObjectSetIntChild(o, "kdist_peer", *((uint8_t *)&auth_status->kdist_peer));
           bleQueueEventAndUnLock(JS_EVENT_PREFIX"security",o);
         }
         break;
@@ -3487,25 +3487,25 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
       conn_handle == m_peripheral_conn_handle) {
     // is this NRF.getSecurityStatus?
     bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
-    jsvObjectSetChildAndUnLock(result, "advertising", jsvNewFromBool(isAdvertising));
+    jsvObjectSetBoolChild(result, "advertising", isAdvertising);
   }
   if (conn_handle == m_peripheral_conn_handle) {
-    jsvObjectSetChildAndUnLock(result, "connectionInterval", jsvNewFromInteger(blePeriphConnectionInterval));
+    jsvObjectSetIntChild(result, "connectionInterval", blePeriphConnectionInterval);
   }
 #ifdef ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
   jsvObjectSetChildAndUnLock(result, "privacy", jsble_getPrivacy());
 #endif // ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
   if (conn_handle == BLE_CONN_HANDLE_INVALID) {
-    jsvObjectSetChildAndUnLock(result, "connected", jsvNewFromBool(false));
+    jsvObjectSetBoolChild(result, "connected", false);
     return result;
   }
   pm_conn_sec_status_t status;
   uint32_t err_code = pm_conn_sec_status_get(conn_handle, &status);
   if (!jsble_check_error(err_code)) {
-    jsvObjectSetChildAndUnLock(result, "connected", jsvNewFromBool(status.connected));
-    jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
-    jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
-    jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
+    jsvObjectSetBoolChild(result, "connected", status.connected);
+    jsvObjectSetBoolChild(result, "encrypted", status.encrypted);
+    jsvObjectSetBoolChild(result, "mitm_protected", status.mitm_protected);
+    jsvObjectSetBoolChild(result, "bonded", status.bonded);
 #ifndef SAVE_ON_FLASH
     if (status.connected && conn_handle==m_peripheral_conn_handle)
       jsvObjectSetChildAndUnLock(result, "connected_addr", bleAddrToStr(m_peripheral_addr));

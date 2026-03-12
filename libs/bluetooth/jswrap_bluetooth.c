@@ -1727,13 +1727,13 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   } else {
     if (bleStatus & BLE_NUS_INITED)
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_NUS, jsvNewFromBool(false));
+    jsvObjectSetBoolChild(execInfo.hiddenRoot, BLE_NAME_NUS, false);
   }
 #if ESPR_BLUETOOTH_ANCS
   if (use_ancs) {
     if (!(bleStatus & BLE_ANCS_INITED))
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_ANCS, jsvNewFromBool(true));
+    jsvObjectSetBoolChild(execInfo.hiddenRoot, BLE_NAME_ANCS, true);
   } else {
     if (bleStatus & BLE_ANCS_INITED)
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
@@ -1742,7 +1742,7 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   if (use_ams) {
     if (!(bleStatus & BLE_AMS_INITED))
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_AMS, jsvNewFromBool(true));
+    jsvObjectSetBoolChild(execInfo.hiddenRoot, BLE_NAME_AMS, true);
   } else {
     if (bleStatus & BLE_AMS_INITED)
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
@@ -1751,7 +1751,7 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   if (use_cts) {
     if (!(bleStatus & BLE_CTS_INITED))
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_CTS, jsvNewFromBool(true));
+    jsvObjectSetBoolChild(execInfo.hiddenRoot, BLE_NAME_CTS, true);
   } else {
     if (bleStatus & BLE_CTS_INITED)
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
@@ -2592,7 +2592,7 @@ void jswrap_ble_setLowPowerConnection(bool lowPower) {
   else
     flags &= ~BLE_FLAGS_LOW_POWER;
   if (flags != oldflags) {
-    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_FLAGS, jsvNewFromInteger(flags));
+    jsvObjectSetIntChild(execInfo.hiddenRoot, BLE_NAME_FLAGS, flags);
     jswrap_ble_restart(NULL);
   }
 }
@@ -4057,7 +4057,7 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
   gatt = jspNewObject(0, "BluetoothRemoteGATTServer");
   jsvObjectSetChild(parent, "gatt", gatt);
   jsvObjectSetChild(gatt, "device", parent);
-  jsvObjectSetChildAndUnLock(gatt, "connected", jsvNewFromBool(false));
+  jsvObjectSetBoolChild(gatt, "connected", false);
   return gatt;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
@@ -4955,19 +4955,19 @@ void jswrap_ble_powerusage(JsVar *devices) {
   // https://devzone.nordicsemi.com/power/w/opp/2/online-power-profiler-for-bluetooth-le
   if (jsble_has_peripheral_connection()) {
     int perSec = 800 / blePeriphConnectionInterval; // blePeriphConnectionInterval is in units of 1.25ms
-    jsvObjectSetChildAndUnLock(devices, "BLE_periph", jsvNewFromInteger(5*perSec)); // ~5uA per connection interval
+    jsvObjectSetIntChild(devices, "BLE_periph", 5*perSec); // ~5uA per connection interval
   }
   if (jsble_has_central_connection()) {
-    jsvObjectSetChildAndUnLock(devices, "BLE_central", jsvNewFromInteger(500));
+    jsvObjectSetIntChild(devices, "BLE_central", 500);
     // Could do finer grained central connection
   }
   if (bleStatus & BLE_IS_ADVERTISING) {
     int perSec = 1600 / bleAdvertisingInterval; // bleAdvertisingInterval is in units of 0.625ms
-    jsvObjectSetChildAndUnLock(devices, "BLE_advertise", jsvNewFromInteger(12*perSec)); // ~12uA per advertisement
+    jsvObjectSetIntChild(devices, "BLE_advertise", 12*perSec); // ~12uA per advertisement
     // Could try and take advertising length into account?
   }
   if (bleStatus & BLE_IS_SCANNING) {
-    jsvObjectSetChildAndUnLock(devices, "BLE_scan", jsvNewFromInteger(10000));
+    jsvObjectSetIntChild(devices, "BLE_scan", 10000);
     // Could try and take advertising length into account?
   }
 #endif

@@ -3547,15 +3547,15 @@ JsVar *jswrap_banglejs_getCompass() {
 #ifdef MAG_I2C
   JsVar *o = jsvNewObject();
   if (o) {
-    jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger(mag.x));
-    jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger(mag.y));
-    jsvObjectSetChildAndUnLock(o, "z", jsvNewFromInteger(mag.z));
+    jsvObjectSetIntChild(o, "x", mag.x);
+    jsvObjectSetIntChild(o, "y", mag.y);
+    jsvObjectSetIntChild(o, "z", mag.z);
     int dx = mag.x - ((magmin.x+magmax.x)/2);
     int dy = mag.y - ((magmin.y+magmax.y)/2);
     int dz = mag.z - ((magmin.z+magmax.z)/2);
-    jsvObjectSetChildAndUnLock(o, "dx", jsvNewFromInteger(dx));
-    jsvObjectSetChildAndUnLock(o, "dy", jsvNewFromInteger(dy));
-    jsvObjectSetChildAndUnLock(o, "dz", jsvNewFromInteger(dz));
+    jsvObjectSetIntChild(o, "dx", dx);
+    jsvObjectSetIntChild(o, "dy", dy);
+    jsvObjectSetIntChild(o, "dz", dz);
     int cx = magmax.x-magmin.x;
     int cy = magmax.y-magmin.y;
     int c = cx*cx+cy*cy;
@@ -3565,7 +3565,7 @@ JsVar *jswrap_banglejs_getCompass() {
       if (h<0) h+=360;
       h = 360-h; // ensure heading matches with what we'd expect from a compass
     }
-    jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
+    jsvObjectSetFloatChild(o, "heading", h);
   }
   return o;
 #else
@@ -3596,11 +3596,11 @@ Get the most recent accelerometer reading. Data is in the same format as the
 JsVar *jswrap_banglejs_getAccel() {
   JsVar *o = jsvNewObject();
   if (o) {
-    jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(acc.x/8192.0));
-    jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(acc.y/8192.0));
-    jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(acc.z/8192.0));
-    jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(accMagSquared)/8192.0));
-    jsvObjectSetChildAndUnLock(o, "diff", jsvNewFromFloat(accDiff/8192.0));
+    jsvObjectSetFloatChild(o, "x", acc.x/8192.0);
+    jsvObjectSetFloatChild(o, "y", acc.y/8192.0);
+    jsvObjectSetFloatChild(o, "z", acc.z/8192.0);
+    jsvObjectSetFloatChild(o, "mag", sqrt(accMagSquared)/8192.0);
+    jsvObjectSetFloatChild(o, "diff", accDiff/8192.0);
   }
   return o;
 }
@@ -3639,18 +3639,18 @@ JsVar *jswrap_banglejs_getAccel() {
 static JsVar *_jswrap_banglejs_getHealthStatusObject(HealthState *health) {
   JsVar *o = jsvNewObject();
   if (o) {
-    //jsvObjectSetChildAndUnLock(o,"index", jsvNewFromInteger(health->index)); // DEBUG only
-    jsvObjectSetChildAndUnLock(o,"movement", jsvNewFromInteger(health->movement / health->movementSamples));
-    jsvObjectSetChildAndUnLock(o,"steps",jsvNewFromInteger(health->stepCount));
+    //jsvObjectSetIntChild(o,"index", health->index); // DEBUG only
+    jsvObjectSetIntChild(o,"movement", health->movement / health->movementSamples);
+    jsvObjectSetIntChild(o,"steps", health->stepCount);
 #ifdef HEARTRATE
-    jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(health->bpm10 / 10.0));
-    jsvObjectSetChildAndUnLock(o,"bpmConfidence",jsvNewFromInteger(health->bpmConfidence));
-    jsvObjectSetChildAndUnLock(o,"bpmMin",jsvNewFromFloat(health->bpm10min / 10.0));
-    jsvObjectSetChildAndUnLock(o,"bpmMax",jsvNewFromFloat(health->bpm10max / 10.0));
+    jsvObjectSetFloatChild(o,"bpm", health->bpm10 / 10.0);
+    jsvObjectSetIntChild(o,"bpmConfidence", health->bpmConfidence);
+    jsvObjectSetFloatChild(o,"bpmMin", health->bpm10min / 10.0);
+    jsvObjectSetFloatChild(o,"bpmMax", health->bpm10max / 10.0);
 #endif
    const char *ACT_STRINGS[HSA_STRINGS_LEN] = { HSA_STRINGS };
    if (health->activity < HSA_STRINGS_LEN)
-     jsvObjectSetChildAndUnLock(o,"activity",jsvNewFromString(ACT_STRINGS[health->activity]));
+     jsvObjectSetStringChild(o,"activity", ACT_STRINGS[health->activity]);
   }
   return o;
 }
@@ -4442,11 +4442,11 @@ bool jswrap_banglejs_idle() {
 #endif
 #endif
         int n = (tapInfo&0x80)?2:1;
-        jsvObjectSetChildAndUnLock(o, "dir", jsvNewFromString(string));
-        jsvObjectSetChildAndUnLock(o, "double", jsvNewFromBool(tapInfo&0x80));
-        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger((tapInfo&16)?-n:(tapInfo&32)?n:0));
-        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger((tapInfo&4)?-n:(tapInfo&8)?n:0));
-        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromInteger((tapInfo&1)?-n:(tapInfo&2)?n:0));
+        jsvObjectSetStringChild(o, "dir", string);
+        jsvObjectSetBoolChild(o, "double", tapInfo&0x80);
+        jsvObjectSetIntChild(o, "x", (tapInfo&16)?-n:(tapInfo&32)?n:0);
+        jsvObjectSetIntChild(o, "y", (tapInfo&4)?-n:(tapInfo&8)?n:0);
+        jsvObjectSetIntChild(o, "z", (tapInfo&1)?-n:(tapInfo&2)?n:0);
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"tap", &o, 1);
         jsvUnLock(o);
       }
@@ -4525,11 +4525,11 @@ bool jswrap_banglejs_idle() {
     if (bangleTasks & JSBT_HRM_INSTANT_DATA) {
       JsVar *o = hrm_sensor_getJsVar();
       if (o) {
-        jsvObjectSetChildAndUnLock(o,"raw",jsvNewFromInteger(hrmInfo.raw));
-        jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(hrmInfo.bpm10 / 10.0));
-        jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
-        jsvObjectSetChildAndUnLock(o,"filt",jsvNewFromInteger(hrmInfo.filtered));
-        jsvObjectSetChildAndUnLock(o,"avg",jsvNewFromInteger(hrmInfo.avg));
+        jsvObjectSetIntChild(o,"raw", hrmInfo.raw);
+        jsvObjectSetFloatChild(o,"bpm", hrmInfo.bpm10 / 10.0);
+        jsvObjectSetIntChild(o,"confidence", hrmInfo.confidence);
+        jsvObjectSetIntChild(o,"filt", hrmInfo.filtered);
+        jsvObjectSetIntChild(o,"avg", hrmInfo.avg);
         hrm_get_hrm_raw_info(o);
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM-raw", &o, 1);
         jsvUnLock(o);
@@ -4538,8 +4538,8 @@ bool jswrap_banglejs_idle() {
     if (bangleTasks & JSBT_HRM_DATA) {
       JsVar *o = jsvNewObject();
       if (o) {
-        jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromInteger(hrmInfo.bpm10 / 10.0));
-        jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
+        jsvObjectSetIntChild(o,"bpm", hrmInfo.bpm10 / 10.0);
+        jsvObjectSetIntChild(o,"confidence", hrmInfo.confidence);
         hrm_get_hrm_info(o);
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM", &o, 1);
         jsvUnLock(o);
@@ -4675,9 +4675,9 @@ bool jswrap_banglejs_idle() {
       if (y<0) y=0;
       if (x>=LCD_WIDTH) x=LCD_WIDTH-1;
       if (y>=LCD_HEIGHT) y=LCD_HEIGHT-1;
-      jsvObjectSetChildAndUnLock(o[1], "x", jsvNewFromInteger(x));
-      jsvObjectSetChildAndUnLock(o[1], "y", jsvNewFromInteger(y));
-      jsvObjectSetChildAndUnLock(o[1], "type", jsvNewFromInteger(touchType));
+      jsvObjectSetIntChild(o[1], "x", x);
+      jsvObjectSetIntChild(o[1], "y", y);
+      jsvObjectSetIntChild(o[1], "type", touchType);
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", o, 2);
       jsvUnLockMany(2,o);
 #else
@@ -4691,11 +4691,11 @@ bool jswrap_banglejs_idle() {
 #ifdef TOUCH_DEVICE
   if (bangleTasks & JSBT_DRAG) {
     JsVar *o = jsvNewObject();
-    jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger(touchX));
-    jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger(touchY));
-    jsvObjectSetChildAndUnLock(o, "b", jsvNewFromInteger(touchPts));
-    jsvObjectSetChildAndUnLock(o, "dx", jsvNewFromInteger(lastTouchPts ? touchX-lastTouchX : 0));
-    jsvObjectSetChildAndUnLock(o, "dy", jsvNewFromInteger(lastTouchPts ? touchY-lastTouchY : 0));
+    jsvObjectSetIntChild(o, "x", touchX);
+    jsvObjectSetIntChild(o, "y", touchY);
+    jsvObjectSetIntChild(o, "b", touchPts);
+    jsvObjectSetIntChild(o, "dx", lastTouchPts ? touchX-lastTouchX : 0);
+    jsvObjectSetIntChild(o, "dy", lastTouchPts ? touchY-lastTouchY : 0);
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"drag", &o, 1);
     jsvUnLock(o);
     lastTouchX = touchX;
@@ -4884,20 +4884,20 @@ Please see the declaration of this function for more information (click the `==>
 JsVar *jswrap_banglejs_dbg() {
   JsVar *o = jsvNewObject();
   if (!o) return 0;
-  jsvObjectSetChildAndUnLock(o,"accHistoryIdx",jsvNewFromInteger(accHistoryIdx));
-  jsvObjectSetChildAndUnLock(o,"accGestureCount",jsvNewFromInteger(accGestureCount));
-  jsvObjectSetChildAndUnLock(o,"accIdleCount",jsvNewFromInteger(accIdleCount)); // How many acceleromneter samples have we not been moving for?
-  jsvObjectSetChildAndUnLock(o,"pollInterval",jsvNewFromInteger(pollInterval)); // How fast is the accelerometer running (in ms)
+  jsvObjectSetIntChild(o,"accHistoryIdx", accHistoryIdx);
+  jsvObjectSetIntChild(o,"accGestureCount", accGestureCount);
+  jsvObjectSetIntChild(o,"accIdleCount", accIdleCount); // How many acceleromneter samples have we not been moving for?
+  jsvObjectSetIntChild(o,"pollInterval", pollInterval); // How fast is the accelerometer running (in ms)
 #ifdef HEARTRATE_VC31_BINARY
-  jsvObjectSetChildAndUnLock(o,"hrmSportTimer",jsvNewFromInteger(hrmSportTimer)); // how long since we were sure we were doing sport?
-  jsvObjectSetChildAndUnLock(o,"hrmSportActivity",jsvNewFromInteger(hrmSportActivity)); // Sport activity running average
-  jsvObjectSetChildAndUnLock(o,"hrmSportMode",jsvNewFromInteger(hrmInfo.sportMode)); // The sport mode the HRM is currently in (different to getOptions().hrmSportMode which is what we're requesting)
+  jsvObjectSetIntChild(o,"hrmSportTimer", hrmSportTimer); // how long since we were sure we were doing sport?
+  jsvObjectSetIntChild(o,"hrmSportActivity", hrmSportActivity); // Sport activity running average
+  jsvObjectSetIntChild(o,"hrmSportMode", hrmInfo.sportMode); // The sport mode the HRM is currently in (different to getOptions().hrmSportMode which is what we're requesting)
 #endif
 #if defined(BANGLEJS_Q3) && !defined(EMULATED)
-  jsvObjectSetChildAndUnLock(o,"SPL06", jsvNewFromBool(pressureSPL06Enabled));
-  jsvObjectSetChildAndUnLock(o,"BMP280", jsvNewFromBool(pressureBMP280Enabled));
-  jsvObjectSetChildAndUnLock(o,"MAG0C", jsvNewFromBool(mag0CEnabled));
-  jsvObjectSetChildAndUnLock(o,"MMC36X0", jsvNewFromBool(magMMC36X0Enabled));
+  jsvObjectSetBoolChild(o,"SPL06", pressureSPL06Enabled);
+  jsvObjectSetBoolChild(o,"BMP280", pressureBMP280Enabled);
+  jsvObjectSetBoolChild(o,"MAG0C", mag0CEnabled);
+  jsvObjectSetBoolChild(o,"MMC36X0", magMMC36X0Enabled);
 #endif
   return o;
 }
@@ -5340,9 +5340,9 @@ if (PRESSURE_DEVICE_SPL06_007_EN)
 JsVar *jswrap_banglejs_getBarometerObject() {
   JsVar *o = jsvNewObject();
   if (o) {
-    jsvObjectSetChildAndUnLock(o,"temperature", jsvNewFromFloat(barometerTemperature));
-    jsvObjectSetChildAndUnLock(o,"pressure", jsvNewFromFloat(barometerPressure));
-    jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(barometerAltitude));
+    jsvObjectSetFloatChild(o,"temperature", barometerTemperature);
+    jsvObjectSetFloatChild(o,"pressure", barometerPressure);
+    jsvObjectSetFloatChild(o,"altitude", barometerAltitude);
   }
   return o;
 }
@@ -5421,8 +5421,8 @@ JsVar *jswrap_banglejs_project(JsVar *latlong) {
   double s = jswrap_math_sin(lat * degToRad);
   JsVar *o = jsvNewObject();
   if (o) {
-    jsvObjectSetChildAndUnLock(o,"x", jsvNewFromFloat(R * lon * degToRad));
-    jsvObjectSetChildAndUnLock(o,"y", jsvNewFromFloat(R * log((1 + s) / (1 - s)) / 2));
+    jsvObjectSetFloatChild(o,"x", R * lon * degToRad);
+    jsvObjectSetFloatChild(o,"y", R * log((1 + s) / (1 - s)) / 2);
   }
   return o;
 }
@@ -6558,12 +6558,12 @@ JsVar *jswrap_banglejs_appRect() {
     jsvObjectIteratorFree(&it);
   }
   jsvUnLock(widgetsVar);
-  jsvObjectSetChildAndUnLock(o,"x",jsvNewFromInteger(0));
-  jsvObjectSetChildAndUnLock(o,"y",jsvNewFromInteger(top));
-  jsvObjectSetChildAndUnLock(o,"w",jsvNewFromInteger(graphicsInternal.data.width));
-  jsvObjectSetChildAndUnLock(o,"h",jsvNewFromInteger(graphicsInternal.data.height-(top+btm)));
-  jsvObjectSetChildAndUnLock(o,"x2",jsvNewFromInteger(graphicsInternal.data.width-1));
-  jsvObjectSetChildAndUnLock(o,"y2",jsvNewFromInteger(graphicsInternal.data.height-(1+btm)));
+  jsvObjectSetIntChild(o,"x", 0);
+  jsvObjectSetIntChild(o,"y", top);
+  jsvObjectSetIntChild(o,"w", graphicsInternal.data.width);
+  jsvObjectSetIntChild(o,"h", graphicsInternal.data.height-(top+btm));
+  jsvObjectSetIntChild(o,"x2", graphicsInternal.data.width-1);
+  jsvObjectSetIntChild(o,"y2", graphicsInternal.data.height-(1+btm));
 
 
 
@@ -6606,20 +6606,20 @@ void jswrap_banglejs_powerusage(JsVar *devices) {
   // https://www.espruino.com/Bangle.js2#power-consumption
 #ifdef BANGLEJS_F18
   if (jswrap_banglejs_isLCDOn())
-    jsvObjectSetChildAndUnLock(devices, "LCD", jsvNewFromInteger(40000));
+    jsvObjectSetIntChild(devices, "LCD", 40000);
 #endif
 #ifdef BANGLEJS_Q3
   if (jswrap_banglejs_isBacklightOn())
-    jsvObjectSetChildAndUnLock(devices, "LCD_backlight", jsvNewFromInteger(14000));
+    jsvObjectSetIntChild(devices, "LCD_backlight", 14000);
   if (!jswrap_banglejs_isLocked())
-    jsvObjectSetChildAndUnLock(devices, "LCD_touch", jsvNewFromInteger(1600));
+    jsvObjectSetIntChild(devices, "LCD_touch", 1600);
 #endif
   if (jswrap_banglejs_isHRMOn())
-    jsvObjectSetChildAndUnLock(devices, "HRM", jsvNewFromInteger(700));
+    jsvObjectSetIntChild(devices, "HRM", 700);
   if (jswrap_banglejs_isGPSOn())
-    jsvObjectSetChildAndUnLock(devices, "GPS", jsvNewFromInteger(20000));
+    jsvObjectSetIntChild(devices, "GPS", 20000);
   if (jswrap_banglejs_isCompassOn())
-    jsvObjectSetChildAndUnLock(devices, "compass", jsvNewFromInteger(600));
+    jsvObjectSetIntChild(devices, "compass", 600);
   if (jswrap_banglejs_isBarometerOn())
-    jsvObjectSetChildAndUnLock(devices, "baro", jsvNewFromInteger(200));
+    jsvObjectSetIntChild(devices, "baro", 200);
 }

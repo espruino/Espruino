@@ -115,7 +115,7 @@ static bool handlePipe(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
           JsVar *response = jspExecuteFunction(writeFunc, destination, 1, &buffer);
           if (jsvIsBoolean(response) && jsvGetBool(response)==false) {
             // If boolean false was returned, wait for drain event (http://nodejs.org/api/stream.html#stream_writable_write_chunk_encoding_callback)
-            jsvObjectSetChildAndUnLock(pipe,"drainWait",jsvNewFromBool(true));
+            jsvObjectSetBoolChild(pipe,"drainWait", true);
           }
           jsvUnLock(response);
         }
@@ -188,7 +188,7 @@ static void jswrap_pipe_drain_listener(JsVar *destination) {
       JsVar *dst = jsvObjectGetChildIfExists(pipe,"destination");
       if (dst == destination) {
         // found it! said wait to false
-        jsvObjectSetChildAndUnLock(pipe,"drainWait",jsvNewFromBool(false));
+        jsvObjectSetBoolChild(pipe,"drainWait", false);
       }
       jsvUnLock2(dst, pipe);
       jsvObjectIteratorNext(&it);
@@ -294,8 +294,8 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
         jswrap_object_addEventListener(dest, "drain", jswrap_pipe_drain_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
         jswrap_object_addEventListener(dest, "close", jswrap_pipe_dst_close_listener, JSWAT_THIS_ARG);
         // set up the rest of the pipe
-        jsvObjectSetChildAndUnLock(pipe, "chunkSize", jsvNewFromInteger(chunkSize));
-        jsvObjectSetChildAndUnLock(pipe, "end", jsvNewFromBool(callEnd));
+        jsvObjectSetIntChild(pipe, "chunkSize", chunkSize);
+        jsvObjectSetBoolChild(pipe, "end", callEnd);
         jsvUnLock2(jsvAddNamedChild(pipe, source, "source"),
                    jsvAddNamedChild(pipe, dest, "destination"));
         // add the pipe to our list

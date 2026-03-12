@@ -660,7 +660,8 @@ void _jswrap_i2c_writeTo(JsVar *parent, IOEventFlags device, int address, bool s
       inf.started = jsvObjectGetBoolChild(parent, "started");
       jsi2cWrite(&inf, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
     }
-    jsvUnLock2(jsvObjectSetChild(parent, "started", jsvNewFromBool(inf.started)), options);
+    jsvObjectSetBoolChild(parent, "started", inf.started);
+    jsvUnLock(options);
 #endif
   }
 }
@@ -712,7 +713,8 @@ JsVar *_jswrap_i2c_readFrom(JsVar *parent, IOEventFlags device, int address,  bo
       inf.started = jsvObjectGetBoolChild(parent, "started");
       jsi2cRead(&inf, (unsigned char)address, nBytes, buf, sendStop);
     }
-    jsvUnLock2(jsvObjectSetChild(parent, "started", jsvNewFromBool(inf.started)), options);
+    jsvObjectSetBoolChild(parent, "started", inf.started);
+    jsvUnLock(options);
 #endif
   } else return 0;
 

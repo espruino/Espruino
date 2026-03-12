@@ -39,7 +39,7 @@ JsVar *jswrap_Queue_constructor(JsVar *queueName){
   if (!queue) return 0;
   name[jsvGetString(queueName, name, sizeof(name))] = '\0';
   idx = queue_indexByName(name);
-  jsvObjectSetChildAndUnLock(queue, "index", jsvNewFromInteger(idx));
+  jsvObjectSetIntChild(queue, "index", idx);
   return queue;
 }
 /*JSON{
@@ -105,7 +105,7 @@ JsVar *jswrap_Task_constructor(JsVar *taskName){
   if (!task) return 0;
   name[jsvGetString(taskName, name, sizeof(name))] = '\0';
   idx = task_indexByName(name);
-  jsvObjectSetChildAndUnLock(task, "index", jsvNewFromInteger(idx));
+  jsvObjectSetIntChild(task, "index", idx);
   return task;
 }
 /*JSON{
@@ -196,7 +196,7 @@ JsVar *jswrap_Timer_constructor(JsVar *timerName,int group, int index, int isrIn
   if(!timer) return 0;
   name[jsvGetString(timerName, name, sizeof(name))] = '\0';
   idx = timer_Init(name,group,index,isrIndex);
-  jsvObjectSetChildAndUnLock(timer, "index", jsvNewFromInteger(idx));
+  jsvObjectSetIntChild(timer, "index", idx);
   return timer;
 }
 /*JSON{

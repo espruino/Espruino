@@ -820,7 +820,7 @@ void jsiSoftKill() {
   }
   // Save flags if required
   if (jsFlags)
-    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JSI_JSFLAGS_NAME, jsvNewFromInteger(jsFlags));
+    jsvObjectSetIntChild(execInfo.hiddenRoot, JSI_JSFLAGS_NAME, jsFlags);
 
   // Save initialisation information
   JsVar *initCode = jsvNewFromEmptyString();
@@ -1836,16 +1836,16 @@ static void jsiPacketProcess() {
       }
       ok = out_data.ok;
       jsvUnLock(out_data.file);
-      jsvObjectSetChildAndUnLock(r, "offs", jsvNewFromInteger(out_data.fileOffset));
+      jsvObjectSetIntChild(r, "offs", out_data.fileOffset);
       if (out_data.fileOffset >= out_data.fileSize)
         jsiPacketFileEnd(); // end file send
       else
         jsiPacketFileSetTimeout(true); // reschedule timeout to close file
 #ifndef SAVE_ON_FLASH // On Bangle.js, if we get a packet upload, fire an event (E.showMessage(...{uploadProgress:bytes})) can hook onto this
       JsVar *o = jsvNewObject();
-      jsvObjectSetChildAndUnLock(o, "l", jsvNewFromInteger(inputPacketLength));
-      jsvObjectSetChildAndUnLock(o, "o", jsvNewFromInteger(out_data.fileOffset));
-      jsvObjectSetChildAndUnLock(o, "s", jsvNewFromInteger(out_data.fileSize));
+      jsvObjectSetIntChild(o, "l", inputPacketLength);
+      jsvObjectSetIntChild(o, "o", out_data.fileOffset);
+      jsvObjectSetIntChild(o, "s", out_data.fileSize);
       jsvObjectSetChild(o, "fn", fn);
       jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"packetUpload", 1, &o);
       jsvUnLock(o);
@@ -2314,8 +2314,8 @@ void jsiIdle() {
         int len = eventU32>>8;
         JsVar *obj = jsvNewObject();
         if (obj) {
-          jsvObjectSetChildAndUnLock(obj, "addr", jsvNewFromInteger(addr&0x7F));
-          jsvObjectSetChildAndUnLock(obj, "length", jsvNewFromInteger(len));
+          jsvObjectSetIntChild(obj, "addr", addr&0x7F);
+          jsvObjectSetIntChild(obj, "length", len);
           jsiExecuteEventCallbackName(i2cClass, (addr&0x80) ? JS_EVENT_PREFIX"read" : JS_EVENT_PREFIX"write", 1, &obj);
           jsvUnLock(obj);
         }
@@ -2362,7 +2362,7 @@ void jsiIdle() {
           JsVarInt debounce = jsvObjectGetIntegerChild(watchPtr, "debounce");
           if (debounce<=0) {
             executeNow = !ignoreEvent;
-            jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(pinIsHigh)); // set the state anyway
+            jsvObjectSetBoolChild(watchPtr, "state", pinIsHigh); // set the state anyway
           } else { // Debouncing - use timeouts to ensure we only fire at the right time
             // store the current state of the pin
             bool oldWatchState = jsvObjectGetBoolChild(watchPtr, "state");
@@ -2370,13 +2370,13 @@ void jsiIdle() {
             if (timeout) { // if we had a timeout, update the callback time
               JsSysTime timeoutTime = jsiLastIdleTime + (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChildIfExists(timeout, "time"));
               jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce)));
-              jsvObjectSetChildAndUnLock(timeout, "state", jsvNewFromBool(pinIsHigh));
+              jsvObjectSetBoolChild(timeout, "state", pinIsHigh);
               if (ignoreEvent || ((eventTime > timeoutTime) && (pinIsHigh!=oldWatchState))) {
                 // timeout should have fired, but we didn't get around to executing it!
                 // Do it now (with the old timeout time)
                 executeNow = !ignoreEvent;
                 eventTime = timeoutTime - debounce;
-                jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(pinIsHigh));
+                jsvObjectSetBoolChild(watchPtr, "state", pinIsHigh);
                 // Remove the timeout
                 jsiClearTimeout(timeout);
                 jsvObjectRemoveChild(watchPtr, "timeout");
@@ -2388,15 +2388,15 @@ void jsiIdle() {
                 jsvObjectSetChildAndUnLock(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce));
                 jsvObjectSetChildAndUnLock(timeout, "cb", jsvObjectGetChildIfExists(watchPtr, "cb"));
                 jsvObjectSetChildAndUnLock(timeout, "lastTime", jsvObjectGetChildIfExists(watchPtr, "lastTime"));
-                jsvObjectSetChildAndUnLock(timeout, "pin", jsvNewFromPin(pin));
-                jsvObjectSetChildAndUnLock(timeout, "state", jsvNewFromBool(pinIsHigh));
+                jsvObjectSetPinChild(timeout, "pin", pin);
+                jsvObjectSetBoolChild(timeout, "state", pinIsHigh);
                 // Add to timer array
                 jsiTimerAdd(timeout);
                 // Add to our watch
                 jsvObjectSetChild(watchPtr, "timeout", timeout); // no unlock
               }
             } else if (ignoreEvent) {
-              jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(pinIsHigh));
+              jsvObjectSetBoolChild(watchPtr, "state", pinIsHigh);
             }
             jsvUnLock(timeout);
           }
@@ -2409,14 +2409,14 @@ void jsiIdle() {
               bool watchRecurring = jsvObjectGetBoolChild(watchPtr,  "recur");
               JsVar *data = jsvNewObject();
               if (data) {
-                jsvObjectSetChildAndUnLock(data, "state", jsvNewFromBool(pinIsHigh));
+                jsvObjectSetBoolChild(data, "state", pinIsHigh);
                 jsvObjectSetChildAndUnLock(data, "lastTime", jsvObjectGetChildIfExists(watchPtr, "lastTime"));
                 // set both data.time, and watch.lastTime in one go
                 jsvObjectSetChild(data, "time", timePtr); // no unlock
-                jsvObjectSetChildAndUnLock(data, "pin", jsvNewFromPin(pin));
+                jsvObjectSetPinChild(data, "pin", pin);
                 Pin dataPin = jshGetEventDataPin(eventType);
                 if (jshIsPinValid(dataPin))
-                  jsvObjectSetChildAndUnLock(data, "data", jsvNewFromBool((eventFlags&EV_EXTI_DATA_PIN_HIGH)!=0));
+                  jsvObjectSetBoolChild(data, "data", (eventFlags&EV_EXTI_DATA_PIN_HIGH)!=0);
               }
               if (!jsiExecuteEventCallback(0, watchCallback, 1, &data) && watchRecurring) {
                 jsError("Ctrl-C while processing watch - removing it.");
@@ -2494,7 +2494,7 @@ void jsiIdle() {
         if (watchPtr) {
           bool watchState = jsvObjectGetBoolChild(watchPtr, "state");
           bool timerState = jsvObjectGetBoolChild(timerPtr, "state");
-          jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(timerState));
+          jsvObjectSetBoolChild(watchPtr, "state", timerState);
           exec = false;
           if (watchState!=timerState) {
             // Create the 'time' variable that will be passed to the user and stored as last time
@@ -2507,7 +2507,7 @@ void jsiIdle() {
               if (data) {
                 exec = true;
                 // if it was a watch, set the last state up
-                jsvObjectSetChildAndUnLock(data, "state", jsvNewFromBool(timerState));
+                jsvObjectSetBoolChild(data, "state", timerState);
                 // set up the lastTime variable of data to what was in the watch
                 jsvObjectSetChildAndUnLock(data, "lastTime", jsvObjectGetChildIfExists(watchPtr, "lastTime"));
                 // set up the watches lastTime to this one

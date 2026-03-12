@@ -237,11 +237,11 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
   if (timerId<0)
     jsWarn("Unable to schedule a timer");
   else
-    jsvObjectSetChildAndUnLock(waveform, "freq", jsvNewFromInteger(timerId));
+    jsvObjectSetIntChild(waveform, "freq", timerId);
   jsvUnLock2(buffer,buffer2);
 
-  jsvObjectSetChildAndUnLock(waveform, "running", jsvNewFromBool(true));
-  jsvObjectSetChildAndUnLock(waveform, "freq", jsvNewFromFloat(freq));
+  jsvObjectSetBoolChild(waveform, "running", true);
+  jsvObjectSetFloatChild(waveform, "freq", freq);
   // Add to our list of active waveforms
   JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, JSV_ARRAY);
   if (waveforms) {
@@ -345,7 +345,7 @@ void jswrap_waveform_eventHandler(IOEventFlags eventFlags, uint8_t *data, int le
   if ((customFlags&EVC_TYPE_MASK)==EVC_TIMER_FINISHED) {
     JsVar *waveform = _jswrap_waveform_getById(id);
     if (waveform) {
-      jsvObjectSetChildAndUnLock(waveform, "running", jsvNewFromBool(false));
+      jsvObjectSetBoolChild(waveform, "running", false);
       JsVar *arrayBuffer = jsvObjectGetChildIfExists(waveform, "buffer");
       jsiQueueObjectCallbacks(waveform, JS_EVENT_PREFIX"finish", &arrayBuffer, 1);
       jsvUnLock(arrayBuffer);
@@ -367,7 +367,7 @@ void jswrap_waveform_eventHandler(IOEventFlags eventFlags, uint8_t *data, int le
         int oldBuffer = jsvGetIntegerAndUnLock(jsvObjectGetChild(waveform, "currentBuffer", JSV_INTEGER));
         if (oldBuffer != currentBuffer) {
           // buffers have changed - fire off a 'buffer' event with the buffer that needs to be filled
-          jsvObjectSetChildAndUnLock(waveform, "currentBuffer", jsvNewFromInteger(currentBuffer));
+          jsvObjectSetIntChild(waveform, "currentBuffer", currentBuffer);
           JsVar *arrayBuffer = jsvObjectGetChildIfExists(waveform, (currentBuffer==0) ? "buffer2" : "buffer");
           jsiQueueObjectCallbacks(waveform, JS_EVENT_PREFIX"buffer", &arrayBuffer, 1);
           jsvUnLock(arrayBuffer);

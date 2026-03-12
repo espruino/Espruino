@@ -821,14 +821,14 @@ JsVar *jswrap_interface_setWatch(
   } else {
     JsVar *watchPtr = jsvNewObject();
     if (watchPtr) {
-      jsvObjectSetChildAndUnLock(watchPtr, "pin", jsvNewFromPin(pin));
-      if (repeat) jsvObjectSetChildAndUnLock(watchPtr, "recur", jsvNewFromBool(repeat));
-      if (debounce>0) jsvObjectSetChildAndUnLock(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce)));
-      if (edge) jsvObjectSetChildAndUnLock(watchPtr, "edge", jsvNewFromInteger(edge));
+      jsvObjectSetPinChild(watchPtr, "pin", pin);
+      if (repeat) jsvObjectSetBoolChild(watchPtr, "recur", repeat);
+      if (debounce>0) jsvObjectSetIntChild(watchPtr, "debounce", (JsVarInt)jshGetTimeFromMilliseconds(debounce));
+      if (edge) jsvObjectSetIntChild(watchPtr, "edge", edge);
       jsvObjectSetChild(watchPtr, "cb", func); // no unlock intentionally
-      jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(jshPinInput(pin)));
+      jsvObjectSetBoolChild(watchPtr, "state", jshPinInput(pin));
       if (isHighSpeed)
-        jsvObjectSetChildAndUnLock(watchPtr, "hispeed", jsvNewFromBool(true));
+        jsvObjectSetBoolChild(watchPtr, "hispeed", true);
     }
 
     // If nothing already watching the pin, set up a watch
@@ -923,8 +923,8 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
 int jswrap_interface_setWatch_int(void(*callback)(), Pin pin, bool repeat, int edge) {
   JsVar *fn = jsvNewNativeFunction(callback, JSWAT_VOID);
   JsVar *options = jsvNewObject();
-  jsvObjectSetChildAndUnLock(options, "repeat", jsvNewFromBool(repeat));
-  jsvObjectSetChildAndUnLock(options, "edge", jsvNewFromInteger(edge));
+  jsvObjectSetBoolChild(options, "repeat", repeat);
+  jsvObjectSetIntChild(options, "edge", edge);
   int id = jsvGetIntegerAndUnLock(jswrap_interface_setWatch(fn, pin, options));
   jsvUnLock2(fn, options);
   return id;

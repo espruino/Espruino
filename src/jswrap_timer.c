@@ -146,7 +146,7 @@ JsVar *jswrap_timer_get(int id) {
   jshInterruptOn();
   if (task.type == UET_NONE) return 0;
   JsVar *obj = jsvNewObject();
-  jsvObjectSetChildAndUnLock(obj, "id", jsvNewFromInteger(id));
+  jsvObjectSetIntChild(obj, "id", id);
   const char *typeStr = NULL;
   switch (task.type) {
   case UET_NONE: assert(0); break;
@@ -154,7 +154,7 @@ JsVar *jswrap_timer_get(int id) {
   case UET_SET :
     typeStr="SET";
 #ifndef SAVE_ON_FLASH
-    jsvObjectSetChildAndUnLock(obj, "value", jsvNewFromInteger(task.data.set.value));
+    jsvObjectSetIntChild(obj, "value", task.data.set.value);
 #endif
     break;
 #ifndef SAVE_ON_FLASH
@@ -177,8 +177,8 @@ JsVar *jswrap_timer_get(int id) {
         jsvUnLock(timerFns);
       }
     } else {
-      jsvObjectSetChildAndUnLock(obj, "ptr", jsvNewFromInteger((size_t)task.data.execute.fn));
-      jsvObjectSetChildAndUnLock(obj, "userdata", jsvNewFromInteger((size_t)task.data.execute.userdata));
+      jsvObjectSetIntChild(obj, "ptr", (size_t)task.data.execute.fn);
+      jsvObjectSetIntChild(obj, "userdata", (size_t)task.data.execute.userdata);
     }
 #endif
     break;
@@ -201,14 +201,14 @@ JsVar *jswrap_timer_get(int id) {
 #endif
 #ifdef ESPR_USE_STEPPER_TIMER
   if (task.type == UET_STEP) {
-    jsvObjectSetChildAndUnLock(obj, "steps", jsvNewFromInteger(task.data.step.steps));
-    jsvObjectSetChildAndUnLock(obj, "stepIdx", jsvNewFromInteger(task.data.step.pIndex));
+    jsvObjectSetIntChild(obj, "steps", task.data.step.steps);
+    jsvObjectSetIntChild(obj, "stepIdx", task.data.step.pIndex);
   }
 #endif
   jsvObjectSetChildAndUnLock(obj, "type", typeStr ? jsvNewFromString(typeStr) : jsvNewFromInteger(task.type));
-  jsvObjectSetChildAndUnLock(obj, "time", jsvNewFromFloat(jshGetMillisecondsFromTime(task.time)));
+  jsvObjectSetFloatChild(obj, "time", jshGetMillisecondsFromTime(task.time));
   if (task.repeatInterval)
-    jsvObjectSetChildAndUnLock(obj, "interval", jsvNewFromFloat(jshGetMillisecondsFromTime(task.repeatInterval)));
+    jsvObjectSetFloatChild(obj, "interval", jshGetMillisecondsFromTime(task.repeatInterval));
   return obj;
 }
 

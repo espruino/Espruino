@@ -106,9 +106,9 @@ void jswrap_stepper_eventHandler(IOEventFlags eventFlags, uint8_t *data, int len
     if (stepper) {
       jsiQueueObjectCallbacks(stepper, JS_EVENT_PREFIX"finish", NULL, 0);
       // Update current position
-      jsvObjectSetChildAndUnLock(stepper, "pos", jsvNewFromInteger(
+      jsvObjectSetIntChild(stepper, "pos",
         jsvObjectGetIntegerChild(stepper, "pos")+
-        jsvObjectGetIntegerChild(stepper, "_direction")));
+        jsvObjectGetIntegerChild(stepper, "_direction"));
       jsvObjectRemoveChild(stepper, "_direction");
       if (jsvObjectGetBoolChild(stepper, "_turnOff")) {
         Pin pins[4];
@@ -119,7 +119,7 @@ void jswrap_stepper_eventHandler(IOEventFlags eventFlags, uint8_t *data, int len
         }
       }
       jsvObjectRemoveChild(stepper, "_turnOff");
-      jsvObjectSetChildAndUnLock(stepper, "running", jsvNewFromBool(false));
+      jsvObjectSetBoolChild(stepper, "running", false);
       JsVar *promise = jsvObjectGetChildIfExists(stepper, "promise");
       if (promise) {
         jsvObjectRemoveChild(stepper, "promise");
@@ -219,9 +219,9 @@ JsVar *jswrap_stepper_constructor(JsVar *options) {
   if (!stepper) // out of memory
     return 0;
   jsvObjectSetChildAndUnLock(stepper, "pins", pinsVar);
-  jsvObjectSetChildAndUnLock(stepper, "pos", jsvNewFromInteger(0));
-  jsvObjectSetChildAndUnLock(stepper, "freq", jsvNewFromFloat(freq));
-  if (offpattern) jsvObjectSetChildAndUnLock(stepper, "offpattern", jsvNewFromInteger(offpattern));
+  jsvObjectSetIntChild(stepper, "pos", 0);
+  jsvObjectSetFloatChild(stepper, "freq", freq);
+  if (offpattern) jsvObjectSetIntChild(stepper, "offpattern", offpattern);
   if (patternVar) {
     jsvObjectSetChildAndUnLock(stepper, "pattern", patternVar);
     uint8_t pattern[4];
@@ -322,10 +322,10 @@ JsVar *jswrap_stepper_moveTo(JsVar *stepper, int position, JsVar *options) {
   jswrap_stepper_getPattern(stepper, task->data.step.pattern);
   utilTimerInsertTask(idx, NULL, false/*doesn't have to be first*/);
   // And finally set it up
-  jsvObjectSetChildAndUnLock(stepper, "timer", jsvNewFromInteger(idx));
-  jsvObjectSetChildAndUnLock(stepper, "running", jsvNewFromBool(true));
-  jsvObjectSetChildAndUnLock(stepper, "_direction", jsvNewFromInteger(direction));
-  jsvObjectSetChildAndUnLock(stepper, "_turnOff", jsvNewFromBool(turnOff));
+  jsvObjectSetIntChild(stepper, "timer", idx);
+  jsvObjectSetBoolChild(stepper, "running", true);
+  jsvObjectSetIntChild(stepper, "_direction", direction);
+  jsvObjectSetBoolChild(stepper, "_turnOff", turnOff);
   // Add to our list of active steppers
   JsVar *steppers = jsvObjectGetChild(execInfo.hiddenRoot, JSI_STEPPER_NAME, JSV_ARRAY);
   if (steppers) {
@@ -358,7 +358,7 @@ void jswrap_stepper_stop(JsVar *stepper, JsVar *options) {
   if (jsvIsObject(options)) {
     bool turnOff = jsvObjectGetBoolChild(options, "turnOff");
     if (turnOff)
-      jsvObjectSetChildAndUnLock(stepper, "_turnOff", jsvNewFromBool(turnOff));
+      jsvObjectSetBoolChild(stepper, "_turnOff", turnOff);
     // the event handler will see _turnOff and will turn off the stepper
   }
 
@@ -368,9 +368,9 @@ void jswrap_stepper_stop(JsVar *stepper, JsVar *options) {
     UtilTimerTask task;
     if (jstGetLastPinTimerTask(pins[0], &task)) {
       // update step count to where the timer was when we stopped
-      jsvObjectSetChildAndUnLock(stepper, "_direction", jsvNewFromInteger(
+      jsvObjectSetIntChild(stepper, "_direction",
             jsvObjectGetIntegerChild(stepper, "_direction") -
-            task.data.step.steps));
+            task.data.step.steps);
     }
     ok = jstStopPinTimerTask(pins[0]); // FIXME: use timer index
   }

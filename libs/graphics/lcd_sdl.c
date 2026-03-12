@@ -258,14 +258,14 @@ void lcdIdle_SDL() {
         // Scale from draw area back to framebuffer pixels
         if (dst.w > 0) lx = (int)(rx * fbW / dst.w); else lx = 0;
         if (dst.h > 0) ly = (int)(ry * fbH / dst.h); else ly = 0;
-        if (lx < 0) lx = 0; 
+        if (lx < 0) lx = 0;
         if (lx >= fbW) lx = fbW-1;
-        if (ly < 0) ly = 0; 
+        if (ly < 0) ly = 0;
         if (ly >= fbH) ly = fbH-1;
       }
-      jsvObjectSetChildAndUnLock(o,"x", jsvNewFromInteger(lx));
-      jsvObjectSetChildAndUnLock(o,"y", jsvNewFromInteger(ly));
-      jsvObjectSetChildAndUnLock(o,"b", jsvNewFromInteger(down?1:0));
+      jsvObjectSetIntChild(o,"x", lx);
+      jsvObjectSetIntChild(o,"y", ly);
+      jsvObjectSetIntChild(o,"b", down?1:0);
       jsiQueueObjectCallbacks(E, JS_EVENT_PREFIX"touch", &o, 1);
       jsvUnLock2(E,o);
     }
@@ -278,9 +278,9 @@ void lcdIdle_SDL() {
          keysym value. Preserve that behavior so existing code keeps working.
          Also provide the scancode separately as `scanCode` for clients that
          need the physical key position. */
-      jsvObjectSetChildAndUnLock(o,"keyCode", jsvNewFromInteger(event.key.keysym.sym));
-      jsvObjectSetChildAndUnLock(o,"scanCode", jsvNewFromInteger(event.key.keysym.scancode));
-      jsvObjectSetChildAndUnLock(o,"modifiers", jsvNewFromInteger(event.key.keysym.mod));
+      jsvObjectSetIntChild(o,"keyCode", event.key.keysym.sym);
+      jsvObjectSetIntChild(o,"scanCode", event.key.keysym.scancode);
+      jsvObjectSetIntChild(o,"modifiers", event.key.keysym.mod);
       const char *name = NULL;
       char tmpkey[2] = {0,0};
       int sym = event.key.keysym.sym;
@@ -309,7 +309,7 @@ void lcdIdle_SDL() {
           default: break;
         }
       }
-      if (name) jsvObjectSetChildAndUnLock(o,"key", jsvNewFromString(name));
+      if (name) jsvObjectSetStringChild(o,"key", name);
       jsiQueueObjectCallbacks(E, sendKeyEvent, &o, 1);
       jsvUnLock2(E,o);
     }

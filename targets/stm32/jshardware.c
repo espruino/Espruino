@@ -3132,8 +3132,8 @@ bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
 static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
   JsVar *jsArea = jsvNewObject();
   if (!jsArea) return;
-  jsvObjectSetChildAndUnLock(jsArea, "addr", jsvNewFromInteger((JsVarInt)addr));
-  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger((JsVarInt)length));
+  jsvObjectSetIntChild(jsArea, "addr", (JsVarInt)addr);
+  jsvObjectSetIntChild(jsArea, "length", (JsVarInt)length);
   jsvArrayPushAndUnLock(jsFreeFlash, jsArea);
 }
 
@@ -3328,18 +3328,18 @@ JsVar *jshGetSystemClock() {
   if (!o) return 0;
   RCC_ClocksTypeDef rcc;
   RCC_GetClocksFreq(&rcc);
-  jsvObjectSetChildAndUnLock(o,"sysclk",jsvNewFromInteger((int)rcc.SYSCLK_Frequency));
-  jsvObjectSetChildAndUnLock(o,"hclk",jsvNewFromInteger((int)rcc.HCLK_Frequency));
-  jsvObjectSetChildAndUnLock(o,"pclk1",jsvNewFromInteger((int)rcc.PCLK1_Frequency));
-  jsvObjectSetChildAndUnLock(o,"pclk2",jsvNewFromInteger((int)rcc.PCLK2_Frequency));
+  jsvObjectSetIntChild(o,"sysclk", (int)rcc.SYSCLK_Frequency);
+  jsvObjectSetIntChild(o,"hclk", (int)rcc.HCLK_Frequency);
+  jsvObjectSetIntChild(o,"pclk1", (int)rcc.PCLK1_Frequency);
+  jsvObjectSetIntChild(o,"pclk2", (int)rcc.PCLK2_Frequency);
 #ifdef STM32F4
   // see RCC_PLLConfig - no function to read to do by hand
-  jsvObjectSetChildAndUnLock(o,"M",jsvNewFromInteger(RCC->PLLCFGR & RCC_PLLCFGR_PLLM));
-  jsvObjectSetChildAndUnLock(o,"N",jsvNewFromInteger((RCC->PLLCFGR & RCC_PLLCFGR_PLLN) >> 6));
-  jsvObjectSetChildAndUnLock(o,"P",jsvNewFromInteger((((int)(RCC->PLLCFGR & RCC_PLLCFGR_PLLP) >>16) + 1 ) *2));
-  jsvObjectSetChildAndUnLock(o,"Q",jsvNewFromInteger((RCC->PLLCFGR & RCC_PLLCFGR_PLLQ) >>24));
-  jsvObjectSetChildAndUnLock(o,"PCLK1",jsvNewFromInteger(_jshFromPClkDivisor(RCC->CFGR&RCC_CFGR_PPRE1)));
-  jsvObjectSetChildAndUnLock(o,"PCLK2",jsvNewFromInteger(_jshFromPClkDivisor((RCC->CFGR&RCC_CFGR_PPRE2)>>3)));
+  jsvObjectSetIntChild(o,"M", RCC->PLLCFGR & RCC_PLLCFGR_PLLM);
+  jsvObjectSetIntChild(o,"N", (RCC->PLLCFGR & RCC_PLLCFGR_PLLN) >> 6);
+  jsvObjectSetIntChild(o,"P", (((int)(RCC->PLLCFGR & RCC_PLLCFGR_PLLP) >>16) + 1 ) *2);
+  jsvObjectSetIntChild(o,"Q", (RCC->PLLCFGR & RCC_PLLCFGR_PLLQ) >>24);
+  jsvObjectSetIntChild(o,"PCLK1", _jshFromPClkDivisor(RCC->CFGR&RCC_CFGR_PPRE1));
+  jsvObjectSetIntChild(o,"PCLK2", _jshFromPClkDivisor((RCC->CFGR&RCC_CFGR_PPRE2)>>3));
   const char *rtcsrc = "?";
   int rtcreg = RCC->BDCR & 0x00FF0300;
   if (rtcreg==RCC_RTCCLKSource_LSE) rtcsrc="LSE";
@@ -3347,12 +3347,12 @@ JsVar *jshGetSystemClock() {
   else if ((rtcreg&0x00000300) == 0x00000300) rtcsrc="HSE_Div%d";
   jsvObjectSetChildAndUnLock(o,"RTCCLKSource",jsvVarPrintf(rtcsrc, rtcreg>>16));
 #else
-  jsvObjectSetChildAndUnLock(o,"sysclk",jsvNewFromInteger(SystemCoreClock));
+  jsvObjectSetIntChild(o,"sysclk", SystemCoreClock);
 #endif
-  jsvObjectSetChildAndUnLock(o,"LSIRDY",jsvNewFromBool(RCC_GetFlagStatus(RCC_FLAG_LSIRDY)));
-  jsvObjectSetChildAndUnLock(o,"LSERDY",jsvNewFromBool(RCC_GetFlagStatus(RCC_FLAG_LSERDY)));
-  jsvObjectSetChildAndUnLock(o,"LSION",jsvNewFromBool(RCC->CSR&RCC_CSR_LSION));
-  jsvObjectSetChildAndUnLock(o,"LSEON",jsvNewFromBool(RCC->BDCR&RCC_BDCR_LSEON));
+  jsvObjectSetBoolChild(o,"LSIRDY", RCC_GetFlagStatus(RCC_FLAG_LSIRDY));
+  jsvObjectSetBoolChild(o,"LSERDY", RCC_GetFlagStatus(RCC_FLAG_LSERDY));
+  jsvObjectSetBoolChild(o,"LSION", RCC->CSR&RCC_CSR_LSION);
+  jsvObjectSetBoolChild(o,"LSEON", RCC->BDCR&RCC_BDCR_LSEON);
 
   return o;
 }
@@ -3364,15 +3364,15 @@ void jshReboot() {
 
 /* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
 void jsvGetProcessorPowerUsage(JsVar *devices) {
-  jsvObjectSetChildAndUnLock(devices, "CPU", jsvNewFromInteger(15000));
+  jsvObjectSetIntChild(devices, "CPU", 15000);
   if (jshIsHWPWMActive()) {
-    jsvObjectSetChildAndUnLock(devices, "PWM", jsvNewFromInteger(1000)); // Guess
+    jsvObjectSetIntChild(devices, "PWM", 1000); // Guess
     // report names of pins with PWM to aid debugging
     char pwmPin[13] = "PWM";
     for (Pin i=0;i<JSH_PIN_COUNT;i++) {
       if (BITFIELD_GET(jshPinHardPWM,i)) {
         jshGetPinString(&pwmPin[3], i);
-        jsvObjectSetChildAndUnLock(devices, pwmPin, jsvNewFromInteger(0));
+        jsvObjectSetIntChild(devices, pwmPin, 0);
       }
     }
   }

@@ -311,9 +311,9 @@ JsVar *blePrivacyToVar(pm_privacy_params_t *privacy) {
     }
     JsVar *result = jsvNewObject();
     if (!result) return 0;
-    jsvObjectSetChildAndUnLock(result, "mode", jsvNewFromString(mode_str));
-    jsvObjectSetChildAndUnLock(result, "addr_type", jsvNewFromString(addr_type_str));
-    jsvObjectSetChildAndUnLock(result, "addr_cycle_s", jsvNewFromInteger(privacy->private_addr_cycle_s));
+    jsvObjectSetStringChild(result, "mode", mode_str);
+    jsvObjectSetStringChild(result, "addr_type", addr_type_str);
+    jsvObjectSetIntChild(result, "addr_cycle_s", privacy->private_addr_cycle_s);
     return result;
   }
   return 0;
@@ -423,8 +423,8 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
     }
     JsVar *evt = jsvNewObject();
     if (evt) {
-      jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
-      //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
+      jsvObjectSetIntChild(evt, "rssi", p_adv->rssi);
+      //jsvObjectSetIntChild(evt, "addr_type", blePendingAdvReport.peer_addr.addr_type);
       jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
       JsVar *data = jsvNewStringOfLength(p_adv->dlen, (char*)p_adv->data);
       if (data) {
@@ -457,8 +457,8 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
 #endif
 
     bleSetActiveBluetoothGattServer(data, bleTaskInfo); /* bleTaskInfo = instance of BluetoothRemoteGATTServer */
-    jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
-    jsvObjectSetChildAndUnLock(bleTaskInfo, "handle", jsvNewFromInteger(handle));
+    jsvObjectSetBoolChild(bleTaskInfo, "connected", true);
+    jsvObjectSetIntChild(bleTaskInfo, "handle", handle);
     bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
     break;
   }
@@ -487,9 +487,9 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
     if (o) {
       jsvObjectSetChild(o,"device", bleTaskInfo);
       jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(uuid));
-      jsvObjectSetChildAndUnLock(o,"isPrimary", jsvNewFromBool(true));
-      jsvObjectSetChildAndUnLock(o,"start_handle", jsvNewFromInteger(start_handle));
-      jsvObjectSetChildAndUnLock(o,"end_handle", jsvNewFromInteger(end_handle));
+      jsvObjectSetBoolChild(o,"isPrimary", true);
+      jsvObjectSetIntChild(o,"start_handle", start_handle);
+      jsvObjectSetIntChild(o,"end_handle", end_handle);
       jsvArrayPushAndUnLock(bleTaskInfo2, o);
     }
     break;
@@ -527,7 +527,7 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
     JsVar *gattServer = bleGetActiveBluetoothGattServer(centralIdx);
     if (gattServer) {
       JsVar *bluetoothDevice = jsvObjectGetChildIfExists(gattServer, "device");
-      jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
+      jsvObjectSetBoolChild(gattServer, "connected", false);
       jsvObjectRemoveChild(gattServer, "handle");
       if (bluetoothDevice) {
         // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h

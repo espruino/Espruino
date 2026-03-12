@@ -3315,9 +3315,24 @@ JsVar *jsvObjectSetChildVar(JsVar *obj, JsVar *name, JsVar *child) {
   return child;
 }
 
+void jsvObjectSetIntChild(JsVar *obj, const char *name, JsVarInt value) {
+  jsvObjectSetChildAndUnLock(obj,name,jsvNewFromInteger(value));
+}
+void jsvObjectSetFloatChild(JsVar *obj, const char *name, JsVarFloat value) {
+  jsvObjectSetChildAndUnLock(obj,name,jsvNewFromFloat(value));
+}
+void jsvObjectSetBoolChild(JsVar *obj, const char *name, bool value) {
+  jsvObjectSetChildAndUnLock(obj,name,jsvNewFromBool(value));
+}
+void jsvObjectSetStringChild(JsVar *obj, const char *name, const char *value) {
+  jsvObjectSetChildAndUnLock(obj,name,jsvNewFromString(value));
+}
+void jsvObjectSetPinChild(JsVar *obj, const char *name, int value) {
+  jsvObjectSetChildAndUnLock(obj,name,jsvNewFromPin((Pin)value));
+}
+
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
-  jsvObjectSetChild(obj, name, child);
-  jsvUnLock(child);
+  jsvUnLock(jsvObjectSetChild(obj, name, child));
 }
 
 void jsvObjectRemoveChild(JsVar *obj, const char *name) {

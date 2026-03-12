@@ -43,8 +43,8 @@ int touchx, touchy;
 JsVar *jswrap_cyd_cn1() {
   JsVar *o = jspNewObject(0, "Qwiic");
   if (!o) return 0;
-  jsvObjectSetChildAndUnLock(o, "sda", jsvNewFromPin(QWIIC0_PIN_SDA));
-  jsvObjectSetChildAndUnLock(o, "scl", jsvNewFromPin(QWIIC0_PIN_SCL));
+  jsvObjectSetPinChild(o, "sda", QWIIC0_PIN_SDA);
+  jsvObjectSetPinChild(o, "scl", QWIIC0_PIN_SCL);
   jsvObjectSetChild(execInfo.root, "CN1", o);
   return o;
 }
@@ -59,8 +59,8 @@ JsVar *jswrap_cyd_cn1() {
 JsVar *jswrap_cyd_p1() {
   JsVar *o = jspNewObject(0, "Qwiic");
   if (!o) return 0;
-  jsvObjectSetChildAndUnLock(o, "sda", jsvNewFromPin(QWIIC1_PIN_SDA));
-  jsvObjectSetChildAndUnLock(o, "scl", jsvNewFromPin(QWIIC1_PIN_SCL));
+  jsvObjectSetPinChild(o, "sda", QWIIC1_PIN_SDA);
+  jsvObjectSetPinChild(o, "scl", QWIIC1_PIN_SCL);
   jsvObjectSetChild(execInfo.root, "P1", o);
   return o;
 }
@@ -75,9 +75,9 @@ JsVar *jswrap_cyd_p1() {
 JsVar *jswrap_cyd_p3() {
   JsVar *o = jspNewObject(0, "Qwiic");
   if (!o) return 0;
-  jsvObjectSetChildAndUnLock(o, "sda", jsvNewFromPin(QWIIC3_PIN_SDA));
-  jsvObjectSetChildAndUnLock(o, "scl", jsvNewFromPin(QWIIC3_PIN_SCL));
-  jsvObjectSetChildAndUnLock(o, "vcc", jsvNewFromPin(QWIIC3_PIN_VCC));
+  jsvObjectSetPinChild(o, "sda", QWIIC3_PIN_SDA);
+  jsvObjectSetPinChild(o, "scl", QWIIC3_PIN_SCL);
+  jsvObjectSetPinChild(o, "vcc", QWIIC3_PIN_VCC);
   jsvObjectSetChild(execInfo.root, "P3", o);
   return o;
 }
@@ -141,9 +141,9 @@ bool jswrap_cyd_idle() {
     JsVar *E = jsvObjectGetChildIfExists(execInfo.root, "E");
     if (E) {
       JsVar *o = jsvNewObject();
-      jsvObjectSetChildAndUnLock(o,"x", jsvNewFromInteger(touchx));
-      jsvObjectSetChildAndUnLock(o,"y", jsvNewFromInteger(touchy));
-      jsvObjectSetChildAndUnLock(o,"b", jsvNewFromInteger(wasTouched?1:0));
+      jsvObjectSetIntChild(o,"x", touchx);
+      jsvObjectSetIntChild(o,"y", touchy);
+      jsvObjectSetIntChild(o,"b", wasTouched?1:0);
       jsiQueueObjectCallbacks(E, JS_EVENT_PREFIX"touch", &o, 1);
       jsvUnLock2(E,o);
     }

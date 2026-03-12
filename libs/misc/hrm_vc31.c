@@ -826,24 +826,24 @@ void hrm_sensor_off() {
 JsVar *hrm_sensor_getJsVar() {
   JsVar *o = jsvNewObject();
   if (o) {
-    jsvObjectSetChildAndUnLock(o,"vcPPG",jsvNewFromInteger(vcInfo.ppgValue));
-    jsvObjectSetChildAndUnLock(o,"vcPPGoffs",jsvNewFromInteger(vcInfo.ppgOffset));
-    jsvObjectSetChildAndUnLock(o,"isWearing",jsvNewFromBool(vcInfo.isWearing));
-    jsvObjectSetChildAndUnLock(o,"adjusted",jsvNewFromBool(vcInfo.wasAdjusted));
+    jsvObjectSetIntChild(o,"vcPPG", vcInfo.ppgValue);
+    jsvObjectSetIntChild(o,"vcPPGoffs", vcInfo.ppgOffset);
+    jsvObjectSetBoolChild(o,"isWearing", vcInfo.isWearing);
+    jsvObjectSetBoolChild(o,"adjusted", vcInfo.wasAdjusted);
     if (vcType == VC31_DEVICE) {
-      jsvObjectSetChildAndUnLock(o,"vcCurrent",jsvNewFromInteger(vcaInfo.currentValue));
-      jsvObjectSetChildAndUnLock(o,"vcPre",jsvNewFromInteger(vcaInfo.preValue));
-      jsvObjectSetChildAndUnLock(o,"vcPS",jsvNewFromInteger(vcaInfo.psValue));
-      jsvObjectSetChildAndUnLock(o,"vcEnv",jsvNewFromInteger(vcaInfo.envValue));
+      jsvObjectSetIntChild(o,"vcCurrent", vcaInfo.currentValue);
+      jsvObjectSetIntChild(o,"vcPre", vcaInfo.preValue);
+      jsvObjectSetIntChild(o,"vcPS", vcaInfo.psValue);
+      jsvObjectSetIntChild(o,"vcEnv", vcaInfo.envValue);
     }
     if (vcType == VC31B_DEVICE) {
       jsvObjectSetChildAndUnLock(o,"vcPre",jsvNewArrayFromBytes(vcbInfo.sampleData.preValue, 2));
-      jsvObjectSetChildAndUnLock(o,"vcPS",jsvNewFromInteger(vcbInfo.sampleData.psValue));
+      jsvObjectSetIntChild(o,"vcPS", vcbInfo.sampleData.psValue);
       jsvObjectSetChildAndUnLock(o,"vcEnv",jsvNewArrayFromBytes(vcbInfo.sampleData.envValue, 3));
     }
-    jsvObjectSetChildAndUnLock(o,"vcIRQ",jsvNewFromInteger(vcInfo.irqStatus));
-    //jsvObjectSetChildAndUnLock(o,"isWearCnt",jsvNewFromInteger(vcInfo.isWearCnt));
-    //jsvObjectSetChildAndUnLock(o,"unWearCnt",jsvNewFromInteger(vcInfo.unWearCnt));
+    jsvObjectSetIntChild(o,"vcIRQ", vcInfo.irqStatus);
+    //jsvObjectSetIntChild(o,"isWearCnt", vcInfo.isWearCnt);
+    //jsvObjectSetIntChild(o,"unWearCnt", vcInfo.unWearCnt);
     jsvObjectSetChildAndUnLock(o,"vcRaw",jsvNewArrayBufferWithData(sizeof(vcInfo.raw), vcInfo.raw));
   }
   return o;

@@ -89,13 +89,13 @@ JsVar *jswrap_ESP8266_getResetInfo() {
   JsVar *restartInfo = jsvNewObject();
   extern char *rst_codes[]; // in user_main.c
 
-  jsvObjectSetChildAndUnLock(restartInfo, "reason",   jsvNewFromString(rst_codes[info->reason]));
-  jsvObjectSetChildAndUnLock(restartInfo, "exccause", jsvNewFromInteger(info->exccause));
-  jsvObjectSetChildAndUnLock(restartInfo, "epc1",     jsvNewFromInteger(info->epc1));
-  jsvObjectSetChildAndUnLock(restartInfo, "epc2",     jsvNewFromInteger(info->epc2));
-  jsvObjectSetChildAndUnLock(restartInfo, "epc3",     jsvNewFromInteger(info->epc3));
-  jsvObjectSetChildAndUnLock(restartInfo, "excvaddr", jsvNewFromInteger(info->excvaddr));
-  jsvObjectSetChildAndUnLock(restartInfo, "depc",     jsvNewFromInteger(info->depc));
+  jsvObjectSetStringChild(restartInfo, "reason", rst_codes[info->reason]);
+  jsvObjectSetIntChild(restartInfo, "exccause", info->exccause);
+  jsvObjectSetIntChild(restartInfo, "epc1", info->epc1);
+  jsvObjectSetIntChild(restartInfo, "epc2", info->epc2);
+  jsvObjectSetIntChild(restartInfo, "epc3", info->epc3);
+  jsvObjectSetIntChild(restartInfo, "excvaddr", info->excvaddr);
+  jsvObjectSetIntChild(restartInfo, "depc", info->depc);
   return restartInfo;
 }
 
@@ -236,26 +236,26 @@ JsVar *jswrap_ESP8266_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
   // wish to return.
   JsVar *esp8266State = jsvNewObject();
-  jsvObjectSetChildAndUnLock(esp8266State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
-  jsvObjectSetChildAndUnLock(esp8266State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
-  jsvObjectSetChildAndUnLock(esp8266State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size()));
-  jsvObjectSetChildAndUnLock(esp8266State, "maxCon",       jsvNewFromInteger(espconn_tcp_get_max_con()));
+  jsvObjectSetStringChild(esp8266State, "sdkVersion", (system_get_sdk_version));
+  jsvObjectSetIntChild(esp8266State, "cpuFrequency", system_get_cpu_freq());
+  jsvObjectSetIntChild(esp8266State, "freeHeap", system_get_free_heap_size());
+  jsvObjectSetIntChild(esp8266State, "maxCon", espconn_tcp_get_max_con());
 
   uint32_t map = system_get_flash_size_map();
   extern char *flash_maps[]; // in user_main.c
   extern uint16_t flash_kb[]; // in user_main.c
   extern char *flash_maps_alt[]; // in user_main.c
 
-  jsvObjectSetChildAndUnLock(esp8266State, "flashMap",   jsvNewFromString(
-    ( map == 2  && flash_kb[map] == 1024  && ESP_COMBINED_SIZE >= 1024 ) ? flash_maps_alt[map] : flash_maps[map] ));
+  jsvObjectSetStringChild(esp8266State, "flashMap",
+    ( map == 2  && flash_kb[map] == 1024  && ESP_COMBINED_SIZE >= 1024 ) ? flash_maps_alt[map] : flash_maps[map] );
 
-  jsvObjectSetChildAndUnLock(esp8266State, "flashKB",    jsvNewFromInteger(flash_kb[map]));
+  jsvObjectSetIntChild(esp8266State, "flashKB", flash_kb[map]);
 
   uint32_t fid = spi_flash_get_id();
   uint32_t chip = (fid&0xff00)|((fid>>16)&0xff);
   char buff[16];
   os_sprintf(buff, "0x%02lx 0x%04lx", (long unsigned int) (fid & 0xff), (long unsigned int) chip);
-  jsvObjectSetChildAndUnLock(esp8266State, "flashChip",   jsvNewFromString(buff));
+  jsvObjectSetStringChild(esp8266State, "flashChip", buff);
 
   return esp8266State;
 }

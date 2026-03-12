@@ -406,7 +406,7 @@ JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue) {
     return 0.0;
   }
   if (date)
-    jsvObjectSetChildAndUnLock(date, "ms", jsvNewFromFloat(timeValue));
+    jsvObjectSetFloatChild(date, "ms", timeValue);
   return timeValue;
 }
 
