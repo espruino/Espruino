@@ -274,6 +274,8 @@ HRMFilter hrmFilter;
 // =========================================================
 
 HrmInfo hrmInfo;
+HrmSample hrmSamples[HRMSAMPLE_MAX];
+uint8_t hrmSampleCount;
 
 /// Initialise heart rate monitoring
 void hrm_init() {
