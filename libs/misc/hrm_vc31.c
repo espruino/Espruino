@@ -174,6 +174,7 @@ typedef struct {
   uint16_t preValue;
   uint16_t envValue;
   uint16_t psValue;
+  uint16_t divisor;
   VC31AdjustInfo_t adjustInfo;
 } PACKED_FLAGS VC31AInfo;
 // VC31B-specific info
@@ -196,6 +197,7 @@ typedef struct {
   uint8_t ledMaxCurrent[3];
   uint8_t pdRes[3],pdResMax[3];
   uint8_t pdResSet[3],ppgGain[3];
+  uint16_t divisor;
   bool slot0EnvIsExceedFlag,slot1EnvIsExceedFlag;
 
   uint8_t regConfig[17]; // all config registers (written to VC31B_REG11)
@@ -213,6 +215,7 @@ VC31Type vcType;
 VC31Info vcInfo;
 VC31AInfo vcaInfo;
 VC31BInfo vcbInfo;
+JsSysTime vcLastSample;
 
 static void vc31_w(uint8_t reg, uint8_t data) {
   jsi2cWriteReg(&i2cHRM, HEARTRATE_ADDR, reg, data);
@@ -410,21 +413,21 @@ static void vc31b_wearstatus() {
 }
 
 
-// Read a chunk of data from the FIFO and send it
-static void vc31b_readfifo(uint8_t startAddr, uint16_t endAddr, uint8_t IndexFlag) {
+// Read a chunk of data from the FIFO and send it. Returns number of samples handled
+static int vc31b_readfifo(uint8_t startAddr, uint16_t endAddr, uint8_t IndexFlag) {
   uint16_t i = 0;
   uint8_t sampleData[128];
+  int samples = 0;
 
   int dataLength = endAddr - startAddr;
   vc31_rx(startAddr, sampleData, dataLength);
   for(i = 0; i<dataLength; i+=2) {
     uint16_t ppgValue = ((sampleData[i] << 8) | sampleData[i+1]);
     // jsiConsolePrintf("ppg %d\n",ppgValue);
-    // FIXME - we need a timestamp - hrmCallback creates one itself when it is called
-    // but if we use the FIFO properly we'll need to stamp it ourselves because
-    // we'll call it a bunch of times at once
     vc31_new_ppg(ppgValue); // send PPG value
+    samples++;
   }
+  return samples;
 }
 
 
@@ -559,6 +562,35 @@ static void vc31b_slot_adjust(int slotNum) {
 
 }
 
+/// Adjust the speed of the VC31 to match hrmPollInterval
+void vc31_cal_speed(int samples) {
+  JsSysTime time = jshGetSystemTime();
+  /* we could do some fancier adjustments for the HRM here
+  but we're setting .divisor to roughly the right value anyway,
+  so just nudging it up and down by a little seems to be enough
+  to get it correct within a few seconds, and it's very easy. */
+  if (vcLastSample) {
+    int diff = (int)(0.5 + (jshGetMillisecondsFromTime(time - vcLastSample) / samples)); // work out actual sample interval
+    if (vcType == VC31_DEVICE) {
+      //jsiConsolePrintf("HRMA %d\n", (int)diff);
+      if (diff < hrmPollInterval) vcaInfo.divisor+=samples;
+      if (diff > hrmPollInterval) vcaInfo.divisor-=samples;
+      vc31_w16(VC31A_PPG_DIV, vcaInfo.divisor);
+    }
+    if (vcType == VC31B_DEVICE) {
+      //jsiConsolePrintf("HRMB %d %d\n", (int)diff, vcbInfo.divisor);
+      //vcbInfo.divisor = (vcbInfo.divisor * 0.9) +
+      //                  (vcbInfo.divisor * 0.1 * hrmPollInterval / diff);
+      if (diff < hrmPollInterval) vcbInfo.divisor+=samples;
+      if (diff > hrmPollInterval) vcbInfo.divisor-=samples;
+      vcbInfo.regConfig[4] = vcbInfo.divisor>>8;
+      vcbInfo.regConfig[5] = vcbInfo.divisor&255;
+      vc31_wx(VC31B_REG15, &vcbInfo.regConfig[4], 2);
+    }
+  }
+  vcLastSample = time;
+}
+
 void vc31_irqhandler(bool state, IOEventFlags flags) {
   if (!state || !hrmCallback) return;
 
@@ -576,6 +608,7 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
 
     if (vcInfo.irqStatus & VC31A_STATUS_D_PPG_OK) {
       vc31_new_ppg(ppgValue); // send PPG value
+      vc31_cal_speed(1);
 
       if (vcInfo.wasAdjusted>0) vcInfo.wasAdjusted--;
       if (vcInfo.allowGreenAdjust)
@@ -588,7 +621,6 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
         vc31a_wearstatus();
     }
   }
-
   if (vcType == VC31B_DEVICE) {
     uint8_t *buf = &vcInfo.raw[0];
     vc31_rx(VC31B_REG1, buf, 6);
@@ -624,18 +656,20 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
       uint8_t fifoWriteIndex = vc31_r(VC31B_REG3);
       // FIFO is 128 entries from 0x80 to 0x255 - we need to handle wrapping ourselves
       // if not using FIFO the sampleData is storage in 0x80
+      int samples = 0;
       if(vcbInfo.fifoIntDiv) { // fifo enabled
-        if(fifoWriteIndex > vcbInfo.fifoReadIndex) { // normal read
-          vc31b_readfifo(vcbInfo.fifoReadIndex,fifoWriteIndex,0);
+        if(fifoWriteIndex == vcbInfo.fifoReadIndex) { // empty
+        } else if(fifoWriteIndex > vcbInfo.fifoReadIndex) { // normal read
+          samples += vc31b_readfifo(vcbInfo.fifoReadIndex,fifoWriteIndex,0);
         } else { // fifo rolled over - 2 reads needed
-          vc31b_readfifo(vcbInfo.fifoReadIndex,256,0);
+          samples += vc31b_readfifo(vcbInfo.fifoReadIndex,256,0);
           if (fifoWriteIndex != 0x80)
-            vc31b_readfifo(0x80,fifoWriteIndex,(256-vcbInfo.fifoReadIndex)/2);
+            samples += vc31b_readfifo(0x80,fifoWriteIndex,(256-vcbInfo.fifoReadIndex)/2);
         }
         vcbInfo.fifoReadIndex = fifoWriteIndex;
       } else { // FIFO disabled - samples are at 0x80
         vcbInfo.fifoReadIndex = 0x80;
-        vc31b_readfifo(vcbInfo.fifoReadIndex,vcbInfo.fifoReadIndex+vcbInfo.totalSlots*2,0);
+        samples += vc31b_readfifo(vcbInfo.fifoReadIndex,vcbInfo.fifoReadIndex+vcbInfo.totalSlots*2,0);
       }
       // now we need to adjust the PPG
       if (vcInfo.wasAdjusted>0) vcInfo.wasAdjusted--;
@@ -644,6 +678,7 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
           vc31b_slot_adjust(slotNum);
         }
       }
+      vc31_cal_speed(samples);
     }
     // Read just one PPG sample (the FIFO usually reads lots)
     /*if (vcInfo.irqStatus & VC31B_INT_PPG) {
@@ -701,6 +736,7 @@ static void vc31_softreset() {
 
 void hrm_sensor_on(HrmCallback callback) {
   hrmCallback = callback;
+  vcLastSample = 0; // reset sample timing
   jshDelayMicroseconds(1000); // wait for HRM to boot
   unsigned int deviceId = vc31_r(0);
   //jsiConsolePrintf("HRM ID 0x%02x\n",deviceId);
@@ -708,13 +744,10 @@ void hrm_sensor_on(HrmCallback callback) {
   else if (deviceId==33) vcType = VC31B_DEVICE;
   else jsiConsolePrintf("VC31 WHO_AM_I failed (%d)", deviceId);
 
-  memset(&vcInfo, 0, sizeof(vcInfo));
   vcInfo.isWearing = true;
   vcInfo.unWearCnt = VC31A_UNWEAR_CNT;
   vcInfo.isWearCnt = VC31A_ISWEAR_CNT;
   vcInfo.ppgOffset = 0;
-  vcInfo.allowGreenAdjust = true;
-  vcInfo.allowWearDetect = true;
 
   if (vcType == VC31_DEVICE) {
     vcaInfo.adjustInfo.step  = 307200;
@@ -737,7 +770,7 @@ void hrm_sensor_on(HrmCallback callback) {
     else if (hrmPollInterval<=80) div = VC31A_PPG_DIV_25_HZ; // 12.5Hz
     else if (hrmPollInterval<=160) div = VC31A_PPG_DIV_12_5_HZ; // 6.25Hz
     else div = VC31A_PPG_DIV_10_HZ; // 5Hz
-
+    vcaInfo.divisor = div;
     vc31_w16(VC31A_PPG_DIV, div);
     vcaInfo.ctrl = VC31A_CTRL_OPA_GAIN_25 | VC31A_CTRL_ENABLE_PPG | VC31A_CTRL_ENABLE_PRE |
                   VC31A_CTRL_WORK_MODE | VC31A_CTRL_INT_DIR_RISING;
@@ -775,7 +808,8 @@ void hrm_sensor_on(HrmCallback callback) {
     memcpy(vcbInfo.regConfig, _regConfig, sizeof(_regConfig));
     //vcbInfo.regConfig[3]&0x3F==0 for FIFO disable, so FIFO is off now
 
-    // vcbInfo.regConfig[3] |= vcbInfo.vcHr02SampleRate - 6; // Enable FIFO
+    //vcbInfo.regConfig[3] |= vcbInfo.vcHr02SampleRate - 6; // Enable FIFO
+    vcbInfo.regConfig[3] |= 1; // FIFO enabled, but just with 2 entries (this still saves some CPU time and catches the IRQ misses while making HRM-raw work kind of as expected)
     vcbInfo.regConfig[6] = vcbInfo.vcHr02SampleRate - 6; // VC31B_REG16 how often should ENV fire
 
     vcbInfo.regConfig[9] = 0xE0; //CUR = 80mA//write Hs equal to 1 (SLOT2?)
@@ -783,6 +817,7 @@ void hrm_sensor_on(HrmCallback callback) {
     vcbInfo.regConfig[0] = 0x45; // VC31B_REG11 heart rate calculation - SLOT2(env) and SLOT0(hr)
     // Set up HRM speed - from testing, 200=100hz/10ms, 400=50hz/20ms, 800=25hz/40ms
     uint16_t divisor = 20 * hrmPollInterval;
+    vcbInfo.divisor = divisor;
     vcbInfo.regConfig[4] = divisor>>8;
     vcbInfo.regConfig[5] = divisor&255;
     // write all registers in one go
@@ -857,6 +892,11 @@ void hrm_sensor_kill() {
 
 /// Called when JS engine initialised
 void hrm_sensor_init() {
+  memset(&vcInfo, 0, sizeof(vcInfo));
+  vcInfo.allowGreenAdjust = true;
+  vcInfo.allowWearDetect = true;
+  vcInfo.useStaticSampleTime = true;
+
   if (hrmCallback!=NULL) // if is running
     vc31_watch_on();
 }

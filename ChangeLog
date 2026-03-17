@@ -3,6 +3,7 @@
             Bangle.js2: Add `beep/buzz` to `Bangle.setOptions` to allow vibration motor to be turned off at a system level
             Fix ReferenceError when accessing an undefined field in an unreferenced object (fix #1916)
             STM32: Improve FAT SD card support for >4GB cards (#2698)
+            Bangle.js2 HRM: Enable FIFO, supply binary HRM algorithm with static sample time and instead calibrate HRM to the specified sample rate.
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

@@ -15,7 +15,7 @@
 
 #include "jsutils.h"
 
-#ifndef HEARTRATE_VC31_BINARY 
+#ifndef HEARTRATE_VC31_BINARY
 #define HRM_HIST_LEN 16 // how many BPM values do we keep a history of
 #define HRM_MEDIAN_LEN 8 // how many BPM values do we average in our median filter to get a BPM reading
 #endif
@@ -25,20 +25,28 @@
 #define HrmValueType int16_t
 #define HRMVALUE_MIN -32768
 #define HRMVALUE_MAX 32767
+#define HRMSAMPLE_MAX 4
 #else
 #define HrmValueType int8_t
 #define HRMVALUE_MIN -128
 #define HRMVALUE_MAX 127
+#define HRMSAMPLE_MAX 1
 #endif
 
 typedef struct {
   uint16_t bpm10; // 10x BPM
   uint8_t confidence; // 0..100%
-
   HrmValueType raw;
   int16_t avg; // average signal value, moving average
   int16_t filtered;
-#ifndef HEARTRATE_VC31_BINARY  
+} HrmSample;
+typedef struct {
+  uint16_t bpm10; // 10x BPM
+  uint8_t confidence; // 0..100%
+  HrmValueType raw;
+  int16_t avg; // average signal value, moving average
+  int16_t filtered;
+#ifndef HEARTRATE_VC31_BINARY
   int16_t filtered1; // before filtered
   int16_t filtered2; // before filtered1
   bool wasLow; // has the signal gone below the average? set =false when a beat detected
@@ -51,13 +59,17 @@ typedef struct {
   JsSysTime lastPPGTime; // timestamp of last PPG sample
   /* last values we got from the algo. It doesn't tell us when there's a new
   value so we have to guess based on when it changes */
-  int lastHRM, lastConfidence; 
-  int msSinceLastHRM; // how long was it since the last HRM reading? 
+  int lastHRM, lastConfidence;
+  int msSinceLastHRM; // how long was it since the last HRM reading?
   uint8_t sportMode; // The sport mode passed to the algorithm
 #endif
 } HrmInfo;
 
+
+
 extern HrmInfo hrmInfo;
+extern HrmSample hrmSamples[HRMSAMPLE_MAX];
+extern uint8_t hrmSampleCount;
 
 /// Initialise heart rate monitoring
 void hrm_init();

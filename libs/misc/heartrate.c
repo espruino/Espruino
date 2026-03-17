@@ -376,6 +376,14 @@ bool hrm_new(int hrmValue, Vector3 *acc) {
   else // 20 = 50Hz, Bangle.js 1 default sample rate
     hrmInfo.avg = ((hrmInfo.avg*15) + h) >> 4;
 
+  if (hrmSampleCount < HRMSAMPLE_MAX) {
+    HrmSample *sample = &hrmSamples[hrmSampleCount++];
+    sample->bpm10 = hrmInfo.bpm10; // 10x BPM
+    sample->confidence = hrmInfo.confidence; // 0..100%
+    sample->raw = hrmInfo.raw;
+    sample->avg = hrmInfo.avg; // average signal value, moving average
+    sample->filtered = hrmInfo.filtered;
+  }
 
   return hadBeat;
 }
