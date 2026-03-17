@@ -247,7 +247,7 @@ typedef struct
 {
   SD_CSD SD_csd;
   SD_CID SD_cid;
-  uint32_t CardCapacity; /* Card Capacity */
+  uint64_t CardCapacity; /* Card Capacity */
   uint32_t CardBlockSize; /* Card Block Size */
   uint16_t RCA;
   uint8_t CardType;
