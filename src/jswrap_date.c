@@ -157,6 +157,7 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
 
 // this needs to be called just before a TimeInDay is used -- unless the TimeInDay timezone has been determined by other means.
 void setCorrectTimeZone(TimeInDay *td) {
+  td->zone = 0; // jsdGetEffectiveTimeZone uses td->zone
   td->zone = jsdGetEffectiveTimeZone(fromTimeInDay(td),true,&(td->is_dst));
 }
 
