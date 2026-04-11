@@ -36,6 +36,9 @@
     let r = Bangle.uiRemove;
     delete Bangle.uiRemove; // stop recursion if setUI is called inside uiRemove
     r();
+    // uiRemove may synchronously install a replacement UI (for example E.showMenu).
+    // If it did, leave that new UI in place instead of continuing this older setUI.
+    if (Bangle.uiRedraw) return;
   }
   g.reset();// reset graphics state, just in case
   if (!mode) return;
