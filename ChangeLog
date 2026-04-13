@@ -5,6 +5,7 @@
             STM32: Improve FAT SD card support for >4GB cards (#2698)
             Bangle.js2 HRM: Enable FIFO, supply binary HRM algorithm with static sample time and instead calibrate HRM to the specified sample rate.
             Fix 2v29 Date regression for certain days when using E.setDST (fix #2700)
+            Thingy52: fix build by removing pretokenisation from built-in library
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes
