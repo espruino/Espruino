@@ -18,6 +18,8 @@
 #
 #   and for debug:
 #       -gdb tcp::4242 -S 
+#
+# Press Ctrl-a then x to exit QEMU.
 
 import pinutils;
 info = {
