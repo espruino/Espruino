@@ -398,7 +398,7 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
 #if defined(ARM)
   jsiConsolePrint("REBOOTING.\n");
   jshTransmitFlush();
-  NVIC_SystemReset();
+  jshReboot();
 #elif defined(ESP8266)
   // typically the Espruino console is over telnet, in which case nothing we do here will ever
   // show up, so we instead jump through some hoops to print to UART
