@@ -1971,7 +1971,7 @@ JsVarFloat jshReadVRef() {
 }
 
 unsigned int jshGetRandomNumber() {
-#if defined(STM32F1) || defined(STM32F4)
+#if (defined(STM32F1) || defined(STM32F4)) && !defined(QEMU) /* QEMU doesn't support the internal voltage reference, so we can't use it for random numbers */
   /* Repeatedly read the voltage reference and XOR
    * it into a rotated number to get a random-ish result */
   ADC_TempSensorVrefintCmd(ENABLE);
