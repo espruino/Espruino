@@ -1,4 +1,3 @@
-
 #!/bin/false
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
