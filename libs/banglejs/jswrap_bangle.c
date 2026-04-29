@@ -4105,7 +4105,7 @@ NO_INLINE void jswrap_banglejs_init() {
       jsvUnLock(addr);
       jswrap_graphics_drawCString(&graphicsInternal,8,y,JS_VERSION);
       jswrap_graphics_drawCString(&graphicsInternal,8,y+10,addrStr);
-      jswrap_graphics_drawCString(&graphicsInternal,8,y+20,"Copyright 2021 G.Williams");
+      jswrap_graphics_drawCString(&graphicsInternal,8,y+20,"Copyright 2026 G.Williams");
     }
 #endif // DICKENS
   }
