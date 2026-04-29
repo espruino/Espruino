@@ -49,7 +49,7 @@
 #endif
 
 #include "jswrap_graphics.h"
-#ifdef LCD_CONTROLLER_LPM013M126
+#ifdef USE_LCD_MEMLCD
 #include "lcd_memlcd.h"
 #endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
@@ -574,6 +574,24 @@ Can be used for housekeeping tasks that don't want to be run during the day.
 
 // =========================================================================
 //                                            DEVICE SPECIFIC CONFIG
+
+#ifdef BANGLEJS3
+#ifndef EMULATED
+JshI2CInfo i2cInternal;
+#define ACCEL_I2C &i2cInternal
+#define MAG_I2C &i2cInternal
+#define TOUCH_I2C &i2cInternal
+#define PRESSURE_I2C &i2cInternal
+#define HRM_I2C &i2cInternal
+#define HEARTRATE 1
+#endif // EMULATED
+
+#define HOME_BTN 1
+#define DEFAULT_LCD_POWER_TIMEOUT 0 // don't turn LCD off
+#define DEFAULT_BACKLIGHT_TIMEOUT 3000
+#define DEFAULT_LOCK_TIMEOUT 5000
+
+#endif
 
 #ifdef BANGLEJS_Q3
 #ifndef EMULATED
@@ -1107,7 +1125,7 @@ void jswrap_banglejs_pwrBacklight(bool on) {
 }
 
 void graphicsInternalFlip() {
-#ifdef LCD_CONTROLLER_LPM013M126
+#ifdef USE_LCD_MEMLCD
   lcdMemLCD_flip(&graphicsInternal);
 #endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
@@ -1121,7 +1139,7 @@ void graphicsInternalFlip() {
 /// Flip buffer contents with the screen.
 void lcd_flip(JsVar *parent, int all) {
 #ifdef LCD_WIDTH
-#ifdef LCD_CONTROLLER_LPM013M126
+#ifdef USE_LCD_MEMLCD
   if (all==2) {
     lcdMemLCD_setOverlayModified(&graphicsInternal);
   } else
@@ -1311,7 +1329,7 @@ void peripheralPollHandler() {
     homeBtnInterruptTimer = 0;
   }
 
-#ifdef LCD_CONTROLLER_LPM013M126
+#ifdef USE_LCD_MEMLCD
   // pulse EXTCOMIN to avoid burn-in on LCD
   if (bangleFlags & JSBF_LCD_ON)
     lcdMemLCD_extcominToggle();
@@ -1768,7 +1786,7 @@ void peripheralPollHandler() {
   // we're done, ensure we clear I2C flag
   i2cBusy = false;
 
-#ifdef LCD_CONTROLLER_LPM013M126
+#ifdef USE_LCD_MEMLCD
   // pulse EXTCOMIN to avoid burn-in on LCD (second toggle, if JSBF_LCD_DBL_REFRESH is set)
   if ((bangleFlags & JSBF_LCD_ON) && (bangleFlags & JSBF_LCD_DBL_REFRESH))
     lcdMemLCD_extcominToggle();
@@ -2571,7 +2589,7 @@ void jswrap_banglejs_setLCDOverlay(JsVar *imgVar, JsVar *xv, int y, JsVar *optio
   }
   jsvUnLock(id);
   // Send the command to the LCD
-#ifdef LCD_CONTROLLER_LPM013M126
+#ifdef USE_LCD_MEMLCD
   lcdMemLCD_setOverlay(imgVar, x, y);
   // lcdMemLCD_setOverlay sets the modified area
 #endif
@@ -3825,7 +3843,7 @@ NO_INLINE void jswrap_banglejs_hwinit() {
   // we need ESPR_GRAPHICS_INTERNAL=1
 
   graphicsStructInit(&graphicsInternal, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
-#ifdef LCD_CONTROLLER_LPM013M126
+#ifdef USE_LCD_MEMLCD
   graphicsInternal.data.type = JSGRAPHICSTYPE_MEMLCD;
   graphicsInternal.data.bpp = 16; // hack - so we can dither we pretend we're 16 bit
 #endif
@@ -3840,7 +3858,7 @@ NO_INLINE void jswrap_banglejs_hwinit() {
   graphicsInternal.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
 #endif
   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 4x6 size is default
-#ifdef LCD_CONTROLLER_LPM013M126
+#ifdef USE_LCD_MEMLCD
   lcdMemLCD_init(&graphicsInternal);
   jswrap_banglejs_pwrBacklight(true);
 #endif
@@ -4357,7 +4375,7 @@ void jswrap_banglejs_kill() {
   jshPinWatch(BTN5_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
 #endif
-#ifdef LCD_CONTROLLER_LPM013M126
+#ifdef USE_LCD_MEMLCD
   // ensure we remove any overlay we might have set
   lcdMemLCD_setOverlay(NULL, 0, 0);
 #endif
@@ -4719,7 +4737,7 @@ bool jswrap_banglejs_idle() {
 #endif
   jsvUnLock(bangle);
   bangleTasks = JSBT_NONE;
-#if defined(LCD_CONTROLLER_LPM013M126) || defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+#if defined(USE_LCD_MEMLCD) || defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
   // Automatically flip!
   if (graphicsInternal.data.modMaxX >= graphicsInternal.data.modMinX) {
     graphicsInternalFlip();

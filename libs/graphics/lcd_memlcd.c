@@ -23,7 +23,11 @@
 // ======================================================================
 
 #define LCD_SPI EV_SPI1
+#if LCD_BPP==6
+#define LCD_ROWHEADER 0 // 6 bit LCD doesn't need row headers
+#else
 #define LCD_ROWHEADER 2
+#endif
 #define LCD_STRIDE (LCD_ROWHEADER+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
 
 /** Buffer for our LCD data.
@@ -53,18 +57,38 @@ char *jsGfxGetPtr(int line) {
 #endif
 
 // bayer dithering pattern
+#if LCD_BPP!=6 // 3/4 bit
 #define BAYER_RGBSHIFT(b) (b<<13) | (b<<8) | (b<<2)
 const unsigned short BAYER2[2][2] = {
     { BAYER_RGBSHIFT(1), BAYER_RGBSHIFT(5) },
     { BAYER_RGBSHIFT(7), BAYER_RGBSHIFT(3) }
 };
+#else // 6 bit
+#define BAYER_RGBSHIFT(b) (b<<12) | (b<<7) | (b<<1)
+const unsigned short BAYER2[2][2] = {
+    { BAYER_RGBSHIFT(5), BAYER_RGBSHIFT(9) },
+    { BAYER_RGBSHIFT(11), BAYER_RGBSHIFT(7) }
+};
+#endif
 
 static ALWAYS_INLINE unsigned int lcdMemLCD_convert16toLCD(unsigned int c, int x, int y) {
+#if LCD_BPP!=6 // 3/4 bit
   c = (c&0b1110011100011100) + BAYER2[y&1][x&1];
   return
       ((c&0x10000)?1:0) |
       ((c&0x00800)?2:0) |
       ((c&0x00020)?4:0);
+#else // 6 bit
+  /*c = (c&0b1111011110011110) + BAYER2[y&1][x&1]; // doesn't work correctly yet
+  return
+      ((c&0x18000)>>11) |
+      ((c&0x00C00)>>8) |
+      ((c&0x00030)>>4);*/
+  return // convert 16 bpp down to 6bpp - no dithering yet (FIXME)
+      ((c&0xC000)>>10) |
+      ((c&0x0600)>>7) |
+      ((c&0x0018)>>3);
+#endif
 }
 
 /** 'Flip' now ends while data is still sending to the LCD. This
@@ -100,18 +124,25 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
   unsigned char b = lcdBuffer[addr];
   unsigned int c = (x&1) ? ((b>>1)&7) : (b>>5);
 #endif
+#if LCD_BPP==6
+  int bitaddr = LCD_ROWHEADER*8 + (x*6) + (y*LCD_STRIDE*8);
+  int bit = bitaddr&7;
+  uint16_t b = *(uint16_t*)&lcdBuffer[bitaddr>>3]; // get in MSB format
+  unsigned int c = (b>>bit) & 0x3F;
+  unsigned int cr = c&3, cg = (c>>2)&3, cb = (c>>4)&3; // convert 6 back to 16 bit colour (LUT would be faster)
+  const unsigned int twoToFive[] = { 0, 0b01010, 0b10101, 0b11111 }; // LUT to convert 2 back to 5bpp
+  return  (twoToFive[cb]) | (twoToFive[cg]<<5) | (twoToFive[cr]<<11);
+#else
   return  ((((c)&1)?0xF800:0)|(((c)&2)?0x07E0:0)|(((c)&4)?0x001F:0));
+#endif
 }
 
 /*
 
-
+// 3 bit
  0123456701234567
  RGB               bpp=0,
               RGB  bpp=13
-
-
-
 
  */
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
@@ -127,6 +158,12 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
   int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
   if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 4);
   else lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | col;
+#endif
+#if LCD_BPP==6
+  int bitaddr = LCD_ROWHEADER*8 + (x*6) + (y*LCD_STRIDE*8);
+  int bit = bitaddr&7;
+  uint16_t b = *(uint16_t*)&lcdBuffer[bitaddr>>3];
+  *(uint16_t*)&lcdBuffer[bitaddr>>3] = (b & ~(0x3F<<bit)) | (col<<bit);
 #endif
 }
 
@@ -174,6 +211,29 @@ void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, 
     return;
   }
 #endif
+#if LCD_BPP==6
+  /* On 6bpp if we're filling a small width of pixels, just set them individually */
+  if (true) { // do it always for now
+    // precalculate what the 2 pixels go to
+    unsigned int cols[2][2] = {
+        { lcdMemLCD_convert16toLCD(col,0,0), lcdMemLCD_convert16toLCD(col,1,0) }, // even row
+        { lcdMemLCD_convert16toLCD(col,0,1), lcdMemLCD_convert16toLCD(col,1,1) } // odd row
+    };
+    // write pixels individually
+    for (int y=y1;y<=y2;y++) {
+      unsigned int *c = cols[y&1];
+      int bitaddr = LCD_ROWHEADER*8 + (x1*6) + (y*LCD_STRIDE*8);
+      for (int x=x1;x<=x2;x++) {
+        int bit = bitaddr&7;
+        uint16_t b = *(uint16_t*)&lcdBuffer[bitaddr>>3];
+        *(uint16_t*)&lcdBuffer[bitaddr>>3] = (b & ~(0x3F<<bit)) | (c[x&1]<<bit);
+        bitaddr += 6;
+      }
+    }
+    return;
+  }
+#endif
+
 
   for (int y=y1;y<=y2;y++) {
 #if LCD_BPP==3
@@ -220,6 +280,7 @@ void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, 
     if (!(x2&1)) // final pixel on an even coordinate, unaligned
       lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (ditheredCol&0x0F);
 #endif
+    // FIXME 6 bit
   }
 }
 
@@ -274,7 +335,9 @@ void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1
 void lcdMemLCD_flip_spi_ovr_callback() {}
 // used to allow SPI send to work async for normal sends.
 void lcdMemLCD_flip_spi_callback() {
+#ifndef EMULATED
   jshPinSetValue(LCD_SPI_CS, 0);
+#endif
   lcdIsBusy = false;
 }
 // Mirror X - use when doing overlays when screen is rotated 180
@@ -308,7 +371,9 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     gfx->data.bgColor = oldBgColor;
   }
 
+#ifndef EMULATED
   jshPinSetValue(LCD_SPI_CS, 1);
+#endif
   if (hasOverlay) {
     /* If lcdOverlayImage is defined, we want to overlay this image
      * on top of what we have in our LCD buffer. Do this line by
@@ -384,6 +449,7 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   gfx->data.height = LCD_HEIGHT;
   gfx->data.bpp = 16; // take color as 16 bit even though we only use 3
   memset(lcdBuffer,0,sizeof(lcdBuffer));
+#if LCD_ROWHEADER>0
   for (int y=0;y<LCD_HEIGHT;y++) {
 #if LCD_BPP==3
     lcdBuffer[y*LCD_STRIDE]=jswrap_espruino_reverseByte(0b10000000);
@@ -393,7 +459,9 @@ void lcdMemLCD_init(JsGraphics *gfx) {
 #endif
     lcdBuffer[(y*LCD_STRIDE)+1]=jswrap_espruino_reverseByte(y+1);
   }
+#endif
 
+#ifndef EMULATED
   jshPinOutput(LCD_SPI_CS,0);
   jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
@@ -407,25 +475,30 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   inf.pinSCK = LCD_SPI_SCK;
   inf.spiMSB = false; // LSB first!
   jshSPISetup(LCD_SPI, &inf);
+#endif
 }
 
 // pulse EXTCOMIN to avoid burn-in
 void lcdMemLCD_extcominToggle() {
+#ifndef EMULATED
   if (!isBacklightOn) {
     jshPinSetValue(LCD_EXTCOMIN, 1);
     jshDelayMicroseconds(2); // datasheet saus 2uS min rise time
     jshPinSetValue(LCD_EXTCOMIN, 0);
   }
+#endif
 }
 
 // If backlight is on, we need to raise EXTCOMIN freq (use HW PWM)
 void lcdMemLCD_extcominBacklight(bool isOn) {
   isBacklightOn = isOn;
+#ifndef EMULATED
   if (isOn) {
     jshPinAnalogOutput(LCD_EXTCOMIN, 0.0003, 120, JSAOF_NONE); // ~3us
   } else {
     jshPinOutput(LCD_EXTCOMIN, 0);
   }
+#endif
 }
 
 // Enable overlay mode (to overlay a graphics instance on top of the LCD contents)
