@@ -148,7 +148,7 @@
     if (global.WIDGETS && Bangle.appRect.y) {
       // add our own touch handler for touching in the top left
       var touchHandler = function(_,e) {
-        if (e.y<WIDGETS.back.y+12 && e.x<WIDGETS.back.x+12) {
+        if (e.y<WIDGETS.back.y+36 && e.x<WIDGETS.back.x+36) {
           e.handled = true;
           E.stopEventPropagation(); // stop subsequent touch handlers from being called
           Bangle.haptic("back");
