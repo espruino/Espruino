@@ -1,0 +1,38 @@
+(function(message,options) {
+  if ("string" == typeof options)
+    options = { title : options };
+  options = options||{};
+  var R = Bangle.appRect, Y = R.y, W = R.w;
+  g.reset().clearRect(R).setFontAlign(0,0); // clear screen
+  var title = g.findFont(options.title||"", {w:80+Y,wrap:1,max:32});
+  if (title.text) {
+    Y += title.h+4;
+    g.setColor(g.theme.fgH).setBgColor(g.theme.bgH).
+      clearRect(20,R.y,220,Y-2).setFontAlign(0,1).
+      drawString(title.text, 120, Y);
+  }
+  var H = R.y2-Y;
+  if (options.uploadProgress) {
+    H -= 16;
+    g.setColor(g.theme.fg).drawRect({x:10,y:g.getHeight()-18,w:g.getWidth()-20,h:10,r:30});
+    var bytes = 0, handler = e=>{
+      bytes += e.l;
+      g.setColor(g.theme.fg).fillRect({x:11,y:g.getHeight()-17,w:(g.getWidth()-22)*bytes / options.uploadProgress,h:8,r:4});
+    };
+    E.on("packetUpload", handler);
+    Bangle.setUI({mode:"custom", remove:_=>E.removeListener("packetUpload", handler)});
+  }
+  if (options.img) {
+    var im = g.imageMetrics(options.img);
+    g.reset().drawImage(options.img,(W-im.width)/2, Y + 6);
+    H -= im.height;
+    Y += im.height;
+  }
+  if (message !== undefined) {
+    var msg = g.findFont(message, {w:W-2,h:H,wrap:1,trim:1,min:16});
+    g.setColor(g.theme.fg).setBgColor(g.theme.bg).setFontAlign(0,0).
+      drawString(msg.text,W/2,Y+H/2);
+  }
+  g.flip(); // force immediate show of message
+  Bangle.setLCDPower(1); // ensure screen is on
+})

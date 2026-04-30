@@ -6292,6 +6292,12 @@ To remove the scroller, just call `E.showScroller()`
 
 // FIXME: these need to be updated for Bangle.js 3/minified
 /*JSON{
+    "type" : "staticmethod", "class" : "E", "name" : "showMessage", "patch":true,
+    "generate_js" : "libs/js/banglejs/E_showMessage_Bangle3.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
+}
+*/
+/*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
     "generate_js" : "libs/js/banglejs/E_showMenu_Bangle3.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
@@ -6299,7 +6305,7 @@ To remove the scroller, just call `E.showScroller()`
 */
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showPrompt", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showPrompt_Bangle2.min.js",
+    "generate_js" : "libs/js/banglejs/E_showPrompt_Bangle3.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
 }
 */

@@ -58,7 +58,7 @@
     Bangle.btnWatches = [
       setWatch(function() { Bangle.haptic("btn");cb(-1); }, BTN1, {repeat:1,edge:"rising"}),
       setWatch(function() { Bangle.haptic("btn");cb(1); }, BTN3, {repeat:1,edge:"rising"}),
-      setWatch(function() { Bangle.haptic("btn");cb(); }, BTN2, {repeat:1,edge:"rising"})
+      setWatch(function() { Bangle.haptic("btn");cb(0); }, BTN2, {repeat:1,edge:"rising"})
     ];
   } else if (mode=="leftright") {
     if (options.drag) throw new Error("Custom drag handler not supported in mode leftright!")
@@ -78,7 +78,7 @@
     Bangle.btnWatches = [
       setWatch(function() { Bangle.haptic("btn");cb(-1); }, BTN1, {repeat:1,edge:"rising"}),
       setWatch(function() { Bangle.haptic("btn");cb(1); }, BTN3, {repeat:1,edge:"rising"}),
-      setWatch(function() { Bangle.haptic("btn");cb(); }, BTN2, {repeat:1,edge:"rising"})
+      setWatch(function() { Bangle.haptic("btn");cb(0); }, BTN2, {repeat:1,edge:"rising"})
     ];
   } else if (mode=="clock") {
     Bangle.CLOCK=1;
@@ -125,12 +125,12 @@
   if (options.btn) {
     Bangle.btnWatches.push(setWatch(options.btn.bind(options,-1), BTN1, {repeat:1,edge:"rising"}))
     Bangle.btnWatches.push(setWatch(options.btn.bind(options,1), BTN3, {repeat:1,edge:"rising"}))
-    Bangle.btnWatches.push(setWatch(options.btn.bind(options), BTN2, {repeat:1,edge:"rising"}));
+    Bangle.btnWatches.push(setWatch(options.btn.bind(options,0), BTN2, {repeat:1,edge:"rising"}));
   }
   if (options.btnRelease) {
     Bangle.btnWatches.push(setWatch(options.btnRelease.bind(options, -1), BTN1, {repeat:1,edge:"falling"}))
     Bangle.btnWatches.push(setWatch(options.btnRelease.bind(options, 1), BTN3, {repeat:1,edge:"falling"}))
-    Bangle.btnWatches.push(setWatch(options.btnRelease.bind(options), BTN2, {repeat:1,edge:"falling"}))
+    Bangle.btnWatches.push(setWatch(options.btnRelease.bind(options,0), BTN2, {repeat:1,edge:"falling"}))
   }
   if (options.remove) // handler for removing the UI (intervals/etc)
     Bangle.uiRemove = options.remove;
