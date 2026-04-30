@@ -3935,6 +3935,8 @@ NO_INLINE void jswrap_banglejs_init() {
 
   buzzAmt = 0;
   beepFreq = 0;
+  // set default theme
+  jswrap_banglejs_setTheme();
   // Read settings and change beep/buzz behaviour...
   if (!recoveryMode) {
     JsVar *settingsFN = jsvNewFromString("setting.json");
@@ -3980,7 +3982,6 @@ NO_INLINE void jswrap_banglejs_init() {
   #endif // ESPR_BATTERY_FULL_VOLTAGE
 
     // Load themes from the settings.json file
-    jswrap_banglejs_setTheme();
     v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"theme") : 0;
     if (jsvIsObject(v)) {
       graphicsTheme.fg = jsvObjectGetIntegerChild(v,"fg");
