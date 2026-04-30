@@ -131,7 +131,7 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
   unsigned int c = (b>>bit) & 0x3F;
   unsigned int cr = c&3, cg = (c>>2)&3, cb = (c>>4)&3; // convert 6 back to 16 bit colour (LUT would be faster)
   const unsigned int twoToFive[] = { 0, 0b01010, 0b10101, 0b11111 }; // LUT to convert 2 back to 5bpp
-  return  (twoToFive[cb]) | (twoToFive[cg]<<5) | (twoToFive[cr]<<11);
+  return  (twoToFive[cb]) | (((twoToFive[cg]<<1) | (cg>>1))<<5) | (twoToFive[cr]<<11);
 #else
   return  ((((c)&1)?0xF800:0)|(((c)&2)?0x07E0:0)|(((c)&4)?0x001F:0));
 #endif

@@ -5933,6 +5933,12 @@ call drawWidgets if you decide to clear the entire screen with `g.clear()`.
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
+/*JSON{
+    "type" : "staticmethod", "class" : "Bangle", "name" : "drawWidgets", "patch":true,
+    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets_Bangle3.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
+}
+*/ // FIXME minify drawWidgets for Bangle 3
 
 /*JSON{
     "type" : "staticmethod",
@@ -6283,6 +6289,26 @@ To remove the scroller, just call `E.showScroller()`
 }
 */
 
+// FIXME: these need to be updated for Bangle.js 3/minified
+/*JSON{
+    "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
+    "generate_js" : "libs/js/banglejs/E_showMenu_Bangle3.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
+}
+*/
+/*JSON{
+    "type" : "staticmethod", "class" : "E", "name" : "showPrompt", "patch":true,
+    "generate_js" : "libs/js/banglejs/E_showPrompt_Q3.min.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
+}
+*/
+/*JSON{
+    "type" : "staticmethod", "class" : "E", "name" : "showScroller", "patch":true,
+    "generate_js" : "libs/js/banglejs/E_showScroller_Q3.min.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
+}
+*/
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "E",
@@ -6474,6 +6500,12 @@ with a swipe by using:
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
+/*JSON{
+    "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_Bangle3.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
+}
+*/
 
 /*JSON{
     "type" : "staticmethod",
@@ -6483,7 +6515,7 @@ with a swipe by using:
       ["noReboot","bool","Do not reboot the watch when done (default false, so will reboot)"]
     ],
     "generate" : "jswrap_banglejs_factoryReset",
-    "#if" : "defined(BANGLEJS_Q3) || defined(EMULATED) || defined(DICKENS)"
+    "#if" : "defined(BANGLEJS_Q3) || defined(BANGLEJS3) || defined(EMULATED) || defined(DICKENS)"
 }
 
 Erase all storage and reload it with the default contents. As of 2v29 it will also
@@ -6496,7 +6528,7 @@ extern void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const 
 void jswrap_banglejs_factoryReset(bool noReboot) {
   jsfResetStorage();
   if (!noReboot) jsiStatus |= JSIS_TODO_FLASH_LOAD;
-#if defined(BANGLEJS_Q3) // erase bluetooh pairing info - https://github.com/orgs/espruino/discussions/4032#discussioncomment-15900778
+#if defined(BANGLEJS_Q3) // erase bluetooth pairing info - https://github.com/orgs/espruino/discussions/4032#discussioncomment-15900778
   jshFlashErasePage(245 * 4096);
   jshFlashErasePage(246 * 4096);
   jshFlashErasePage(247 * 4096);
@@ -6559,7 +6591,7 @@ JsVar *jswrap_banglejs_appRect() {
   JsVar *o = jsvNewObject();
   if (!o) return 0;
   JsVar *widgetsVar = jsvObjectGetChildIfExists(execInfo.root,"WIDGETS");
-  int top = 0, btm = 0; // size of various widget areas
+  int top = 0, btm = graphicsInternal.data.height; // size of various widget areas
   // check all widgets and see if any are in the top or bottom areas,
   // set top/btm accordingly
   if (jsvIsObject(widgetsVar)) {
@@ -6572,8 +6604,13 @@ JsVar *jswrap_banglejs_appRect() {
       if (jsvIsString(area) && jsvIsNumeric(width)) {
         char a = jsvGetCharInString(area, 0);
         int w = jsvGetIntegerAndUnLock(width);
-        if (a=='t' && w > 0) top=24;
-        if (a=='b' && w > 0) btm=24;
+        int y = jsvObjectGetIntegerChild(widget, "y");
+        if (a=='t' && w > 0 && y+24>top)
+          top=y+24;
+        if (a=='b' && w > 0) {
+          if (y==0) y = graphicsInternal.data.height-24;
+          if (y<btm) btm=y;
+        }
       }
       jsvUnLock2(area,widget);
       jsvObjectIteratorNext(&it);
@@ -6584,9 +6621,9 @@ JsVar *jswrap_banglejs_appRect() {
   jsvObjectSetIntChild(o,"x", 0);
   jsvObjectSetIntChild(o,"y", top);
   jsvObjectSetIntChild(o,"w", graphicsInternal.data.width);
-  jsvObjectSetIntChild(o,"h", graphicsInternal.data.height-(top+btm));
+  jsvObjectSetIntChild(o,"h", btm-top);
   jsvObjectSetIntChild(o,"x2", graphicsInternal.data.width-1);
-  jsvObjectSetIntChild(o,"y2", graphicsInternal.data.height-(1+btm));
+  jsvObjectSetIntChild(o,"y2", btm-1);
 
 
 

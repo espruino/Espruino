@@ -18,7 +18,7 @@
       Bangle.off();
     }
   };
-  if (process.env.BOARD=="BANGLEJS2")
+  if (process.env.BOARD=="BANGLEJS2" || process.env.BOARD=="BANGLEJS3")
     Object.assign(menu, {"Test": Bangle.showTestScreen});
   Object.assign(menu, {"Factory Reset": () => {
       E.showPrompt("Are you sure?\nThis will remove all data.",{title:"Factory Reset"}).then(ok => {

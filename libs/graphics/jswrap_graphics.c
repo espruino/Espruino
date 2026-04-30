@@ -52,7 +52,7 @@
 #ifdef ESPR_LINE_FONTS
 #include "line_font.h"
 #endif
-#ifdef BANGLEJS2
+#if defined(BANGLEJS2) || defined(BANGLEJS3)
 #include "jswrap_font_14.h"
 #include "jswrap_font_17.h"
 #include "jswrap_font_22.h"
@@ -2716,7 +2716,7 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
   const int FONTS = 0;
   JswFindFontFont FONT[0] = {
 #else
-#ifdef BANGLEJS2
+#if defined(BANGLEJS2) || defined(BANGLEJS3)
   const int FONTS = 6;
   JswFindFontFont FONT[6] = {
     {"28", 28, 1, jswrap_graphics_setFont28},

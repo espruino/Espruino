@@ -4,6 +4,7 @@
     c = # of items
     scroll = initial scroll position
     scrollMin = minimum scroll amount (can be negative)
+    rect = {x,y,x2,y2,w,h} - area to draw in (defaults to Bangle.appRect)
     draw = function(idx, rect)
     remove = function()
     select = function(idx, touch)
@@ -88,7 +89,7 @@ Bangle.setUI({
 });
 
 var menuShowing = false;
-var R = Bangle.appRect;
+var R = options.rect||Bangle.appRect;
 var Y = R.y;
 var n = Math.ceil(R.h/options.h);
 var menuScrollMin = 0|options.scrollMin;

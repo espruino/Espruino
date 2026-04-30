@@ -17,7 +17,7 @@
 /*JSON{
     "type" : "class",
     "class" : "Unistroke",
-    "ifdef" : "BANGLEJS2"
+    "#if" : "defined(BANGLEJS2) || defined(BANGLEJS3)"
 }
 This class provides functionality to recognise gestures drawn on a touchscreen.
 It is only built into Bangle.js 2.
@@ -40,7 +40,7 @@ print(r); // stroke1/stroke2/stroke3
     "type" : "staticmethod",
     "class" : "Unistroke",
     "name" : "new",
-    "ifdef" : "BANGLEJS2",
+    "#if" : "defined(BANGLEJS2) || defined(BANGLEJS3)",
     "generate" : "jswrap_unistroke_new",
     "params" : [
       ["xy","JsVar","An array of interleaved XY coordinates"]
@@ -57,7 +57,7 @@ JsVar *jswrap_unistroke_new(JsVar *xy) {
     "type" : "staticmethod",
     "class" : "Unistroke",
     "name" : "recognise",
-    "ifdef" : "BANGLEJS2",
+    "#if" : "defined(BANGLEJS2) || defined(BANGLEJS3)",
     "generate" : "jswrap_unistroke_recognise",
     "params" : [
       ["strokes","JsVar","An object of named strokes : `{arrow:..., circle:...}`"],
