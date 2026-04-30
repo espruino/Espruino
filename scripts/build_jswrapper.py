@@ -379,15 +379,15 @@ for jsondata in jsondatas:
       print(common.as_c_string(js)+"\n")
       FATAL_ERROR("generate_js function doesn't end in })")
 
-    fnMatch = re.match(r"^\((function|\252)\(([^\)]*)\)", js);
+    fnMatch = re.match(r"^\((function|\252)\(([^\)]*)\){", js);
 
     if fnMatch:
       fnKeyword, fnArgs = fnMatch.groups()
-      fnCode = js[len(fnKeyword)+len(fnArgs)+4:-2]
+      fnCode = js[len(fnKeyword)+len(fnArgs)+4:-2].strip()
       statement = "jspExecuteJSFunctionCode("+common.as_c_string(fnArgs)+", "+common.as_c_string(fnCode)+", "+str(len(fnCode))
     else:
       print(common.as_c_string(js)+"\n")
-      FATAL_ERROR("generate_js function not in the correct format")
+      FATAL_ERROR("generate_js function not in the correct format ("+jsondata["generate"]+")")
 
     if hasThis(jsondata): statement = statement + ", parent"
     else: statement = statement + ", NULL"
