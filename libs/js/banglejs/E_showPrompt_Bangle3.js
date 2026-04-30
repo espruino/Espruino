@@ -8,7 +8,7 @@
   function draw() {
     g.reset();
     var R = Bangle.appRect, Y = R.y, W = R.w;
-    var title = g.findFont(options.title||"", {w:80+Y,wrap:1,max:32});
+    var title = g.findFont(options.title||"", {w:80+Y*2,wrap:1,max:32});// FIXME: use sqrt to work out width?
     if (title.text) {
       Y += title.h+4;
       g.setColor(g.theme.fgH).setBgColor(g.theme.bgH).

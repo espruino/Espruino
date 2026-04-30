@@ -6311,7 +6311,7 @@ To remove the scroller, just call `E.showScroller()`
 */
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showScroller", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showScroller_Bangle2.min.js",
+    "generate_js" : "libs/js/banglejs/E_showScroller_Bangle3.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
 }
 */

@@ -7,7 +7,8 @@
   }
   var options = menu[""]||{};
   if (!options.title) options.title="Menu";
-  R.y += 48; R.h -= 48; // push down for title
+  var title = g.findFont(options.title, {w:80+top*2,wrap:0,max:32,min:12}); // FIXME: use sqrt to work out width?
+  R.y += title.h+4; R.h -= title.h+4; // push down for title
   var back = options.back||menu["< Back"];
   var keys = Object.keys(menu).filter(k=>k!=="" && k!="< Back");
   keys.forEach(k => {
@@ -18,24 +19,28 @@
       item.format = v=>"\0"+atob(v?"EhKBAH//v/////////////5//x//j//H+eP+Mf/A//h//z//////////3//g":"EhKBAH//v//8AA8AA8AA8AA8AA8AA8AA8AA8AA8AA8AA8AA8AA8AA///3//g");
   });
   // Submenu for editing menu options...
-  function showSubMenu(item, title) {
+  function showSubMenu(item, titleText) {
+    var R = Bangle.appRect;
+    var title = g.findFont(titleText, {w:80+top,wrap:0,max:32,min:12}); // FIXME: use sqrt to work out width?
+    R.y += title.h+4; R.h -= title.h+4; // push down for title
     /*if ("number"!=typeof item.value)
       return console.log("Unhandled item type");*/
     // title
-    showTitle(title);
+    showTitle(R,title);
     var step = item.step||1;
     if (!item.noList && item.min!==undefined && item.max!==undefined &&
         ((item.max-item.min)/step)<20) {
       // show scrolling menu of options
       var scroller = E.showScroller({
         h : H, c : 1+(item.max+step-item.min)/step,
+        // FIXME: set selected to closest to original value
         back: show, // redraw original menu
         remove: options.remove,
         rect : { x:0, y:R.y, x2:R.x2, y2:R.y2, w:R.w, h:R.h },
-        draw : (idx, r) => {
+        draw : (idx, r, selected) => {
           var v = idx*step + item.min, txt = item.format ? item.format(v,1) : v;
           if (v>item.max) return;
-          g.setBgColor(g.theme.bg2).clearRect({x:r.x+16, y:r.y+2, w:r.w-32, h:r.h-4, r:5});
+          g.setBgColor(selected?g.theme.bgH:g.theme.bg2).clearRect({x:r.x+16, y:r.y+2, w:r.w-32, h:r.h-4, r:5});
           var itemText = g.findFont(txt, {w:r.w,h:r.h,wrap:1,trim:1});
           g.setColor(g.theme.fg2).setFontAlign(-1,0).drawString(itemText.text, r.x+24, r.y+H/2);
           g.drawImage(/* 20x20 */atob(v==item.value?"FBSBAAH4AH/gHgeDgBww8MY/xmf+bH/jz/88//PP/zz/88f+Nn/mY/xjDww4AcHgeAf+AB+A":"FBSBAAH4AH/gHgeDgBwwAMYABmAAbAADwAA8AAPAADwAA8AANgAGYABjAAw4AcHgeAf+AB+A"), r.x+r.w-44, r.y+H/2-10);
@@ -110,9 +115,9 @@
     rect : { x:0, y:R.y, x2:R.x2, y2:R.y2, w:R.w, h:R.h },
     back : back,
     remove : options.remove,
-    draw : (idx, r) => {
+    draw : (idx, r, selected) => {
       if (idx>=keys.length) return;
-      g.setFontAlign(-1,0).setColor(g.theme.bg2).fillRect({x:r.x+16, y:r.y+2, w:r.w-32, h:r.h-4, r:5}).setColor(g.theme.fg2);
+      g.setFontAlign(-1,0).setBgColor(selected?g.theme.bgH:g.theme.bg2).clearRect({x:r.x+16, y:r.y+2, w:r.w-32, h:r.h-4, r:5}).setColor(g.theme.fg2);
       var item = menu[keys[idx]], pad = 40;
       if ("object" == typeof item) {
         var v = item.value;
@@ -147,11 +152,11 @@
       }
     }
   };
-  function showTitle(title) {
-    g.reset().clearRect(R).setBgColor(g.theme.bg2).clearRect(20,top,220,R.y-2).setFontAlign(0,1).drawString(g.findFont(title, {w:160,h:48,max:48}).text, 120, R.y-2);
+  function showTitle(R,title) {
+    g.reset().clearRect(R).setBgColor(g.theme.bgH).clearRect(20,top,220,R.y-2).setFontAlign(0,1).setFont(title.font).drawString(title.text, 120, R.y-2);
   }
   function show() {
-    showTitle(options.title);
+    showTitle(R,title);
     l.scroller = E.showScroller(scr);
   }
   show();
