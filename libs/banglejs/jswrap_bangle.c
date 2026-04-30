@@ -5930,7 +5930,7 @@ call drawWidgets if you decide to clear the entire screen with `g.clear()`.
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "drawWidgets", "patch":true,
-    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets_Q3.min.js",
+    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets_Bangle2.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
@@ -5975,7 +5975,7 @@ You can also enter this menu by restarting your Bangle while holding down the bu
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "showRecoveryMenu", "patch":true,
-    "generate_js" : "libs/js/banglejs/Bangle_showRecoveryMenu_F18.min.js",
+    "generate_js" : "libs/js/banglejs/Bangle_showRecoveryMenu_Bangle1.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_F18)"
 }
 */
@@ -6030,7 +6030,7 @@ information.
     "type" : "staticmethod",
     "class" : "E",
     "name" : "showMenu",
-    "generate_js" : "libs/js/banglejs/E_showMenu_F18.min.js",
+    "generate_js" : "libs/js/banglejs/E_showMenu_Bangle1.min.js",
     "params" : [
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
@@ -6267,7 +6267,7 @@ To remove the scroller, just call `E.showScroller()`
 
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showMenu_Q3.min.js",
+    "generate_js" : "libs/js/banglejs/E_showMenu_Bangle2.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
@@ -6279,13 +6279,13 @@ To remove the scroller, just call `E.showScroller()`
 */
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showPrompt", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showPrompt_Q3.min.js",
+    "generate_js" : "libs/js/banglejs/E_showPrompt_Bangle2.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showScroller", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showScroller_Q3.min.js",
+    "generate_js" : "libs/js/banglejs/E_showScroller_Bangle2.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
@@ -6299,13 +6299,13 @@ To remove the scroller, just call `E.showScroller()`
 */
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showPrompt", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showPrompt_Q3.min.js",
+    "generate_js" : "libs/js/banglejs/E_showPrompt_Bangle2.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
 }
 */
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showScroller", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showScroller_Q3.min.js",
+    "generate_js" : "libs/js/banglejs/E_showScroller_Bangle2.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS3)"
 }
 */
@@ -6402,7 +6402,7 @@ type SetUIArg<Mode> = Mode | {
     "type" : "staticmethod",
     "class" : "Bangle",
     "name" : "setUI",
-    "generate_js" : "libs/js/banglejs/Bangle_setUI_F18.min.js",
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_Bangle1.min.js",
     "params" : [
       ["type","JsVar","The type of UI input: 'updown', 'leftright', 'clock', 'clockupdown' or undefined to cancel. Can also be an object (see below)"],
       ["callback","JsVar","A function with one argument which is the direction"]
@@ -6497,7 +6497,7 @@ with a swipe by using:
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
-    "generate_js" : "libs/js/banglejs/Bangle_setUI_Q3.min.js",
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_Bangle2.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
