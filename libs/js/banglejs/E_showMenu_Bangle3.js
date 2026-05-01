@@ -7,7 +7,8 @@
   }
   var options = menu[""]||{};
   if (!options.title) options.title="Menu";
-  var title = g.findFont(options.title, {w:80+top*2,wrap:0,max:32,min:12}); // FIXME: use sqrt to work out width?
+  var title = g.findFont(options.title, {w:80+Math.max(R.y,40)*2,wrap:0,max:32,min:12}); // FIXME: use sqrt to work out width?
+  title.h = Math.max(title.h, 40-top); // minimum title height
   R.y += title.h+4; R.h -= title.h+4; // push down for title
   var back = options.back||menu["< Back"];
   var keys = Object.keys(menu).filter(k=>k!=="" && k!="< Back");
@@ -21,7 +22,8 @@
   // Submenu for editing menu options...
   function showSubMenu(item, titleText) {
     var R = Bangle.appRect;
-    var title = g.findFont(titleText, {w:80+top,wrap:0,max:32,min:12}); // FIXME: use sqrt to work out width?
+    var title = g.findFont(titleText, {w:80+Math.max(R.y,40)*2,wrap:0,max:32,min:12}); // FIXME: use sqrt to work out width?
+  title.h = Math.max(title.h, 40-top); // minimum title height
     R.y += title.h+4; R.h -= title.h+4; // push down for title
     /*if ("number"!=typeof item.value)
       return console.log("Unhandled item type");*/
@@ -32,14 +34,13 @@
         ((item.max-item.min)/step)<20) {
       // show scrolling menu of options
       var scroller = E.showScroller({
-        h : H, c : 1+(item.max+step-item.min)/step,
-        // FIXME: set selected to closest to original value
+        h : H, c : (item.max+step-item.min)/step,
+        selected : Math.round((item.value-item.min)/step), // set selected to closest to original value
         back: show, // redraw original menu
         remove: options.remove,
         rect : { x:0, y:R.y, x2:R.x2, y2:R.y2, w:R.w, h:R.h },
         draw : (idx, r, selected) => {
           var v = idx*step + item.min, txt = item.format ? item.format(v,1) : v;
-          if (v>item.max) return;
           g.setBgColor(selected?g.theme.bgH:g.theme.bg2).clearRect({x:r.x+16, y:r.y+2, w:r.w-32, h:r.h-4, r:5});
           var itemText = g.findFont(txt, {w:r.w,h:r.h,wrap:1,trim:1});
           g.setColor(g.theme.fg2).setFontAlign(-1,0).drawString(itemText.text, r.x+24, r.y+H/2);
@@ -47,7 +48,6 @@
         },
         select : function(idx) {
           var v = idx*step + item.min;
-          if (v>item.max) return;
           Bangle.haptic("touch");
           item.value = v;
           if (item.onchange) item.onchange(item.value);
@@ -111,12 +111,11 @@
     scroller : undefined
   };
   var scr = {
-    h : H, c : keys.length+1/*title*/,
+    h : H, c : keys.length/*title*/,
     rect : { x:0, y:R.y, x2:R.x2, y2:R.y2, w:R.w, h:R.h },
     back : back,
     remove : options.remove,
     draw : (idx, r, selected) => {
-      if (idx>=keys.length) return;
       g.setFontAlign(-1,0).setBgColor(selected?g.theme.bgH:g.theme.bg2).clearRect({x:r.x+16, y:r.y+2, w:r.w-32, h:r.h-4, r:5}).setColor(g.theme.fg2);
       var item = menu[keys[idx]], pad = 40;
       if ("object" == typeof item) {
@@ -153,7 +152,7 @@
     }
   };
   function showTitle(R,title) {
-    g.reset().clearRect(R).setBgColor(g.theme.bgH).clearRect(20,top,220,R.y-2).setFontAlign(0,1).setFont(title.font).drawString(title.text, 120, R.y-2);
+    g.reset().clearRect(R).setBgColor(g.theme.bgH).clearRect(0,top,239,R.y-2).setFontAlign(0,1).setFont(title.font).drawString(title.text, 120, R.y-2);
   }
   function show() {
     showTitle(R,title);

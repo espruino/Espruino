@@ -20,16 +20,38 @@
   */
 if (!options) return Bangle.setUI(); // remove existing handlers
 
-var draw = () => {
+var drawTimeout, draw = () => {
+  if (drawTimeout) {
+    clearTimeout(drawTimeout);
+    drawTimeout = undefined;
+  }
   g.reset().clearRect(R).setClipRect(R.x,R.y,R.x2,R.y2);
   var a = YtoIdx(R.y);
   var b = Math.min(YtoIdx(R.y2),options.c-1);
   for (var i=a;i<=b;i++)
-    options.draw(i, {x:R.x,y:idxToY(i),w:R.w,h:options.h});
+    options.draw(i, {x:R.x,y:idxToY(i),w:R.w,h:options.h}, i==s.selected);
   g.setClipRect(0,0,g.getWidth()-1,g.getHeight()-1);
+}, scrollToShow = () => {
+  var getScrollAmt = () => { // get amount needed to scroll the item into view
+    var y = idxToY(s.selected);
+    if (y<80 && (s.scroll>menuScrollMin)) return Math.min(20, 80-y)>>2;
+    if (y>160 && (s.scroll<menuScrollMax)) return Math.max(-20, 160-y)>>2;
+    return 0;
+  };
+  if (getScrollAmt()) {
+    // auto-scroll if we go off the screen using idxToY? animate?
+    if (drawTimeout) clearTimeout(drawTimeout);
+    drawTimeout = setTimeout(function scrollOn() {
+      drawTimeout=undefined;
+      var scroll = getScrollAmt();
+      if (!scroll) return;
+      ui.drag({dy:scroll});
+      setTimeout(scrollOn,20);
+    }, 20);
+  }
 };
 
-Bangle.setUI({
+var ui = {
   mode : "custom",
   back : options.back,
   remove : options.remove,
@@ -53,7 +75,7 @@ Bangle.setUI({
       let i = YtoIdx(y);
       y = idxToY(i);
       while (y < R.y2) {
-        options.draw(i, {x:R.x,y:y,w:R.w,h:options.h});
+        if (i<options.c) options.draw(i, {x:R.x,y:y,w:R.w,h:options.h}, i==s.selected);
         i++;
         y += options.h;
       }
@@ -63,7 +85,7 @@ Bangle.setUI({
       let i = YtoIdx(y);
       y = idxToY(i);
       while (y > R.y-options.h) {
-        options.draw(i, {x:R.x,y:y,w:R.w,h:options.h});
+        if (i<options.c) options.draw(i, {x:R.x,y:y,w:R.w,h:options.h}, i==s.selected);
         y -= options.h;
         i--;
       }
@@ -72,6 +94,7 @@ Bangle.setUI({
   }, touch : (_,e)=>{
     if (e.y<R.y-4) return;
     var i = YtoIdx(e.y);
+    print(e.y,i);
     let yAbs = (e.y + rScroll - R.y);
     let yInElement = yAbs - i*options.h;
     //print("     ",idxToY(i));
@@ -88,24 +111,25 @@ Bangle.setUI({
   }, btn : d => {
     Bangle.haptic("btn");
     if (d) { // up/down - change selection
-      let old = s.selected;
+      var old = s.selected;
       if (d<0 && s.selected<0) s.selected = 0;
       s.selected = (s.selected+d+options.c) % options.c;
       if (old>=0) s.drawItem(old);
       s.drawItem(s.selected);
-      // FIXME: auto-scroll if we go off the screen using idxToY? animate?
+      scrollToShow();
     } else if (s.selected>=0) { // press=select
       options.select(s.selected);
     }
   }
-});
+};
+Bangle.setUI(ui);
 
 var menuShowing = false;
 var R = options.rect||Bangle.appRect;
 var Y = R.y;
 var n = Math.ceil(R.h/options.h);
 var menuScrollMin = 0|options.scrollMin;
-var menuScrollMax = options.h*options.c - R.h;
+var menuScrollMax = options.h*options.c + 60 - R.h; // 60=empty space at bottom
 if (menuScrollMax<menuScrollMin) menuScrollMax=menuScrollMin;
 
 function idxToY(i) {
@@ -128,5 +152,6 @@ var s = {
 var rScroll = s.scroll&~1; // rendered menu scroll (we only shift by 2 because of dither)
 s.draw(); // draw the full scroller
 g.flip(); // force an update now to make this snappier
+if (s.selected>=0) scrollToShow();
 return s;
 })

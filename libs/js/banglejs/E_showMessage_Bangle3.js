@@ -8,7 +8,7 @@
   if (title.text) {
     Y += title.h+4;
     g.setColor(g.theme.fgH).setBgColor(g.theme.bgH).
-      clearRect(20,R.y,220,Y-2).setFontAlign(0,1).
+      clearRect(0,R.y,239,Y-2).setFontAlign(0,1).
       drawString(title.text, 120, Y);
   }
   var H = R.y2-Y;

@@ -164,7 +164,7 @@
           var w = WIDGETS.back;
           if (w.area!="tl") noclear=true; // area="" is set by widget_utils.hide, so avoid drawing
           Bangle.removeListener("touch", touchHandler);
-          if (!noclear) g.reset().clearRect({x:w.x, y:w.y, w:24,h:24});
+          if (!noclear) g.setBgColor(g.theme.bgH).clearRect({x:w.x, y:w.y, w:24,h:24});
           delete WIDGETS.back;
           if (!noclear) Bangle.drawWidgets();
         }
