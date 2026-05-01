@@ -1735,7 +1735,7 @@ JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2
   graphicsToDeviceCoordinates(&gfx, &x2, &y2);
 #ifndef SAVE_ON_FLASH
 #ifdef USE_LCD_ST7789_8BIT
-  if (gfx.data.type!=JSGRAPHICSTYPE_ST7789_8BIT) {
+  if (gfx.data.type!=JSGRAPHICSTYPE_ST7789_8BIT) { // ST7789 has more screen buffer available offscreen, so we allow clip rect to be set outside the screen bounds
 #endif
     if (x1<0) x1=0;
     if (y1<0) y1=0;
