@@ -586,7 +586,7 @@ JshI2CInfo i2cInternal;
 #define HEARTRATE 1
 #endif // EMULATED
 
-#define HOME_BTN 1
+#define HOME_BTN 4
 #define DEFAULT_LCD_POWER_TIMEOUT 0 // don't turn LCD off
 #define DEFAULT_BACKLIGHT_TIMEOUT 3000
 #define DEFAULT_LOCK_TIMEOUT 5000
@@ -1851,7 +1851,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
     if (((bangleFlags&JSBF_WAKEON_BTN1)&&(button==1)) ||
         ((bangleFlags&JSBF_WAKEON_BTN2)&&(button==2)) ||
         ((bangleFlags&JSBF_WAKEON_BTN3)&&(button==3)) ||
-#ifdef DICKENS
+#if defined(DICKENS) || defined(BANGLEJS3)
         ((bangleFlags&JSBF_WAKEON_BTN3)&&(button==4)) ||
 #endif
         false){ // wake-bind-input

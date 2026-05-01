@@ -87,10 +87,10 @@ chip = {
 
 devices = {
   'USB' : {}, # to convince code that we have a USB port (it's used for the console ion Linux)
-  'BTN1' : { 'pin' : 'D1', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
-  'BTN2' : { 'pin' : 'D2', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
-  'BTN3' : { 'pin' : 'D3', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
-  'BTN4' : { 'pin' : 'D4', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'BTN1' : { 'pin' : 'D1' }, # Pin negated in software
+  'BTN2' : { 'pin' : 'D2' }, # Pin negated in software
+  'BTN3' : { 'pin' : 'D3' }, # Pin negated in software
+  'BTN4' : { 'pin' : 'D4' }, # Pin negated in software
   'LED1' : { 'pin' : 'D5', 'novariable':True }, # torch
   'LCD' : {
             'width' : 240, 'height' : 240,
@@ -109,4 +109,9 @@ devices = {
 
 def get_pins():
   pins = pinutils.generate_pins(0,47) # 48 General Purpose I/O Pins.
+  # Make buttons negated
+  pinutils.findpin(pins, "PD1", True)["functions"]["NEGATED"]=0; # button
+  pinutils.findpin(pins, "PD2", True)["functions"]["NEGATED"]=0; # button
+  pinutils.findpin(pins, "PD3", True)["functions"]["NEGATED"]=0; # button
+  pinutils.findpin(pins, "PD4", True)["functions"]["NEGATED"]=0; # button
   return pins
