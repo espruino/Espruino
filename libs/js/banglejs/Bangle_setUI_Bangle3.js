@@ -83,7 +83,7 @@
   } else if (mode=="clock") {
     Bangle.CLOCK=1;
     Bangle.btnWatches = [
-      setWatch(function() { Bangle.haptic("btn");Bangle.showLauncher(); }, BTN1, {repeat:1, edge:"rising"}),
+      setWatch(function() { Bangle.haptic("btn");Bangle.showLauncher(); }, BTN2, {repeat:1, edge:"rising"}),
     ];
   } else if (mode=="clockupdown") {
     Bangle.CLOCK=1;
@@ -137,13 +137,11 @@
   if (options.redraw) // handler for redrawing the UI
     Bangle.uiRedraw = options.redraw;
   if (options.back) {
-    // only add back button handler if there's no existing watch on BTN1
-    if (Bangle.btnWatches===undefined)
-      Bangle.btnWatches = [ setWatch(function() {
-        Bangle.btnWatches = undefined; // watch doesn't repeat
-        Bangle.haptic("btn");
-        options.back();
-      }, BTN4, {edge:"rising"}) ];
+    Bangle.btnWatches.push(setWatch(function() {
+      Bangle.btnWatches = undefined; // watch doesn't repeat
+      Bangle.haptic("btn");
+      options.back();
+    }, BTN4, {edge:"rising"}));
     // if we have widgets loaded *and* visible at the top, add a back widget (see #3788)
     if (global.WIDGETS && Bangle.appRect.y) {
       // add our own touch handler for touching in the top left

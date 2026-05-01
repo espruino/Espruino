@@ -94,10 +94,8 @@ var ui = {
   }, touch : (_,e)=>{
     if (e.y<R.y-4) return;
     var i = YtoIdx(e.y);
-    print(e.y,i);
     let yAbs = (e.y + rScroll - R.y);
     let yInElement = yAbs - i*options.h;
-    //print("     ",idxToY(i));
     if (e.y>227 && idxToY(i)>227) { // 12px from bottom
       /* If the bottom-most item is only just showing and we
       tap on it, choose the one above instead */
