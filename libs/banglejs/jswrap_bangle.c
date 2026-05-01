@@ -2348,7 +2348,7 @@ type LCDMode =
 }
 This function can be used to change the way graphics is handled on Bangle.js.
 
-Available options for `Bangle.setLCDMode` are:
+**Bangle.js 1**: available options for `Bangle.setLCDMode` are:
 
 * `Bangle.setLCDMode()` or `Bangle.setLCDMode("direct")` (the default) - The
   drawable area is 240x240 16 bit. Unbuffered, so draw calls take effect
@@ -2365,8 +2365,13 @@ Available options for `Bangle.setLCDMode` are:
   terminal, and full scrolling work. Uses an offscreen buffer stored on
   Bangle.js, `g.flip()` must be called for draw operations to take effect.
 
-You can also call `Bangle.setLCDMode()` to return to normal, unbuffered
-`"direct"` mode.
+**Bangle.js 2/3**: available options for `Bangle.setLCDMode` are:
+
+* `Bangle.setLCDMode()` or `Bangle.setLCDMode("direct")` (the default) - The
+  drawable area is the system's default (176x176 on Bangle.js 2 or 240x240 on Bangle.js 3).
+* `Bangle.setLCDMode("176x176")` - make the drawable area 176x176 for
+compatability with Bangle.js 2 (this has no effect on Bangle.js 2)
+
 */
 void jswrap_banglejs_setLCDMode(JsVar *mode) {
 #ifdef LCD_CONTROLLER_ST7789_8BIT
@@ -2433,7 +2438,30 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   lcdST7789_setMode( lcdMode );
   graphicsSetCallbacks(&graphicsInternal); // set the callbacks up after the mode change
 #else
-  jsExceptionHere(JSET_ERROR, "setLCDMode is unsupported on this device");
+  bool is176 = false;
+  if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
+    is176 = false;
+  else if (jsvIsStringEqual(mode,"176x176"))
+    is176 = true;
+  else
+    return jsExceptionHere(JSET_ERROR,"Unknown LCD Mode %j",mode);
+#ifdef BANGLEJS3
+  bool was176 = lcdMemLCD_getFake176();
+  if (is176!=was176) {
+    if (is176) {
+      graphicsInternal.fillRect(&graphicsInternal, 0,0,LCD_WIDTH-1,LCD_HEIGHT-1,graphicsTheme.bg);
+      lcdMemLCD_setFake176(true);
+      graphicsInternal.data.width = 176;
+      graphicsInternal.data.height = 176;
+    } else {
+      lcdMemLCD_setFake176(false);
+      graphicsInternal.data.width = LCD_WIDTH;
+      graphicsInternal.data.height = LCD_HEIGHT;
+      graphicsInternal.fillRect(&graphicsInternal, 0,0,LCD_WIDTH-1,LCD_HEIGHT-1,graphicsTheme.bg);
+    }
+    graphicsStructResetState(&graphicsInternal);
+  }
+#endif
 #endif
 }
 /*JSON{
@@ -2450,14 +2478,13 @@ The current LCD mode.
 See `Bangle.setLCDMode` for examples.
 */
 JsVar *jswrap_banglejs_getLCDMode() {
-  const char *name=0;
+  const char *name = "direct";
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   switch (lcdST7789_getMode()) {
+    case LCDST7789_MODE_UNBUFFERED:
+      break;
     case LCDST7789_MODE_NULL:
       name = "null";
-      break;
-    case LCDST7789_MODE_UNBUFFERED:
-      name = "direct";
       break;
     case LCDST7789_MODE_DOUBLEBUFFERED:
       name = "doublebuffered";
@@ -2469,8 +2496,10 @@ JsVar *jswrap_banglejs_getLCDMode() {
       name = "80x80";
       break;
   }
+#elif defined(BANGLEJS3)
+  if (lcdMemLCD_getFake176())
+    name = "176x176";
 #endif
-  if (!name) return 0;
   return jsvNewFromString(name);
 }
 
@@ -4040,6 +4069,9 @@ NO_INLINE void jswrap_banglejs_init() {
       graphicsClear(&graphicsInternal);
     }
 #endif
+#ifdef BANGLEJS3
+    jswrap_banglejs_setLCDMode(NULL);
+#endif
   }
 
   bool showSplashScreen = true;
@@ -4091,7 +4123,10 @@ NO_INLINE void jswrap_banglejs_init() {
     jswrap_graphics_drawCString(&graphicsInternal,20,y+30,JS_VERSION);
     jswrap_graphics_drawCString(&graphicsInternal,20,y+40,addrStr);
 #else // not DICKENS
-    int y=(LCD_HEIGHT-h)/2;
+    int x=8, y=(LCD_HEIGHT-h)/2;
+#ifdef BANGLEJS3
+    x=48;
+#endif
     jsvUnLock2(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,NULL),img);
     if (drawInfo) {
       if (h > 56) y += h-28;
@@ -4104,9 +4139,9 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
       jsvGetString(addr, addrStr, sizeof(addrStr));
       jsvUnLock(addr);
-      jswrap_graphics_drawCString(&graphicsInternal,8,y,JS_VERSION);
-      jswrap_graphics_drawCString(&graphicsInternal,8,y+10,addrStr);
-      jswrap_graphics_drawCString(&graphicsInternal,8,y+20,"Copyright 2026 G.Williams");
+      jswrap_graphics_drawCString(&graphicsInternal,x,y,JS_VERSION);
+      jswrap_graphics_drawCString(&graphicsInternal,x,y+10,addrStr);
+      jswrap_graphics_drawCString(&graphicsInternal,x,y+20,"Copyright 2026 G.Williams");
     }
 #endif // DICKENS
   }

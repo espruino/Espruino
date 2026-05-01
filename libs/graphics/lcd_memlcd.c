@@ -40,6 +40,9 @@ bool isBacklightOn; ///< is LCD backlight on? If so we need to pulse EXTCOMIN fa
 JsVar *lcdOverlayImage; ///< if set, an Image to use for overlays
 short lcdOverlayX,lcdOverlayY; ///< coordinates of the graphics instance
 volatile bool lcdIsBusy; ///< We're now allowing SPI send in the background - if we're sending, block execution until it finishes
+#if LCD_WIDTH!=176
+bool fake176 = false; ///< We can set this up to fake a 176 pixel screen by offsetting it by 32 pixels
+#endif
 
 #ifdef EMULATED
 bool EMSCRIPTEN_GFX_CHANGED;
@@ -74,7 +77,7 @@ static ALWAYS_INLINE unsigned int lcdMemLCD_convert16toLCD(unsigned int c, int x
 #if LCD_BPP!=6 // 3/4 bit
   c = (c&0b1110011100011100) + BAYER2[y&1][x&1];// apply bayer 2x2 dither
   // 3 bit, so all we have to do now is look for the carry bit
-  return (((c&0b10000100000100000)*0x2041)>>16)&7; // below replaced by magic multiply bitshift code
+  return (((c&0b10000100000100000)*0x2041)>>16)&7; // code below replaced by magic multiply bitshift which avoids branches
   /*return
       ((c&0x10000)?1:0) |
       ((c&0x00800)?2:0) |
@@ -111,6 +114,9 @@ unsigned char *lcdMemLCD_getRowPtr(int row) {
 }
 
 unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
+#if LCD_WIDTH!=176
+  if (fake176) { x += 32; y += 32; }
+#endif
 #if LCD_BPP==3
   int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
@@ -144,6 +150,9 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 
  */
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
+#if LCD_WIDTH!=176
+  if (fake176) { x += 32; y += 32; }
+#endif
   col =  lcdMemLCD_convert16toLCD(col,x,y);
   lcdMemLCD_waitForSendComplete();
 #if LCD_BPP==3
@@ -166,6 +175,9 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 }
 
 void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+#if LCD_WIDTH!=176
+  if (fake176) { x1 += 32; y1 += 32; x2 += 32; y2 += 32; }
+#endif
   lcdMemLCD_waitForSendComplete();
   // Super-fast fill if whole width
   if (x1==0 && x2==LCD_WIDTH-1 && (col==0 || col==0xFFFF)) {
@@ -312,6 +324,9 @@ void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1
   if (x1!=0 || x2!=LCD_WIDTH-1)
     return graphicsFallbackScroll(gfx, xdir, ydir, x1,y1,x2,y2);
   // otherwise...
+#if LCD_WIDTH!=176
+  if (fake176) { x1 += 32; y1 += 32; x2 += 32; y2 += 32; }
+#endif
   unsigned char lineBuffer[LCD_STRIDE+4]; // allow out of bounds write
   if (ydir<=0) {
     for (int y=y1;y<=y2+ydir;y++) {
@@ -539,6 +554,14 @@ void lcdMemLCD_setOverlayModified(JsGraphics *gfx) {
   }
 }
 
+#if LCD_WIDTH!=176
+void lcdMemLCD_setFake176(bool isFake) {
+  fake176 = isFake;
+}
+bool lcdMemLCD_getFake176() {
+  return fake176;
+}
+#endif
 
 void lcdMemLCD_setCallbacks(JsGraphics *gfx) {
   gfx->setPixel = lcdMemLCD_setPixel;

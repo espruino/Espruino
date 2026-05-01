@@ -8,6 +8,7 @@
             Thingy52: fix build by removing pretokenisation from built-in library
             Bangle.js: Ensure we still set a theme when in Recovery mode
             Bangle.js2: Use faster branchless bayer dithering code
+            Bangle.js: Ensure Bangle.setLCDMode works on Bangle.js 2 (even if it does nothing)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

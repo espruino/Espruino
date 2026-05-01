@@ -29,3 +29,9 @@ void lcdMemLCD_setOverlay(JsVar *imgVar, int x, int y);
 void lcdMemLCD_setOverlayModified(JsGraphics *gfx);
 // return a pointer to the LCD's memory buffer
 unsigned char *lcdMemLCD_getRowPtr(int row);
+
+#if LCD_WIDTH!=176
+// allow us to fake width and height to allow Bangle.js 2 compatibility on 3
+void lcdMemLCD_setFake176(bool isFake);
+bool lcdMemLCD_getFake176();
+#endif
