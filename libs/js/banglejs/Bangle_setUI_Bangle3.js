@@ -137,6 +137,7 @@
   if (options.redraw) // handler for redrawing the UI
     Bangle.uiRedraw = options.redraw;
   if (options.back) {
+    if (!Bangle.btnWatches) Bangle.btnWatches=[];
     Bangle.btnWatches.push(setWatch(function() {
       Bangle.btnWatches = undefined; // watch doesn't repeat
       Bangle.haptic("btn");
