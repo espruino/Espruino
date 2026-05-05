@@ -144,6 +144,9 @@ JsVar *jswrap_process_env() {
 #ifdef GIT_COMMIT
   jsvObjectSetStringChild(obj, "GIT_COMMIT", ESPR_STRINGIFY(GIT_COMMIT));
 #endif
+#ifdef EMULATED
+  jsvObjectSetBoolChild(obj, "EMULATED", true);
+#endif
   jsvObjectSetStringChild(obj, "BOARD", PC_BOARD_ID);
   jsvObjectSetIntChild(obj, "RAM", RAM_TOTAL);
   jsvObjectSetIntChild(obj, "FLASH", FLASH_TOTAL);

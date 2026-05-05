@@ -16,6 +16,7 @@
 import pinutils;
 info = {
  'name' : "Bangle.js 2 emulator",
+ 'boardname' : "BANGLEJS2",
  'default_console' : "EV_USBSERIAL",
  'variables' :  12000, # 0 = resizable variables, rather than fixed
  'binary_name' : 'emulator_banglejs2.js',

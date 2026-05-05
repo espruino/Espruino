@@ -16,6 +16,7 @@
 import pinutils;
 info = {
  'name' : "Bangle.js 3 emulator",
+ 'boardname' : "BANGLEJS3",
  'default_console' : "EV_USBSERIAL",
  'variables' :  12000, # 0 = resizable variables, rather than fixed
  'binary_name' : 'emulator_banglejs3.js',
@@ -30,7 +31,7 @@ info = {
    'makefile' : [
      'EMSCRIPTEN=1',
      'USE_DEBUGGER=0', # We can't use debugger in emulator as we're single-threaded and it uses IRQs on embedded to work
-     'DEFINES += -DESPR_HWVERSION=2',
+     'DEFINES += -DESPR_HWVERSION=3',
      'DEFINES += -DUSE_CALLFUNCTION_HACK', # required to handle calls properly
      'DEFINES += -DBANGLEJS -DBANGLEJS3 -DEMULATED -DEMSCRIPTEN',
      'DEFINES += -DSPIFLASH_BASE=0x8000000 -DSPIFLASH_LENGTH=8388608',
