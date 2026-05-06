@@ -62,7 +62,9 @@ void serial_cb(const struct device *dev, void *user_data) {
 
 const struct device *jshToZephyrPort(JsvPinInfoPort port) {
   switch (port&JSH_PORT_MASK) {
-    case JSH_PORTD: return DEVICE_DT_GET(DT_NODELABEL(gpio0));
+    case JSH_PORTA: return DEVICE_DT_GET(DT_NODELABEL(gpio0));
+    case JSH_PORTB: return DEVICE_DT_GET(DT_NODELABEL(gpio1));
+    case JSH_PORTC: return DEVICE_DT_GET(DT_NODELABEL(gpio2));
     default: assert(0); return 0;
   }
 }
@@ -137,6 +139,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
     case JSHPINSTATE_USART_OUT: flags = GPIO_OUTPUT; break;
     default: assert(0);
   }
+  // GPIO_LINE_DRIVE_STRENGTH_HIGH is an option too
   const JshPinInfo *p = &pinInfo[pin];
   gpio_pin_configure(jshToZephyrPort(p->port), p->pin, flags);
 }

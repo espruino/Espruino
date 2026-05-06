@@ -55,19 +55,14 @@ chip = {
 };
 
 devices = {
-  'BTN1' : { 'pin' : 'D13', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.13
-  'BTN2' : { 'pin' : 'D14', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.09
-  'BTN3' : { 'pin' : 'D15', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.08
-  'BTN4' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.04
-  'LED1' : { 'pin' : 'D17' }, # Pin negated in software P2.09
-  'LED2' : { 'pin' : 'D18' }, # Pin negated in software P1.10
-  'LED3' : { 'pin' : 'D19' }, # Pin negated in software P2.07
-  'LED4' : { 'pin' : 'D20' }, # Pin negated in software P1.14
-  'RX_PIN_NUMBER' : { 'pin' : 'D8'},
-  'TX_PIN_NUMBER' : { 'pin' : 'D6'},
-  'CTS_PIN_NUMBER' : { 'pin' : 'D7'},
-  'RTS_PIN_NUMBER' : { 'pin' : 'D5'},
-  # Pin D22 is used for clock when driving neopixels - as not specifying a pin seems to break things
+  'BTN1' : { 'pin' : 'B13', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.13
+  'BTN2' : { 'pin' : 'B9', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.09
+  'BTN3' : { 'pin' : 'B8', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.08
+  'BTN4' : { 'pin' : 'A4', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.04
+  'LED1' : { 'pin' : 'C9' }, 
+  'LED2' : { 'pin' : 'B10' },
+  'LED3' : { 'pin' : 'C7' }, 
+  'LED4' : { 'pin' : 'B14' },
 };
 
 # left-right, or top-bottom order
@@ -86,32 +81,15 @@ board["_css"] = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(0,31) # 32 General Purpose I/O Pins.
-#  pinutils.findpin(pins, "PD0", True)["functions"]["XL1"]=0;
-#  pinutils.findpin(pins, "PD1", True)["functions"]["XL2"]=0;
-#  pinutils.findpin(pins, "PD5", True)["functions"]["RTS"]=0;
-#  pinutils.findpin(pins, "PD6", True)["functions"]["TXD"]=0;
-#  pinutils.findpin(pins, "PD7", True)["functions"]["CTS"]=0;
-#  pinutils.findpin(pins, "PD8", True)["functions"]["RXD"]=0;
-#  pinutils.findpin(pins, "PD9", True)["functions"]["NFC1"]=0;
-#  pinutils.findpin(pins, "PD10", True)["functions"]["NFC2"]=0;
-#  pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN0"]=0;
-#  pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN1"]=0;
-#  pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN2"]=0;
-#  pinutils.findpin(pins, "PD5", True)["functions"]["ADC1_IN3"]=0;
-#  pinutils.findpin(pins, "PD28", True)["functions"]["ADC1_IN4"]=0;
-#  pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN5"]=0;
-#  pinutils.findpin(pins, "PD30", True)["functions"]["ADC1_IN6"]=0;
-#  pinutils.findpin(pins, "PD31", True)["functions"]["ADC1_IN7"]=0;
+  # GPIO 0/1/2
+  pins = pinutils.generate_pins(0,4,"A") + pinutils.generate_pins(0,14,"B") + pinutils.generate_pins(0,10,"C"); 
+  # pinutils.findpin(pins, "PAxx", True)["functions"]["XL1"]=0;
+  # ...
   # Make buttons and LEDs negated
-#  pinutils.findpin(pins, "PD13", True)["functions"]["NEGATED"]=0;
-#  pinutils.findpin(pins, "PD14", True)["functions"]["NEGATED"]=0;
-#  pinutils.findpin(pins, "PD15", True)["functions"]["NEGATED"]=0;
-#  pinutils.findpin(pins, "PD16", True)["functions"]["NEGATED"]=0;
-#  pinutils.findpin(pins, "PD17", True)["functions"]["NEGATED"]=0;
-#  pinutils.findpin(pins, "PD18", True)["functions"]["NEGATED"]=0;
-#  pinutils.findpin(pins, "PD19", True)["functions"]["NEGATED"]=0;
-#  pinutils.findpin(pins, "PD20", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "B13", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "B9", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "B8", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "A4", True)["functions"]["NEGATED"]=0;
 
   # everything is non-5v tolerant
   for pin in pins:
