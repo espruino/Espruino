@@ -1110,6 +1110,10 @@ JsVar *_jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options, bool isForSet
 #else
   err_code = ble_advdata_encode(&advdata, encoded_advdata, &len_advdata);
 #endif
+#elif defined(ZEPHYR)
+   jsiConsolePrintf("FIXME adv_data_encode\n");
+  err_code=0;
+  len_advdata=0;
 #else
   err_code = 0xDEAD;
   jsiConsolePrintf("FIXME\n");

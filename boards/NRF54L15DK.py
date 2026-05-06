@@ -26,7 +26,7 @@ info = {
  'binary_name' : 'espruino_%v_nrf54l15.hex',
  'build' : {
    'libraries' : [
-#     'BLUETOOTH'
+     'BLUETOOTH'
    ],
    'makefile' : [
    ]
@@ -86,10 +86,10 @@ def get_pins():
   # pinutils.findpin(pins, "PAxx", True)["functions"]["XL1"]=0;
   # ...
   # Make buttons and LEDs negated
-  pinutils.findpin(pins, "B13", True)["functions"]["NEGATED"]=0;
-  pinutils.findpin(pins, "B9", True)["functions"]["NEGATED"]=0;
-  pinutils.findpin(pins, "B8", True)["functions"]["NEGATED"]=0;
-  pinutils.findpin(pins, "A4", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PB13", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PB9", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PB8", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PA4", True)["functions"]["NEGATED"]=0;
 
   # everything is non-5v tolerant
   for pin in pins:
