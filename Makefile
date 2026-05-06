@@ -899,6 +899,8 @@ else ifdef ESP8266
 include make/targets/ESP8266.make
 else ifdef ESPR_EMBED
 include make/targets/EMBED.make
+else ifdef ZEPHYR
+include make/targets/ZEPHYR.make
 else # ARM/etc, so generate bin, etc ---------------------------
 include make/targets/ARM.make
 endif	    # ---------------------------------------------------

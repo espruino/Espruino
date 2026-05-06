@@ -244,6 +244,8 @@ elif board.chip["family"]=="SAMD":
   codeOut('#include "targetlibs/samd/include/due_sam3x.init.h"')
 elif board.chip["family"]=="EMBED":
   board.chip["class"]="EMBED"
+elif board.chip["family"]=="ZEPHYR":
+  board.chip["class"]="ZEPHYR"  
 else:
   die('Unknown chip family '+board.chip["family"])
 

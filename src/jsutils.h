@@ -377,6 +377,9 @@ typedef int64_t JsSysTime;
 
 /// Put before functions that we always want inlined
 #if defined(__GNUC__) && !defined(__clang__)
+ #if defined(ZEPHYR)
+   #undef ALWAYS_INLINE // zephyr provides its own incompatible macro
+ #endif
  #if defined(LINK_TIME_OPTIMISATION) && !defined(SAVE_ON_FLASH) && !defined(DEBUG)
   #define ALWAYS_INLINE __attribute__ ((gnu_inline)) __attribute__((always_inline)) inline
  #else
