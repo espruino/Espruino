@@ -429,8 +429,11 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
   while (searchMin <= searchMax) {
     int idx = (searchMin+searchMax) >> 1;
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];
-    unsigned short strOffset = READ_FLASH_UINT16(&sym->strOffset);
-    int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[strOffset]);
+#ifndef ESP8266 // normal method that supports ESPR_PACKED_SYMPTR
+    int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[JSWSYMPTR_OFFSET(sym)]);
+#else // ESP8266 could be aligned so must be read with READ_FLASH_UINT16
+    int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[READ_FLASH_UINT16(&sym->strOffset)]);
+#endif
     if (cmp==0) {
       unsigned short functionSpec = READ_FLASH_UINT16(&sym->functionSpec);
       if ((functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
