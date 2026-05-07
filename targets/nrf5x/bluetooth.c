@@ -325,18 +325,6 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
   /* jsble_exec_pending_common handles 'common' events between nRF52/ESP32, then
    * we handle nRF52-specific events below */
   if (!jsble_exec_pending_common(blep, data, buffer, bufferLen)) switch (blep) {
-   case BLEP_CONNECTED: {
-     assert(bufferLen == sizeof(ble_gap_addr_t));
-     ble_gap_addr_t *peer_addr = (ble_gap_addr_t*)buffer;
-     bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", bleAddrToStr(*peer_addr));
-     jshHadEvent();
-     break;
-   }
-   case BLEP_DISCONNECTED: {
-     JsVar *reason = jsvNewFromInteger(data);
-     bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
-     break;
-   }
    case BLEP_ADVERTISING_START: {
      if (bleStatus & BLE_IS_ADVERTISING) jsble_advertising_stop(); // if we were advertising, stop
      jsble_advertising_start(); // start advertising - we ignore the return code here

@@ -71,7 +71,7 @@ JsVar *bleUUIDToStr(ble_uuid_t uuid) {
   assert(dataLen==16); // it should always be 16 as we checked above
   return bleUUID128ToStr(&data[0]);
 #else
-  return bleUUID128ToStr(&uuid.uuid128);
+  return bleUUID128ToStr(&uuid.uuid128[0]);
 #endif
 }
 
@@ -411,6 +411,20 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
     jsvUnLock(v);
     break;
   }
+#ifndef ESP32
+   case BLEP_CONNECTED: {
+     assert(bufferLen == sizeof(ble_gap_addr_t));
+     ble_gap_addr_t *peer_addr = (ble_gap_addr_t*)buffer;
+     bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", bleAddrToStr(*peer_addr));
+     jshHadEvent();
+     break;
+   }
+   case BLEP_DISCONNECTED: {
+     JsVar *reason = jsvNewFromInteger(data);
+     bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
+     break;
+   }
+#endif
   case BLEP_ADV_REPORT: {
     BLEAdvReportData *p_adv = (BLEAdvReportData *)buffer;
     size_t len = sizeof(BLEAdvReportData) + p_adv->dlen - sizeof(p_adv->data);

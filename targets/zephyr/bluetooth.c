@@ -26,10 +26,9 @@
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/hci.h>
+#include <zephyr/settings/settings.h>
 
 #include <bluetooth/services/nus.h>
-
-#include <zephyr/settings/settings.h>
 
 #include "jswrap_bluetooth.h"
 #include "bluetooth.h"
@@ -49,7 +48,7 @@ volatile BLEStatus bleStatus;
 ble_uuid_t bleUUIDFilter;
 uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
 
-volatile uint16_t m_peripheral_conn_handle;    /**< Handle of the current connection. */
+volatile uint16_t m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID;    /**< Handle of the current connection. */
 volatile uint16_t m_central_conn_handles[1]; /**< Handle of central mode connection */
 
 static struct bt_conn *current_conn[1];
@@ -63,21 +62,68 @@ static const struct bt_data sd[] = {
 	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_VAL),
 };
 
+// Queue NUS transmission from data in our buffer
+void nus_transmit_string() {
+  /// Array of data waiting to be sent over Bluetooth NUS
+  uint8_t nusTxBuf[BLE_NUS_MAX_DATA_LEN];
+  /// Number of bytes ready to send inside nusTxBuf
+  uint16_t nuxTxBufLength = 0;
+
+  if (!jsble_has_peripheral_connection() ||
+      !(bleStatus & BLE_NUS_INITED) ||
+      (bleStatus & BLE_IS_SLEEPING)) {
+    // If no connection, drain the output buffer
+    nuxTxBufLength = 0;
+    jshTransmitClearDevice(EV_BLUETOOTH);
+    return;
+  }
+
+  if (!(bleStatus & BLE_IS_SENDING_HID)) { // if NUS is idle, fill the buffer
+    int max_data_len = BLE_NUS_MAX_DATA_LEN; // fixme: keep track of length w. m_peripheral_effective_mtu
+
+    if (nuxTxBufLength < max_data_len) {
+      int ch = jshGetCharToTransmit(EV_BLUETOOTH);
+      while (ch>=0) {
+        nusTxBuf[nuxTxBufLength++] = ch;
+        if (nuxTxBufLength>=max_data_len) break;
+        ch = jshGetCharToTransmit(EV_BLUETOOTH);
+      }
+    }
+    if (nuxTxBufLength) {
+     bleStatus |= BLE_IS_SENDING_HID;
+      int err = bt_nus_send(NULL, nusTxBuf, nuxTxBufLength);
+      nuxTxBufLength = 0;
+      // FIXME: what happens if we sent too much at once? what error do we get?
+      if (jsble_check_error(err)) {
+        bleStatus &= ~BLE_IS_SENDING_HID; // error so not busy, try again
+      }
+    }
+  }
+}
+ble_gap_addr_t zephyrAddrToEspruino(bt_addr_le_t *addr) {
+  ble_gap_addr_t a;
+  memcpy(a.addr, addr->a.val, 6);
+  a.addr_type = addr->type;
+  return a;
+}
+
 // ------------------------------------------------------------------------ Callbacks
 static void connected(struct bt_conn *conn, uint8_t err)
 {
-	char addr[BT_ADDR_LE_STR_LEN];
-
 	if (err) {
 		LOG_ERR("Connection failed, err 0x%02x %s", err, bt_hci_err_to_str(err));
 		return;
 	}
 
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-	LOG_INF("Connected %s", addr);
-
 	current_conn[0] = bt_conn_ref(conn);
   m_peripheral_conn_handle = 1; // fixme
+  bleStatus &= ~BLE_IS_SENDING_HID;
+  if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED)) {
+    jsiClearInputLine(false); // clear the input line on connect
+    jsiSetConsoleDevice(EV_BLUETOOTH, false);
+  }
+  ble_gap_addr_t addr = zephyrAddrToEspruino(bt_conn_get_dst(conn));
+  jsble_queue_pending_buf(BLEP_CONNECTED, 0, (char*)&addr, sizeof(ble_gap_addr_t));
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
@@ -93,11 +139,14 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		auth_conn = NULL;
 	}
 
-  m_peripheral_conn_handle = 0; // fixme
+  m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID; // fixme
 	if (current_conn[0]) {
 		bt_conn_unref(current_conn[0]);
 		current_conn[0] = NULL;
 	}
+  // by calling nus_transmit_string here without a connection, we clear the Bluetooth output buffer
+  nus_transmit_string();
+  jsble_queue_pending(BLEP_DISCONNECTED, reason);
 }
 
 static void recycled_cb(void)
@@ -179,18 +228,16 @@ static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
 		bt_security_err_to_str(reason));
 }
 
-static void nus_receive_cb(struct bt_conn *conn, const uint8_t *const data,
-			  uint16_t len)
-{
-	int err;
-	char addr[BT_ADDR_LE_STR_LEN] = {0};
 
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, ARRAY_SIZE(addr));
-
-	LOG_INF("Received data from: %s", addr);
-
+static void nus_received_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len) {
 	jshPushIOCharEvents(EV_BLUETOOTH, data, len);
+  jshHadEvent();
 }
+static void nus_sent_cb(struct bt_conn *conn) {
+  bleStatus &= ~BLE_IS_SENDING_HID;
+  nus_transmit_string();
+}
+
 // ----------------------------------------------------------------------
 BT_CONN_CB_DEFINE(conn_callbacks) = {
 	.connected        = connected,
@@ -210,8 +257,8 @@ static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
 	.pairing_failed = pairing_failed
 };
 static struct bt_nus_cb nus_cb = {
-	.received = nus_receive_cb,
-//  	void (*sent)(struct bt_conn *conn); // FIXME
+	.received = nus_received_cb,
+  .sent = nus_sent_cb,
 //	void (*send_enabled)(enum bt_nus_send_status status);
 };
 // ----------------------------------------------------------------------
@@ -232,9 +279,7 @@ void jsble_init(){
     return 0;
   }
   err = bt_enable(NULL);
-	if (err) {
-		error();
-	}
+	if (jsble_check_error(err)) return;
   LOG_INF("Bluetooth initialized");
 
 	//k_sem_give(&ble_init_ok);
@@ -248,8 +293,9 @@ void jsble_init(){
 		LOG_ERR("Failed to initialize UART service (err: %d)", err);
 		return 0;
 	}
+  bleStatus |= BLE_NUS_INITED;
 
-	advertising_start();
+	jsble_advertising_start();
 }
 /** Completely deinitialise the BLE stack. Return true on success */
 bool jsble_kill(){
@@ -277,7 +323,7 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
   /* jsble_exec_pending_common handles 'common' events between nRF52/ESP32, then
    * we handle nRF52-specific events below */
   if (!jsble_exec_pending_common(blep, data, buffer, bufferLen)) switch (blep) {
-   // ESP32 specific handlers go here ...
+    // ZEPHYR specific handlers go here ...
    default:
      jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
   }
@@ -294,6 +340,7 @@ void jsble_restart_softdevice(JsVar *jsFunction){
 uint32_t jsble_advertising_start() {
   // nordic demo did k_work_submit(&adv_work); here - why?
   int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
+  jsiConsolePrintf("jsble_advertising_start %d\n",err);
   jsble_check_error(err);
   return err;
 }

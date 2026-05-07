@@ -21,6 +21,7 @@
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "bluetooth.h"
 
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/uart.h>
@@ -76,8 +77,10 @@ void jshInit() {
   uart_irq_callback_set(serial1_dev, serial_cb);
   // 2. Enable the RX interrupt
   uart_irq_rx_enable(serial1_dev);
-
+  // set up flow control/pins/etc
   jshInitDevices();
+  // Bluetooth!
+  jsble_init();
 }
 
 void jshReset() {
@@ -225,6 +228,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 void jshUSARTKick(IOEventFlags device) {
   if (device == EV_SERIAL1) {
     uart_irq_tx_enable(serial1_dev); // kick IRQ for transmission
+  }
+  if (device == EV_BLUETOOTH) {
+    // FIXME: should ideally do this before packet TX
+    void nus_transmit_string();
+    nus_transmit_string();
   }
 }
 
