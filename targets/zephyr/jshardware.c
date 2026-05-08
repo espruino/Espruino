@@ -22,15 +22,20 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "bluetooth.h"
+#include <time.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/rtc.h>
 
 
 #define FLASH_UNITARY_WRITE_SIZE 4
 #define FAKE_FLASH_BLOCKSIZE 4096
+
+// Variable to store the main thread's ID
+k_tid_t main_thread_id;
 
 // Get the device binding for the console UART (usually "zephyr,console")
 const struct device *serial1_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
@@ -72,6 +77,7 @@ const struct device *jshToZephyrPort(JsvPinInfoPort port) {
 // ----------------------------------------------------------------------------
 
 void jshInit() {
+  main_thread_id = k_current_get();
   if (!device_is_ready(serial1_dev)) return;
   // 1. Set the callback function
   uart_irq_callback_set(serial1_dev, serial_cb);
@@ -111,6 +117,11 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 
 // ----------------------------------------------------------------------------
 
+void jshHadEvent() {
+  jshHadEventDuringSleep = true;
+  k_wakeup(main_thread_id);
+}
+
 void jshInterruptOff() {
 }
 
@@ -119,10 +130,11 @@ void jshInterruptOn() {
 
 /// Are we currently in an interrupt?
 bool jshIsInInterrupt() {
-  return false; // or check if we're in the IO handling thread?
+  return k_is_in_isr(); // or check if we're in the IO handling thread?
 }
 
 void jshDelayMicroseconds(int microsec) {
+  k_usleep(microsec);
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
@@ -179,10 +191,16 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 }
 
 JsSysTime jshGetSystemTime() {
-  return 0; // FIXME jshGetTimeFromMilliseconds());
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  return (ts.tv_sec*1000000UL) + (ts.tv_nsec/1000);
 }
 
 void jshSetSystemTime(JsSysTime time) {
+  struct timespec ts;
+  ts.tv_sec = time / 1000000;
+  ts.tv_nsec = (time % 1000000) * 1000;
+  clock_settime(CLOCK_REALTIME, &ts);
 }
 
 // ----------------------------------------------------------------------------
@@ -273,9 +291,10 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
-  JsVarFloat t = jshGetMillisecondsFromTime(timeUntilWake);
+  JsVarFloat t = jshGetMillisecondsFromTime(timeUntilWake)*1000;
   if (t>0x7FFFFFFF) t=0x7FFFFFFF;
-  return false;
+  k_usleep((uint32_t)t);
+  return true;
 }
 
 void jshUtilTimerDisable() {
