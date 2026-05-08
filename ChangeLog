@@ -9,6 +9,8 @@
             Bangle.js: Ensure we still set a theme when in Recovery mode
             Bangle.js2: Use faster branchless bayer dithering code
             Bangle.js: Ensure Bangle.setLCDMode works on Bangle.js 2 (even if it does nothing)
+            ESP8266: re-add code for unaligned reads in symbol tables to allow ESP8266 build to work again (fix #2687)
+            Bangle.js: Check temperature <30'C before setting 'not worn' status from low movement (https://github.com/espruino/BangleApps/pull/4204)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes
