@@ -1755,10 +1755,10 @@ void peripheralPollHandler() {
   JsVarFloat msecs = jshGetMillisecondsFromTime(time);
   uint8_t healthIndex = (uint8_t)(msecs/HEALTH_INTERVAL);
   if (healthIndex != healthCurrent.index) { // we did
-    // quick check - if we don't know what's happening and the Bangle isn't moving, assume it's not worn
+    // quick check - if we don't know what's happening and the Bangle isn't moving and not body temp, assume it's not worn
     if (healthCurrent.activity == HSA_UNKNOWN) {
       uint32_t movement = healthCurrent.movement / healthCurrent.movementSamples;
-      if (movement < 120) healthCurrent.activity = HSA_NOT_WORN;
+      if (movement < 120 && jshReadTemperature()<30) healthCurrent.activity = HSA_NOT_WORN;
     }
     if (healthDaily.activity < healthCurrent.activity)
       healthDaily.activity = healthCurrent.activity;
