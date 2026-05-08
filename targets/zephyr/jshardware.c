@@ -29,6 +29,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/rtc.h>
+#include <zephyr/drivers/flash.h>
 
 
 #define FLASH_UNITARY_WRITE_SIZE 4
@@ -39,6 +40,7 @@ k_tid_t main_thread_id;
 
 // Get the device binding for the console UART (usually "zephyr,console")
 const struct device *serial1_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+const struct device *flash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 
 // ----------------------------------------------------------------------------
 
@@ -334,12 +336,18 @@ JsVar *jshFlashGetFree() {
   return jsFreeFlash;
 }
 void jshFlashErasePage(uint32_t addr) {
+  int err = flash_erase(flash_dev, addr, FAKE_FLASH_BLOCKSIZE);
+  if (err) jsWarn("flash_erase err %d",err);
 }
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   if (addr<FLASH_START) return;
+  int err = flash_read(flash_dev, addr, buf, len);
+  if (err) jsWarn("flash_read err %d",err);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   if (addr<FLASH_START) return;
+  int err = flash_write(flash_dev, addr, buf, len);
+  if (err) jsWarn("flash_write err %d",err);
 }
 
 // Just pass data through, since we can access flash at the same address we wrote it
