@@ -280,7 +280,7 @@ void jsble_init(){
   }
   err = bt_enable(NULL);
 	if (jsble_check_error(err)) return;
-  LOG_INF("Bluetooth initialized");
+  jsiConsolePrintf("Bluetooth initialized\n");
 
 	//k_sem_give(&ble_init_ok);
 

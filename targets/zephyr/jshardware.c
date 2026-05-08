@@ -30,10 +30,44 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/rtc.h>
 #include <zephyr/drivers/flash.h>
+#include <jesd216.h> # ext flash
 
 
 #define FLASH_UNITARY_WRITE_SIZE 4
 #define FAKE_FLASH_BLOCKSIZE 4096
+
+#if DT_HAS_COMPAT_STATUS_OKAY(jedec_spi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(jedec_spi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(jedec_mspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(jedec_mspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(nordic_qspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(nordic_qspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(st_stm32_qspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(st_stm32_qspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(st_stm32_ospi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(st_stm32_ospi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(st_stm32_xspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(st_stm32_xspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(nxp_s32_qspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(nxp_s32_qspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(adi_max32_spixf_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(adi_max32_spixf_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(nxp_imx_flexspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(nxp_imx_flexspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(renesas_ra_ospi_b_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(renesas_ra_ospi_b_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(renesas_ra_qspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(renesas_ra_qspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(renesas_rz_qspi_xspi)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(renesas_rz_qspi_xspi)
+#elif DT_HAS_COMPAT_STATUS_OKAY(renesas_rz_qspi_spibsc)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(renesas_rz_qspi_spibsc)
+#elif DT_HAS_COMPAT_STATUS_OKAY(sifli_sf32lb_mpi_qspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(sifli_sf32lb_mpi_qspi_nor)
+#else
+#error Unsupported flash driver
+#define FLASH_NODE DT_INVALID_NODE
+#endif
 
 // Variable to store the main thread's ID
 k_tid_t main_thread_id;
@@ -41,6 +75,7 @@ k_tid_t main_thread_id;
 // Get the device binding for the console UART (usually "zephyr,console")
 const struct device *serial1_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 const struct device *flash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
+const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
 
 // ----------------------------------------------------------------------------
 
@@ -87,6 +122,19 @@ void jshInit() {
   uart_irq_rx_enable(serial1_dev);
   // set up flow control/pins/etc
   jshInitDevices();
+  // Ext flash
+	if (!device_is_ready(extflash_dev)) {
+		printf("%s: device not ready\n", extflash_dev->name);
+		return;
+	}
+  uint8_t id[3];
+	int err = flash_read_jedec_id(extflash_dev, id);
+	if (err == 0) {
+		printf("jedec-id = [%02x %02x %02x];\n",
+		       id[0], id[1], id[2]);
+	} else {
+		printf("JEDEC ID read failed: %d\n", err);
+	}
   // Bluetooth!
   jsble_init();
 }
@@ -335,18 +383,38 @@ JsVar *jshFlashGetFree() {
   JsVar *jsFreeFlash = jsvNewEmptyArray();
   return jsFreeFlash;
 }
+const struct device *jshFlashGetDevice(uint32_t *addr) {
+  const struct device *flash = flash_dev;
+  if (*addr >= SPIFLASH_BASE && *addr < (SPIFLASH_BASE+SPIFLASH_LENGTH)) {
+    *addr -= SPIFLASH_BASE;
+    flash = extflash_dev;
+  }
+  return flash;
+}
+
 void jshFlashErasePage(uint32_t addr) {
-  int err = flash_erase(flash_dev, addr, FAKE_FLASH_BLOCKSIZE);
+  const struct device *flash = jshFlashGetDevice(&addr);
+  if (!flash) return;
+  int err = flash_erase(flash, addr, FAKE_FLASH_BLOCKSIZE);
   if (err) jsWarn("flash_erase err %d",err);
 }
+bool jshFlashErasePages(uint32_t addr, uint32_t byteLength) {
+  const struct device *flash = jshFlashGetDevice(&addr);
+  if (!flash) return false;
+  int err = flash_erase(flash, addr, byteLength);
+  if (err) jsWarn("flash_erase err %d",err);
+  return err!=0;
+}
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
-  if (addr<FLASH_START) return;
-  int err = flash_read(flash_dev, addr, buf, len);
+  const struct device *flash = jshFlashGetDevice(&addr);
+  if (!flash) return;
+  int err = flash_read(flash, addr, buf, len);
   if (err) jsWarn("flash_read err %d",err);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
-  if (addr<FLASH_START) return;
-  int err = flash_write(flash_dev, addr, buf, len);
+  const struct device *flash = jshFlashGetDevice(&addr);
+  if (!flash) return;
+  int err = flash_write(flash, addr, buf, len);
   if (err) jsWarn("flash_write err %d",err);
 }
 
@@ -354,6 +422,9 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 size_t jshFlashGetMemMapAddress(size_t addr) {
   // don't allow flash to be memory mapped
   if (addr>=FLASH_START && addr<FLASH_START+FLASH_TOTAL)
+    return 0;
+  // don't allow ext flash to be memory mapped until we get XIP enabled (how??)
+  if (addr>=SPIFLASH_BASE && addr<SPIFLASH_BASE+SPIFLASH_LENGTH)
     return 0;
   return addr;
 }

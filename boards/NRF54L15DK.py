@@ -26,7 +26,8 @@ info = {
  'binary_name' : 'espruino_%v_nrf54l15.hex',
  'build' : {
    'libraries' : [
-     'BLUETOOTH'
+     'BLUETOOTH',
+     'JIT' # JIT compiler enabled
    ],
    'makefile' : [
    ]
@@ -47,10 +48,12 @@ chip = {
   'adc' : 0,
   'dac' : 0,
   'saved_code' : {
-    'address' : 1024*1024, 
+    #'address' : 1024*1024, 
     'page_size' : 4096,
-    'pages' : 128,
-    'flash_available' : 1024
+    #'pages' : 128,
+    'flash_available' : 1024,
+    'address' : 0x60000000, # put this in external spiflash (see below)
+    'pages' : 2048, # Entire 8MB of external flash
   },
 };
 
@@ -63,6 +66,10 @@ devices = {
   'LED2' : { 'pin' : 'B10' },
   'LED3' : { 'pin' : 'C7' }, 
   'LED4' : { 'pin' : 'B14' },
+  'SPIFLASH' : {
+            'size' : 4096*2048, # 8MB
+            'memmap_base' : 0x60000000 # map into the address space (in software)
+          }
 };
 
 # left-right, or top-bottom order
