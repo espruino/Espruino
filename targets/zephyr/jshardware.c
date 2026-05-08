@@ -30,7 +30,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/rtc.h>
 #include <zephyr/drivers/flash.h>
-#include <jesd216.h> # ext flash
+#include <jesd216.h> // ext flash
 
 
 #define FLASH_UNITARY_WRITE_SIZE 4
