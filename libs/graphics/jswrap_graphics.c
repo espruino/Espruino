@@ -5003,7 +5003,7 @@ JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "filter",
-  "#if" : "defined(BANGLEJS2) || defined(LINUX)",
+  "#if" : "defined(BANGLEJS2) || defined(BANGLEJS3) || defined(LINUX)",
   "generate" : "jswrap_graphics_filter",
   "params" : [
     ["filter","JsVar","An array of filter params between -128 and 127 (2D arrays should be unwrapped)"],
