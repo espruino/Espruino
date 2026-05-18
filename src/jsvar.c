@@ -1238,6 +1238,10 @@ JsVar *jsvNewNativeString(char *ptr, size_t len) {
     len = JSV_NATIVE_STR_MAX_LENGTH;
   str->varData.nativeStr.ptr = ptr;
   str->varData.nativeStr.len = (JsVarDataNativeStrLength)len;
+  #ifdef FLASH_START
+  if (ptr >= FLASH_START && (ptr < FLASH_START+FLASH_TOTAL))
+    str->flags |= JSV_CONSTANT; // mark as constant so we can complain if someone tries to write (#1883)
+  #endif
   return str;
 }
 
@@ -1261,6 +1265,8 @@ JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero) {
   assert(arr->varData.arraybuffer.byteOffset == 0);
   if (lengthOrZero==0) lengthOrZero = (unsigned int)jsvGetStringLength(str);
   arr->varData.arraybuffer.length = (JsVarArrayBufferLength)lengthOrZero;
+  if (jsvIsConstant(str)) // mark as constant so we can complain if someone tries to write (#1883)
+    arr->flags |= JSV_CONSTANT;
   return arr;
 }
 
@@ -2405,7 +2411,10 @@ void jsvReplaceWith(JsVar *dst, JsVar *src) {
   if (jsvIsArrayBufferName(dst)) {
     size_t idx = (size_t)jsvGetInteger(dst);
     JsVar *arrayBuffer = jsvLock(jsvGetFirstChild(dst));
-    jsvArrayBufferSet(arrayBuffer, idx, src);
+    if (jsvIsConstant(arrayBuffer))
+      jsExceptionHere(JSET_TYPEERROR, "Assignment to a constant");
+    else
+      jsvArrayBufferSet(arrayBuffer, idx, src);
     jsvUnLock(arrayBuffer);
     return;
   }

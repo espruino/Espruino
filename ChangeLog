@@ -11,6 +11,7 @@
             Bangle.js: Ensure Bangle.setLCDMode works on Bangle.js 2 (even if it does nothing)
             ESP8266: re-add code for unaligned reads in symbol tables to allow ESP8266 build to work again (fix #2687)
             Bangle.js: Check temperature <30'C before setting 'not worn' status from low movement (https://github.com/espruino/BangleApps/pull/4204)
+            Use 'const' flag for NativeStrings in Flash, so we can throw when trying to write to a read-only string (fix #1883)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

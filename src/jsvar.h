@@ -95,7 +95,7 @@ typedef enum {
 
     JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1, // probably this is 63
 
-    JSV_CONSTANT    = JSV_VARTYPEMASK+1, ///< to specify if this variable is a constant or not. Only used for NAMEs
+    JSV_CONSTANT    = JSV_VARTYPEMASK+1, ///< to specify if this variable is a constant or not. Used for NAMEs, but also NativeStrings in Flash and ArrayBuffers that reference those
     JSV_NATIVE      = JSV_CONSTANT<<1, ///< to specify if this is a function parameter
     JSV_GARBAGE_COLLECT = JSV_NATIVE<<1, ///< When garbage collecting, this flag is true IF we should GC!
     JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
