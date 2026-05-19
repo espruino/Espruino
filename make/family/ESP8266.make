@@ -26,8 +26,10 @@ ET_FS               ?= 4MB-c1   # 32Mbit (4MB) flash size in esptool flash comma
 ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin
 ET_DEFAULTS         ?= 0x3FC000 # where to flash esp_init_data_default.bin to default SDK settings
-CFLAGS              += -mforce-l32
-else ifdef 2MB
+CFLAGS              += -mforce-l32 # fix for unaligned reads
+else ifdef FLASH_2MB
+DEFINES             += -DFLASH_2MB
+ESP_COMBINED_SIZE   = 2048
 ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 ESP_FLASH_SIZE      ?= 3        # 3->2MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
@@ -36,15 +38,20 @@ ET_FS               ?= 16m      # 16Mbit (2MB) flash size in esptool flash comma
 ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin
 ET_DEFAULTS         ?= 0x1FC000 # where to flash esp_init_data_default.bin to default SDK settings
-else ifdef 1MB
-ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
-ESP_FLASH_SIZE      ?= 2        # 2->1MB (512KB+512KB)
+CFLAGS              += -mforce-l32 # fix for unaligned reads
+else ifdef FLASH_1MB
+DEFINES             += -DFLASH_1MB
+ESP_COMBINED_SIZE   ?= 1024
+ESP_FLASH_MAX       ?= 831488   # max bin file: 812KB
+ESP_FLASH_SIZE      ?= 2        # 2->1MB (1024)
 ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
-ET_FS               ?=  8m      # 8Mbit (1MB) flash size in esptool flash command
+ET_FS               ?= 1MB      # 8Mbit (1MB) flash size in esptool flash command
 ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
+ET_FM               ?= dout     # Valid values are keep, qio, qout, dio, dout
 ET_BLANK            ?= 0xFE000  # where to flash blank.bin
 ET_DEFAULTS         ?= 0xFC000  # where to flash esp_init_data_default.bin to default SDK settings
+CFLAGS              ?+= -mforce-l32 # fix for unaligned reads
 else # 512KB
 ESP_COMBINED_SIZE   = 512
 ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
@@ -57,21 +64,6 @@ ET_BLANK            ?= 0x7E000  # where to flash blank.bin
 ET_DEFAULTS         ?= 0x7C000  # where to flash esp_init_data_default.bin to default SDK settings
 endif
 
-
-ifdef FLASH_1MB
-ESP_COMBINED_SIZE   = 1024
-ESP_FLASH_MAX       = 831488    # max bin file: 812KB
-ESP_FLASH_SIZE      = 2         # 2->1MB (1024)
-ESP_FLASH_MODE      = 0         # 0->QIO, 2->DIO
-ESP_FLASH_FREQ_DIV  = 15        # 15->80Mhz
-ET_FS               = 1MB       # 8Mbit (1MB) flash size in esptool flash command
-ET_FF               = 80m       # 80Mhz flash speed in esptool flash command
-ET_FM               = dout      # Valid values are keep, qio, qout, dio, dout
-ET_BLANK            = 0xFE000   # where to flash blank.bin
-ET_DEFAULTS         = 0xFC000   # where to flash esp_init_data_default.bin to default SDK settings
-DEFINES             += -DFLASH_1MB
-CFLAGS              += -mforce-l32
-endif
 
 FLASH_BAUD          ?= 115200 # The flash baud rate
 
