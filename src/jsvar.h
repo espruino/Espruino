@@ -717,6 +717,8 @@ JsVar *jsvObjectGetChildI(JsVar *obj, const char *name);
 bool jsvObjectGetBoolChild(JsVar *obj, const char *name);
 /// Same as jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name))
 JsVarInt jsvObjectGetIntegerChild(JsVar *obj, const char *name);
+/// Same as jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name)) but with a default value if the child doesn't exist
+JsVarInt jsvObjectGetIntegerChildOr(JsVar *obj, const char *name, JsVarInt defaultValue);
 /// Same as jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(obj, name))
 JsVarFloat jsvObjectGetFloatChild(JsVar *obj, const char *name);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)

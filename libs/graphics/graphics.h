@@ -152,6 +152,8 @@ typedef struct {
   JsGraphicsThemeColor bg2; ///< Accented Background
   JsGraphicsThemeColor fgH; ///< Foreground when highlighted
   JsGraphicsThemeColor bgH; ///< Background when highlighted
+  JsGraphicsThemeColor fgW; ///< Widget foreground colour
+  JsGraphicsThemeColor bgW; ///< Widget background colour
   bool dark; ///< Is background dark (eg. foreground should be a light colour)
 } PACKED_FLAGS JsGraphicsTheme;
 

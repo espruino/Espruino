@@ -608,6 +608,8 @@ void jswrap_graphics_init() {
   graphicsTheme.bg2 = (JsGraphicsThemeColor)0;
   graphicsTheme.fgH = (JsGraphicsThemeColor)-1;
   graphicsTheme.bgH = (JsGraphicsThemeColor)0;
+  graphicsTheme.fgW = (JsGraphicsThemeColor)-1;
+  graphicsTheme.bgW = (JsGraphicsThemeColor)0;
   graphicsTheme.dark = true;
 #endif
 }
@@ -996,6 +998,7 @@ int jswrap_graphics_getBPP(JsVar *parent) {
   "class" : "Graphics",
   "name" : "reset",
   "generate" : "jswrap_graphics_reset",
+  "params" : [["usage","JsVar","[2v30+] Optional: What we're resetting graphics for. See below. ]"]],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
@@ -1005,8 +1008,15 @@ have been used when Graphics was initialised.
 **Note:** The current graphics theme is not reset when `g.reset()` is called. To reset that
 you must store the value from `g.getTheme()` before calling `g.setTheme()`, and manually
 set it back afterwards.
+
+In 2v30+ the `usage` parameter can be used to specify what we're resetting graphics for.
+This is mainly for use with Bangle.js. As introduced, the only allowed options are:
+
+* `undefined` (the default) - reset everything, and set fg/bg to standard theme values
+* `"widget"` - as normal, but set fg/bg to the theme values for widgets
+* Any other value will be treated as `undefined`
 */
-JsVar *jswrap_graphics_reset(JsVar *parent) {
+JsVar *jswrap_graphics_reset(JsVar *parent, JsVar *usage) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 #ifndef SAVE_ON_FLASH
   // If we had a custom font, remove it.
@@ -1014,7 +1024,15 @@ JsVar *jswrap_graphics_reset(JsVar *parent) {
 #endif
   // properly reset state
   graphicsStructResetState(&gfx);
-  graphicsSetVar(&gfx); // gfx data changed because modified area
+#ifdef GRAPHICS_THEME
+  if (jsvIsString(usage)) { // special states for specific usages
+    if (jsvIsStringEqual(usage, "widget")) {
+      gfx.data.fgColor = graphicsTheme.fgW;
+      gfx.data.bgColor = graphicsTheme.bgW;
+    }
+  }
+#endif
+  graphicsSetVar(&gfx); // gfx data changed because modified state
   // reset font, which will unreference any custom fonts stored inside the instance
   return jswrap_graphics_setFontSizeX(parent, 1+JSGRAPHICS_FONTSIZE_4X6, false);
 }
@@ -1033,7 +1051,7 @@ JsVar *jswrap_graphics_reset(JsVar *parent) {
 Clear the LCD with the Background Color
 */
 JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState) {
-  if (resetState) jsvUnLock(jswrap_graphics_reset(parent));
+  if (resetState) jsvUnLock(jswrap_graphics_reset(parent, NULL));
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsClear(&gfx);
   graphicsSetVar(&gfx); // gfx data changed because modified area
@@ -4096,10 +4114,8 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *options) {
     imgType = jsvObjectGetChildIfExists(options, "type");
     ox = jsvObjectGetIntegerChild(options, "x"); // default 0
     oy = jsvObjectGetIntegerChild(options, "y"); // default 0
-    int i = jsvObjectGetIntegerChild(options, "w");
-    if (i) w = i;
-    i = jsvObjectGetIntegerChild(options, "h");
-    if (i) h = i;
+    w = jsvObjectGetIntegerChildOr(options, "w", w);
+    h = jsvObjectGetIntegerChildOr(options, "h", h);
   } else imgType = jsvLockAgainSafe(options);
   if (jsvIsUndefined(imgType) || jsvIsStringEqual(imgType,"object"))
     isObject = true;
@@ -4882,6 +4898,8 @@ type Theme = {
   bg2: number;
   fgH: number;
   bgH: number;
+  fgW: number;
+  bgW: number;
   dark: boolean;
 };
 */
@@ -4904,6 +4922,8 @@ Returns an object of the form:
   bg2 : 0x0007,  // accented background colour
   fgH : 0xFFFF,  // highlighted foreground colour
   bgH : 0x02F7,  // highlighted background colour
+  fgW : 0xFFFF,  // [2v30+] widget foreground colour
+  bgW : 0x02F7,  // [2v30+] widget background colour
   dark : true,  // Is background dark (e.g. foreground should be a light colour)
 }
 ```
@@ -4927,6 +4947,8 @@ JsVar *jswrap_graphics_theme(JsVar *parent) {
   jsvObjectSetIntChild(o,"bg2", (JsVarInt)(uint32_t)graphicsTheme.bg2);
   jsvObjectSetIntChild(o,"fgH", (JsVarInt)(uint32_t)graphicsTheme.fgH);
   jsvObjectSetIntChild(o,"bgH", (JsVarInt)(uint32_t)graphicsTheme.bgH);
+  jsvObjectSetIntChild(o,"fgW", (JsVarInt)(uint32_t)graphicsTheme.fgW);
+  jsvObjectSetIntChild(o,"bgW", (JsVarInt)(uint32_t)graphicsTheme.bgW);
   jsvObjectSetBoolChild(o,"dark", (JsVarInt)(uint32_t)graphicsTheme.dark);
   return o;
 #else
@@ -4990,6 +5012,16 @@ JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme) {
     v = jsvObjectGetChildIfExists(theme, "bgH");
     if (v) {
       graphicsTheme.bgH = jswrap_graphics_toColor(parent, v,0,0);
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChildIfExists(theme, "fgW");
+    if (v) {
+      graphicsTheme.fgW = jswrap_graphics_toColor(parent, v,0,0);
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChildIfExists(theme, "bgW");
+    if (v) {
+      graphicsTheme.bgW = jswrap_graphics_toColor(parent, v,0,0);
       jsvUnLock(v);
     }
     v = jsvObjectGetChildIfExists(theme, "dark");

@@ -27,8 +27,8 @@
     wd.y = p.y;
     p.x += wd.width*(1-2*p.r);
   }
-  g.reset();
+  g.reset("widget");
   if (pos.bl.c || pos.br.c) g.clearRect(0,pos.bl.y,w-1,h-1);
-  if (pos.tl.c || pos.tr.c) g.setBgColor(g.theme.bgH).clearRect(0,0,w-1,pos.tl.y+24);
+  if (pos.tl.c || pos.tr.c) g.clearRect(0,0,w-1,pos.tl.y+24);
   try { for (wd of WIDGETS) wd.draw(wd); } catch(e) {print(e);}
 })

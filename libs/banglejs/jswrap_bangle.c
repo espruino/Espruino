@@ -3749,6 +3749,9 @@ NO_INLINE void jswrap_banglejs_setTheme() {
   graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(0,0,63);
   graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(255,255,255);
   graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,95,190);
+  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(0,0,0);
+
   graphicsTheme.dark = true;
 #else // still 16 bit, we just want it inverted
   graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(0,0,0);
@@ -3757,6 +3760,8 @@ NO_INLINE void jswrap_banglejs_setTheme() {
   graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(191,255,255);
   graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(0,0,0);
   graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,255,255);
+  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(255,255,255);
   graphicsTheme.dark = false;
 #endif
 }
@@ -4012,13 +4017,15 @@ NO_INLINE void jswrap_banglejs_init() {
 
     // Load themes from the settings.json file
     v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"theme") : 0;
-    if (jsvIsObject(v)) {
-      graphicsTheme.fg = jsvObjectGetIntegerChild(v,"fg");
-      graphicsTheme.bg = jsvObjectGetIntegerChild(v,"bg");
-      graphicsTheme.fg2 = jsvObjectGetIntegerChild(v,"fg2");
-      graphicsTheme.bg2 = jsvObjectGetIntegerChild(v,"bg2");
-      graphicsTheme.fgH = jsvObjectGetIntegerChild(v,"fgH");
-      graphicsTheme.bgH = jsvObjectGetIntegerChild(v,"bgH");
+    if (jsvIsObject(v)) { // could use jswrap_graphics_setTheme here?
+      graphicsTheme.fg = jsvObjectGetIntegerChildOr(v,"fg",graphicsTheme.fg);
+      graphicsTheme.bg = jsvObjectGetIntegerChildOr(v,"bg",graphicsTheme.bg);
+      graphicsTheme.fg2 = jsvObjectGetIntegerChildOr(v,"fg2",graphicsTheme.fg2);
+      graphicsTheme.bg2 = jsvObjectGetIntegerChildOr(v,"bg2",graphicsTheme.bg2);
+      graphicsTheme.fgH = jsvObjectGetIntegerChildOr(v,"fgH",graphicsTheme.fgH);
+      graphicsTheme.bgH = jsvObjectGetIntegerChildOr(v,"bgH",graphicsTheme.bgH);
+      graphicsTheme.fgW = jsvObjectGetIntegerChildOr(v,"fgW",graphicsTheme.fgW);
+      graphicsTheme.bgW = jsvObjectGetIntegerChildOr(v,"bgW",graphicsTheme.bgW);
       graphicsTheme.dark = jsvObjectGetBoolChild(v,"dark");
     }
     jsvUnLock(v);
@@ -4026,10 +4033,10 @@ NO_INLINE void jswrap_banglejs_init() {
     // load touchscreen calibration
     v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"touch") : 0;
     if (jsvIsObject(v)) {
-      touchMinX = jsvObjectGetIntegerChild(v,"x1");
-      touchMinY = jsvObjectGetIntegerChild(v,"y1");
-      touchMaxX = jsvObjectGetIntegerChild(v,"x2");
-      touchMaxY = jsvObjectGetIntegerChild(v,"y2");
+      touchMinX = jsvObjectGetIntegerChildOr(v,"x1",touchMinX);
+      touchMinY = jsvObjectGetIntegerChildOr(v,"y1",touchMinY);
+      touchMaxX = jsvObjectGetIntegerChildOr(v,"x2",touchMaxX);
+      touchMaxY = jsvObjectGetIntegerChildOr(v,"y2",touchMaxY);
     }
     jsvUnLock(v);
   #endif
