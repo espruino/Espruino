@@ -3749,19 +3749,22 @@ NO_INLINE void jswrap_banglejs_setTheme() {
   graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(0,0,63);
   graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(255,255,255);
   graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,95,190);
-  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(255,255,255);
-  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(0,0,0);
-
+  graphicsTheme.fgW = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bgW = GRAPHICS_COL_RGB_TO_16(0,0,0);
   graphicsTheme.dark = true;
-#else // still 16 bit, we just want it inverted
+#else // still 16 bit, we just want it inverted (Bange.js 2+)
   graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(0,0,0);
   graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(255,255,255);
   graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(0,0,0);
   graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(191,255,255);
   graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(0,0,0);
   graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,255,255);
-  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(0,0,0);
-  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.fgW = GRAPHICS_COL_RGB_TO_16(0,0,0);
+#ifdef BANGLEJS3
+  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,255,255); // v3 - blue widget area
+#else
+  graphicsTheme.bgW = GRAPHICS_COL_RGB_TO_16(255,255,255); // v2
+#endif
   graphicsTheme.dark = false;
 #endif
 }
