@@ -3761,7 +3761,7 @@ NO_INLINE void jswrap_banglejs_setTheme() {
   graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,255,255);
   graphicsTheme.fgW = GRAPHICS_COL_RGB_TO_16(0,0,0);
 #ifdef BANGLEJS3
-  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,255,255); // v3 - blue widget area
+  graphicsTheme.bgW = GRAPHICS_COL_RGB_TO_16(0,255,255); // v3 - blue widget area
 #else
   graphicsTheme.bgW = GRAPHICS_COL_RGB_TO_16(255,255,255); // v2
 #endif
