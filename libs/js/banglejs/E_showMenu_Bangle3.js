@@ -1,9 +1,9 @@
 (function(menu){
-  var R = Bangle.appRect, H = 40, title, options = menu[""]||{};
   if (menu===undefined) {
-    g.clearRect(R);
+    g.clearRect(Bangle.appRect);
     return Bangle.setUI();
   }
+  var R = Bangle.appRect, H = 40, title, options = menu[""]||{};
   if (!options.title) options.title="Menu";
   var back = options.back||menu["< Back"],
       keys = Object.keys(menu).filter(k=>k!=="" && k!="< Back");
