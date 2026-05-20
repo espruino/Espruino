@@ -120,10 +120,20 @@ var ui = {
     }
   }
 };
+var lastRy = Bangle.appRect.y;
 Bangle.setUI(ui);
 
 var menuShowing = false;
-var R = options.rect||Bangle.appRect;
+var R = Bangle.appRect;
+/* If we had '.back' in setUI on Bangle.js 3 this can cause the
+widget bar's height to get expanded, which means rect may now be wrong.
+In this case we automatically adjust it*/
+if (options.rect) {
+  let diff = R.y-lastRy;
+  R = options.rect;
+  R.y+=diff;
+  R.h-=diff;
+}
 var Y = R.y;
 var n = Math.ceil(R.h/options.h);
 var menuScrollMin = 0|options.scrollMin;

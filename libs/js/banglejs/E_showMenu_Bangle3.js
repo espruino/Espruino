@@ -1,17 +1,12 @@
 (function(menu){
-  const H = 40;
-  var R = Bangle.appRect, top = R.y;
+  var R = Bangle.appRect, H = 40, title, options = menu[""]||{};
   if (menu===undefined) {
     g.clearRect(R);
     return Bangle.setUI();
   }
-  var options = menu[""]||{};
   if (!options.title) options.title="Menu";
-  var title = g.findFont(options.title, {w:80+Math.max(R.y,40)*2,wrap:0,max:32,min:12}); // FIXME: use sqrt to work out width?
-  title.h = Math.max(title.h, 40-top); // minimum title height
-  R.y += title.h+4; R.h -= title.h+4; // push down for title
-  var back = options.back||menu["< Back"];
-  var keys = Object.keys(menu).filter(k=>k!=="" && k!="< Back");
+  var back = options.back||menu["< Back"],
+      keys = Object.keys(menu).filter(k=>k!=="" && k!="< Back");
   keys.forEach(k => {
     var item = menu[k];
     if ("object" != typeof item) return;
@@ -21,14 +16,10 @@
   });
   // Submenu for editing menu options...
   function showSubMenu(item, titleText) {
-    var R = Bangle.appRect;
-    var title = g.findFont(titleText, {w:80+Math.max(R.y,40)*2,wrap:0,max:32,min:12}); // FIXME: use sqrt to work out width?
-  title.h = Math.max(title.h, 40-top); // minimum title height
-    R.y += title.h+4; R.h -= title.h+4; // push down for title
     /*if ("number"!=typeof item.value)
       return console.log("Unhandled item type");*/
     // title
-    showTitle(R,title);
+    R = showTitle(titleText);
     var step = item.step||1;
     if (!item.noList && item.min!==undefined && item.max!==undefined &&
         ((item.max-item.min)/step)<20) {
@@ -109,54 +100,63 @@
   var l = {
     draw : ()=>l.scroller.draw(),
     scroller : undefined
-  };
-  var scr = {
-    h : H, c : keys.length/*title*/,
-    rect : { x:0, y:R.y, x2:R.x2, y2:R.y2, w:R.w, h:R.h },
-    back : back,
-    remove : options.remove,
-    draw : (idx, r, selected) => {
-      g.setFontAlign(-1,0).setBgColor(selected?g.theme.bgH:g.theme.bg2).clearRect({x:r.x+16, y:r.y+2, w:r.w-32, h:r.h-4, r:5}).setColor(g.theme.fg2);
-      var item = menu[keys[idx]], pad = 40;
-      if ("object" == typeof item) {
-        var v = item.value;
-        if (item.format) v=item.format(v);
-        if (v!==undefined) {
-          var val = g.findFont(v, {w:r.w/2,h:r.h,wrap:1,trim:1});
-          g.setFontAlign(1,0).drawString(val.text,r.x+r.w-20,2+r.y+H/2);
-          pad += g.stringWidth(val.text);
+  }, scr;
+  function showTitle(titleText, noDraw) {
+    R = Bangle.appRect; // adding the scroller (and 'back' may have changed height of widgets)
+    let top = R.y,
+        title = g.findFont(titleText, {w:80+Math.max(R.y,40)*2,wrap:0,max:32,min:12}); // FIXME: use sqrt to work out width?
+    title.h = Math.max(title.h, 40-top); // minimum title height
+    R.y += title.h+4; R.h -= title.h+4; // push down for title
+    if (!noDraw)
+      g.reset("widget").clearRect(0,top,239,R.y-2).setFontAlign(0,1).setFont(title.font).drawString(title.text, 120, R.y-2);
+    return R;
+  }
+  function show() {
+    g.reset().clearRect(R);
+    R = showTitle(options.title);
+    scr = {
+      h : H, c : keys.length/*title*/,
+      rect : { x:0, y:R.y, x2:R.x2, y2:R.y2, w:R.w, h:R.h },
+      back : back,
+      remove : options.remove,
+      draw : (idx, r, selected) => {
+        g.setFontAlign(-1,0).setBgColor(selected?g.theme.bgH:g.theme.bg2).clearRect({x:r.x+16, y:r.y+2, w:r.w-32, h:r.h-4, r:5}).setColor(g.theme.fg2);
+        var item = menu[keys[idx]], pad = 40;
+        if ("object" == typeof item) {
+          var v = item.value;
+          if (item.format) v=item.format(v);
+          if (v!==undefined) {
+            var val = g.findFont(v, {w:r.w/2,h:r.h,wrap:1,trim:1});
+            g.setFontAlign(1,0).drawString(val.text,r.x+r.w-20,2+r.y+H/2);
+            pad += g.stringWidth(val.text);
+          }
+        } else if ("function" == typeof item) {
+          g.drawImage(/* 9x18 */atob("CRKBAGA4Hg8DwPB4HgcDg8PB4eHg8HAwAA=="), r.x+r.w-33, r.y+H/2-9);
+          pad += 16;
         }
-      } else if ("function" == typeof item) {
-        g.drawImage(/* 9x18 */atob("CRKBAGA4Hg8DwPB4HgcDg8PB4eHg8HAwAA=="), r.x+r.w-33, r.y+H/2-9);
-        pad += 16;
-      }
-      g.setFontAlign(-1,0).drawString(g.findFont((item&&item.title)??keys[idx], {w:r.w-pad,h:r.h,wrap:1,trim:1}).text, r.x+20, 2+r.y+H/2);
-    },
-    select : function(idx, touch) {
-      var item = menu[keys[idx]];
-      if ("function" == typeof item) {
-        Bangle.haptic("touch");
-        item(touch);
-      } else if ("object" == typeof item) {
-        Bangle.haptic("touch");
-        if ("number" == typeof item.value) {
-          showSubMenu(item, keys[idx]);
-        } else {
-          // if a bool, just toggle it
-          if ("boolean"==typeof item.value)
-            item.value=!item.value;
-          if (item.onchange) item.onchange(item.value, touch);
-          if (l.scroller.isActive()) l.scroller.drawItem(idx);
+        g.setFontAlign(-1,0).drawString(g.findFont((item&&item.title)??keys[idx], {w:r.w-pad,h:r.h,wrap:1,trim:1}).text, r.x+20, 2+r.y+H/2);
+      },
+      select : function(idx, touch) {
+        var item = menu[keys[idx]];
+        if ("function" == typeof item) {
+          Bangle.haptic("touch");
+          item(touch);
+        } else if ("object" == typeof item) {
+          Bangle.haptic("touch");
+          if ("number" == typeof item.value) {
+            showSubMenu(item, keys[idx]);
+          } else {
+            // if a bool, just toggle it
+            if ("boolean"==typeof item.value)
+              item.value=!item.value;
+            if (item.onchange) item.onchange(item.value, touch);
+            if (l.scroller.isActive()) l.scroller.drawItem(idx);
+          }
         }
       }
     }
-  };
-  function showTitle(R,title) {
-    g.reset().clearRect(R).setBgColor(g.theme.bgH).clearRect(0,top,239,R.y-2).setFontAlign(0,1).setFont(title.font).drawString(title.text, 120, R.y-2);
-  }
-  function show() {
-    showTitle(R,title);
     l.scroller = E.showScroller(scr);
+    showTitle(options.title);
   }
   show();
   return l;

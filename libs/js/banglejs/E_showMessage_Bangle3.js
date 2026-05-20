@@ -7,7 +7,7 @@
   var title = g.findFont(options.title||"", {w:80+Y*2,wrap:1,max:32});// FIXME: use sqrt to work out width?
   if (title.text) {
     Y += title.h+4;
-    g.setColor(g.theme.fgH).setBgColor(g.theme.bgH).
+    g.setColor(g.theme.fgW).setBgColor(g.theme.bgW).
       clearRect(0,R.y,239,Y-2).setFontAlign(0,1).
       drawString(title.text, 120, Y);
   }
@@ -29,9 +29,8 @@
     Y += im.height;
   }
   if (message !== undefined) {
-    var msg = g.findFont(message, {w:W-2,h:H,wrap:1,trim:1,min:16});
-    g.setColor(g.theme.fg).setBgColor(g.theme.bg).setFontAlign(0,0).
-      drawString(msg.text,W/2,Y+H/2);
+    var msg = g.reset().findFont(message, {w:W-2,h:H,wrap:1,trim:1,min:16});
+    g.setFontAlign(0,0).drawString(msg.text,W/2,Y+H/2);
   }
   g.flip(); // force immediate show of message
   Bangle.setLCDPower(1); // ensure screen is on
