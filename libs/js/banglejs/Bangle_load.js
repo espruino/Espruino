@@ -3,6 +3,7 @@
     Bangle.setUI(); // remove all existing UI (and call Bangle.uiRemove)
     __FILE__=name;
     if (!name) name = ".bootcde";
+    Bangle.setLCDMode(); // if LCD mode had been set and we fast load, reset it!
     Bangle.showLoadingScreen(); // show loading screen
     setTimeout(eval,0,require("Storage").read(name)); // Load app without a reboot
   } else load((name!=".bootcde")?name:undefined);
