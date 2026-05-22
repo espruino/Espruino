@@ -12,14 +12,20 @@
     p.c++;
     p.w+=wd.width;
   }
-  if (pos.tl.w+pos.tr.w>60) { // if too big, work out how much to push down
-    var d = (pos.tl.w+pos.tr.w)/2,
-        y = 120-Math.sqrt(120*120 - d*d)|0;
-    pos.tl.y = pos.tr.y = y;
-    pos.tl.x = 120-d;
-    pos.tr.x = 120+d;
+  if (Bangle.getLCDMode()=="176x176") {
+    pos.tl.x=pos.bl.x=0; // old screen mode for compatability
+    pos.tr.x=pos.br.x=176;
+  } else {
+    if (pos.tl.w+pos.tr.w>60) { // if too big, work out how much to push down
+      var d = (pos.tl.w+pos.tr.w)/2,
+          y = 120-Math.sqrt(120*120 - d*d)|0;
+      pos.tl.y = pos.tr.y = y;
+      pos.tl.x = 120-d;
+      pos.tr.x = 120+d;
+    }
+    if (pos.tr.c && !pos.tl.c)
+      pos.tr.x = (w+p.w)/2; // if only tr, centre it
   }
-  if (pos.tr.c && !pos.tl.c) pos.tr.x = (w+p.w)/2; // if only tr, centre it
   for (wd of WIDGETS) {
     p = pos[wd.area];
     if (!p || wd.width == 0) continue;

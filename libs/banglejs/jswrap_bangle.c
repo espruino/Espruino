@@ -2004,6 +2004,17 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
   // deal with the case where we rotated the Bangle.js screen
   deviceToGraphicsCoordinates(&graphicsInternal, &tx, &ty);
 
+#if defined(BANGLEJS3) // if screen is in compatibility mode, update touch coordinates
+  if (lcdMemLCD_getFake176()) {
+    tx -= 32;
+    ty -= 32;
+    if (tx<0) tx=0;
+    if (ty<0) ty=0;
+    if (tx>=176) tx=175;
+    if (ty>=176) ty=175;
+  }
+#endif
+
   int dx = tx-touchX;
   int dy = ty-touchY;
 
