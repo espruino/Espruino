@@ -14,6 +14,7 @@
             Use 'const' flag for NativeStrings in Flash, so we can throw when trying to write to a read-only string (fix #1883)
             Bangle.js: Add .bgW/.fgW (widget theme colours) to graphics theme
             Graphics: Allow g.reset(reason) to easily set up gfx for a specific task (specifically widgets) in a backwards-compatible way
+            Bangle.js: Ensure default locale module gets meridian right at 12:00 (#2709)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes
