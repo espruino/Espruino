@@ -15,6 +15,7 @@
             Bangle.js: Add .bgW/.fgW (widget theme colours) to graphics theme
             Graphics: Allow g.reset(reason) to easily set up gfx for a specific task (specifically widgets) in a backwards-compatible way
             Bangle.js: Ensure default locale module gets meridian right at 12:00 (#2709)
+            Fix quotes/token marker not being printed properly in stack traces from pretokenised code
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

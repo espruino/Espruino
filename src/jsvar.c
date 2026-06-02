@@ -1825,6 +1825,7 @@ size_t jsvGetCharsOnLine(JsVar *v, size_t line) {
 If ignoredLines is set, this is the number of lines at the beginning we should ignore because the
 IDE might have added them automatically. */
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col, size_t *ignoredLines) {
+  // Note: this doesn't handle pretokenised code (eg a string with newlines in) - but pretokenisation removes whitespace so maybe it's not a problem
   size_t x = 1;
   size_t y = 1;
   size_t n = 0;
@@ -1870,6 +1871,7 @@ void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col, size_
 
 //  IN A STRING, get a character index from a line and column
 size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col) {
+  // Note: this doesn't handle pretokenised code (eg a string with newlines in) - but pretokenisation removes whitespace so maybe it's not a problem
   size_t x = 1;
   size_t y = 1;
   size_t n = 0;

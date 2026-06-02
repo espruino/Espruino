@@ -1433,52 +1433,51 @@ bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch) {
 
 /* Called by jslPrintTokenisedString/jslPrintTokenLineMarker. This takes a string iterator and
 outputs it via user_callback(user_data), but it converts pretokenised characters and strings
-as it does so. */
-static void jslPrintTokenisedChar(JsvStringIterator *it, unsigned char *lastch, size_t *col, size_t *chars, vcbprintf_callback user_callback, void *user_data) {
+as it does so. returns the number of source chars parsed, not the chars printed. */
+static int jslPrintTokenisedChar(JsvStringIterator *it, unsigned char *lastch, vcbprintf_callback user_callback, void *user_data) {
   unsigned char ch = (unsigned char)jsvStringIteratorGetCharAndNext(it);
   char buf[JSLEX_MAX_TOKEN_LENGTH];
+  int charsParsed = 0;
   // Decoding raw strings
   if (ch==LEX_RAW_STRING8 || ch==LEX_RAW_STRING16) {
     size_t length = (unsigned char)jsvStringIteratorGetCharAndNext(it);
     if (ch==LEX_RAW_STRING16) {
-      (*chars)++;
+      charsParsed++;
       length |= ((unsigned char)jsvStringIteratorGetCharAndNext(it))<<8;
     }
-    (*chars)+=2; // token plus length
+    charsParsed+= 2 + (int)length; // token plus length
     user_callback("\"", user_data);
     while (length--) {
       char ch = jsvStringIteratorGetCharAndNext(it);
       const char *s = escapeCharacter(ch, 0, false);
-      (*chars)++;
       user_callback(s, user_data);
     }
     user_callback("\"", user_data);
-    return;
+    return charsParsed;
   } else if (ch==LEX_RAW_INT0) {
-    (*chars)++; // just one char for zero
+    charsParsed++; // just one char for zero
     user_callback("0", user_data);
-    return;
+    return charsParsed;
   } else if (ch==LEX_RAW_INT8 || ch==LEX_RAW_INT16) {
     int16_t value = (unsigned char)jsvStringIteratorGetCharAndNext(it);
+    charsParsed += 2;
     if (ch==LEX_RAW_INT16) {
       value |= ((char)jsvStringIteratorGetCharAndNext(it))<<8;
+      charsParsed++;
     }
     itostr(value, buf, 10);
-    (*chars)+=strlen(buf); // token plus data
     user_callback(buf, user_data);
-    return;
+    return charsParsed;
   }
   if (jslNeedSpaceBetween(*lastch, ch)) {
-    (*col)++;
     user_callback(" ", user_data);
   }
 
   jslFunctionCharAsString(ch, buf, sizeof(buf));
-  size_t len = strlen(buf);
-  if (len) (*col) += len-1;
   user_callback(buf, user_data);
-  (*chars)++;
+  charsParsed++;
   *lastch = ch;
+  return charsParsed;
 }
 
 /// Output a tokenised string, replacing tokens with their text equivalents
@@ -1486,12 +1485,10 @@ void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void
   // reconstruct the tokenised output into something more readable
   // FIXME: We should really be lexing and printing rather than outputting one char at a time
   unsigned char lastch = 0;
-  size_t col=0, chars=0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, code, 0);
-  while (jsvStringIteratorHasChar(&it)) {
-    jslPrintTokenisedChar(&it, &lastch, &col, &chars, user_callback, user_data);
-  }
+  while (jsvStringIteratorHasChar(&it))
+    jslPrintTokenisedChar(&it, &lastch, user_callback, user_data);
   jsvStringIteratorFree(&it);
 }
 
@@ -1516,37 +1513,48 @@ void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, JsLex *
   cbprintf(user_callback, user_data, ":%d:%d", line-ignoredLines, col);
 }
 
-void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos, size_t prefixLength) {
-  size_t line = 1,col = 1;
-  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col, NULL); // we don't care about extra lines - all we care is outputting correctly
-  size_t startOfLine = jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
-  size_t lineLength = jsvGetCharsOnLine(lex->sourceVar, line);
+// called when we want to skip chars in jslPrintTokenLineMarker - do nothing!
+void jslPrintTokenLineMarker_skip_callback(const char *str, void *user_data) {
+  NOT_USED(str);
+  NOT_USED(user_data);
+}
 
-  if (lineLength>60 && tokenPos-startOfLine>30) {
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos, size_t prefixLength) {
+  size_t line = 1;
+  int col = 1;
+  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, (size_t*)&col, NULL); // we don't care about extra lines - all we care is outputting correctly
+  int startOfLine = (int)jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
+  int lineLength = (int)jsvGetCharsOnLine(lex->sourceVar, line);
+
+  int skipChars = 0;
+  if (lineLength>60 && (int)tokenPos-startOfLine>30) {
     cbprintf(user_callback, user_data, "...");
-    size_t skipChars = tokenPos-30 - startOfLine;
-    startOfLine += 3+skipChars;
-    if (skipChars<=col)
-      col -= skipChars;
-    else
-      col = 0;
+    col += 3;
+    skipChars = (int)tokenPos-30 - startOfLine;
     lineLength -= skipChars;
   }
 
   // print the string until the end of the line, or 60 chars (whichever is less)
-  size_t chars = 0;
+  int chars = -skipChars;
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, lex->sourceVar, startOfLine);
+  jsvStringIteratorNew(&it, lex->sourceVar, (size_t)startOfLine);
   unsigned char lastch = 0;
   while (jsvStringIteratorHasChar(&it) && chars<60 && lastch!=255) {
-    if (jsvStringIteratorGetChar(&it) == '\n') break;
-    jslPrintTokenisedChar(&it, &lastch, &col, &chars, user_callback, user_data);
+    if (jsvStringIteratorGetChar(&it) == '\n') break; // stop when we hit the end of the line
+    bool skip = skipChars>0;
+    int skipped = jslPrintTokenisedChar(&it, &lastch, skip ? jslPrintTokenLineMarker_skip_callback : user_callback, user_data);
+    chars += skipped;
+    if (skip) {
+      skipChars -= skipped;
+      col -= skipped;
+      if (skipChars<0) skipChars = 0;
+    }
   }
   jsvStringIteratorFree(&it);
-  if (lineLength > 60)
+  if (chars >= 60)
     user_callback("...", user_data);
   user_callback("\n", user_data);
-  col += prefixLength;
+  col += (int)prefixLength;
   while (col-- > 1) user_callback(" ", user_data);
   user_callback("^\n", user_data);
 }
