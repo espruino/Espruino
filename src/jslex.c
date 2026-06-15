@@ -1464,7 +1464,7 @@ static int jslPrintTokenisedChar(JsvStringIterator *it, unsigned char *lastch, v
     if (ch==LEX_RAW_INT16) {
       value |= ((char)jsvStringIteratorGetCharAndNext(it))<<8;
       charsParsed++;
-    }
+    } else value = (int8_t)value; // sign extend
     itostr(value, buf, 10);
     user_callback(buf, user_data);
     return charsParsed;
