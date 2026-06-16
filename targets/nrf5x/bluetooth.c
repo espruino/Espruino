@@ -232,6 +232,7 @@ uint16_t nuxTxBufLength = 0;
 #define DEFAULT_PERIPH_MAX_CONN_INTERVAL BLE_DYNAMIC_INTERVAL_HIGH_RATE // highest possible on connect
 #define BLE_DYNAMIC_INTERVAL_IDLE_TIME 30000 // time in milliseconds at which we enter idle
 #define BLE_DYNAMIC_INTERVAL_HIGH_TIME 500 // time in milliseconds since last activity at which we go back to high rate
+#define BLE_DYNAMIC_INTERVAL_COUNTDOWN 10000 // when we have activity, we subtract this from bleIdleCounter
 /// How long has BLE been idle for in msec? Use for dynamic interval adjustment
 uint16_t bleIdleCounter = 0;
 /// Are we using a high speed or low speed interval at the moment?
@@ -755,7 +756,11 @@ void jsble_peripheral_activity() {
       jsble_set_periph_connection_interval(BLE_DYNAMIC_INTERVAL_HIGH_RATE, BLE_DYNAMIC_INTERVAL_HIGH_RATE);
     }
   }
-  bleIdleCounter = 0;
+  // decrement our idle counter - don't zero it immediately so *some* activity can happen and we don't go back to high rate immediately
+  if (bleIdleCounter > BLE_DYNAMIC_INTERVAL_COUNTDOWN)
+    bleIdleCounter -= BLE_DYNAMIC_INTERVAL_COUNTDOWN;
+  else
+    bleIdleCounter = 0;
 #endif
 }
 
