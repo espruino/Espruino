@@ -230,8 +230,9 @@ uint16_t nuxTxBufLength = 0;
 #define BLE_DYNAMIC_INTERVAL_HIGH_RATE 7.5 // connection interval when not idle (milliseconds) - 7.5ms is fastest possible
 #define BLE_DEFAULT_HIGH_INTERVAL true
 #define DEFAULT_PERIPH_MAX_CONN_INTERVAL BLE_DYNAMIC_INTERVAL_HIGH_RATE // highest possible on connect
-#define BLE_DYNAMIC_INTERVAL_IDLE_TIME (int)(120000 / BLE_DYNAMIC_INTERVAL_HIGH_RATE) // time in milliseconds at which we enter idle
-/// How many connection intervals has BLE been idle for? Use for dynamic interval adjustment
+#define BLE_DYNAMIC_INTERVAL_IDLE_TIME 30000 // time in milliseconds at which we enter idle
+#define BLE_DYNAMIC_INTERVAL_HIGH_TIME 500 // time in milliseconds since last activity at which we go back to high rate
+/// How long has BLE been idle for in msec? Use for dynamic interval adjustment
 uint16_t bleIdleCounter = 0;
 /// Are we using a high speed or low speed interval at the moment?
 bool bleHighInterval;
@@ -747,7 +748,7 @@ void jsble_peripheral_activity() {
 #ifdef DYNAMIC_INTERVAL_ADJUSTMENT
   if (jsble_has_peripheral_connection() &&
       !(bleStatus & BLE_DISABLE_DYNAMIC_INTERVAL) &&
-      bleIdleCounter < 10) {
+      bleIdleCounter < BLE_DYNAMIC_INTERVAL_HIGH_TIME) {
     // so we must have been called once before
     if (!bleHighInterval) {
       bleHighInterval = true;
@@ -1051,7 +1052,7 @@ void SWI1_IRQHandler(bool radio_evt) {
 #ifdef DYNAMIC_INTERVAL_ADJUSTMENT
  // Handle Dynamic Interval Adjustment
  if (bleIdleCounter<BLE_DYNAMIC_INTERVAL_IDLE_TIME) {
-   bleIdleCounter++;
+   bleIdleCounter += (blePeriphConnectionInterval*5)/4; // convert blePeriphConnectionInterval to msec
  } else {
    if (jsble_has_peripheral_connection() &&
        !(bleStatus & BLE_DISABLE_DYNAMIC_INTERVAL) &&
@@ -1517,8 +1518,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         }
 #endif
         if (p_ble_evt->evt.common_evt.conn_handle == m_peripheral_conn_handle) {
-          jsble_peripheral_activity(); // flag that we've been busy
-          //TODO: probably want to figure out *which write* finished?
+          // don't do jsble_peripheral_activity() here as we already called it once when we did the write
+          //TODO: probably want to figure out *which write* finished? Compare with m_nus.rx_handles.value_handle
           bleStatus &= ~BLE_IS_SENDING;
 #if NRF_SD_BLE_API_VERSION>=5
           if (bleStatus & BLE_NUS_INITED) // push more UART data out if we can
@@ -1565,7 +1566,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         // Peripheral's Characteristic was written to
         const ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
         if ((bleStatus & BLE_NUS_INITED) &&
-            (p_evt_write->handle == m_nus.rx_handles.value_handle)) break; // if this was a BLE UART write DO NOT create an event for it!
+            (p_evt_write->handle == m_nus.tx_handles.value_handle)) break; // if this was a BLE UART write DO NOT create an event for it!
         // We got a param write event - add this to the bluetooth event queue
         jsble_queue_pending_buf(BLEP_WRITE, p_evt_write->handle, (char*)p_evt_write->data, p_evt_write->len);
         jsble_peripheral_activity(); // flag that we've been busy

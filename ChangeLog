@@ -17,6 +17,7 @@
             Bangle.js: Ensure default locale module gets meridian right at 12:00 (#2709)
             Fix quotes/token marker not being printed properly in stack traces from pretokenised code
             Fix issue using `find` on array with `undefined` elements (fix #2711)
+            Improve BLE connection power save mode (fix #2635)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes
