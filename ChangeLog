@@ -18,6 +18,7 @@
             Fix quotes/token marker not being printed properly in stack traces from pretokenised code
             Fix issue using `find` on array with `undefined` elements (fix #2711)
             Improve BLE connection power save mode (fix #2635)
+            STM32: Fix system time stopping if the chip's RTC overflows (year 2100)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

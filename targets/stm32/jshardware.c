@@ -898,6 +898,10 @@ void jshDoSysTick() {
      * length of a pulse.
      */
     smoothLastSysTickTime = smoothLastSysTickTime + smoothAverageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
+    if (time < lastSysTickTime) { // the RTC overflowed! don't update averages but reset 'lastTime' and continue as before
+      lastSysTickTime = smoothLastSysTickTime = time;
+      return;
+    }
     // work out the 'real' average sysTickTime
     JsSysTime diff = time - lastSysTickTime;
     // saturate...
