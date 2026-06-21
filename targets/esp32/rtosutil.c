@@ -29,12 +29,12 @@ ESP32Timer_t ESP32Timers[timerMax];
 #endif
 
 #define TIMER_DIVIDER 80
-#define TIMER_FINE_ADJ   (1.4f*(TIMER_BASE_CLK / TIMER_DIVIDER)/1000000.0f)
+#define TIMER_FINE_ADJ   (((14ULL * (uint64_t)TIMER_BASE_CLK) + (10ULL * TIMER_DIVIDER * 1000000ULL) - 1) / (10ULL * TIMER_DIVIDER * 1000000ULL))
 #define TIMER_INTR_SEL   TIMER_INTR_LEVEL
 
 // Universal ESP32 timer macros - IDF 3.x/4.x/5.x compatible
 #if CONFIG_IDF_TARGET_ESP32
-  #define TIMER_FINE_ADJ   (1.4f*(TIMER_BASE_CLK / TIMER_DIVIDER)/1000000.0f)
+  #define TIMER_FINE_ADJ   (((14ULL * (uint64_t)TIMER_BASE_CLK) + (10ULL * TIMER_DIVIDER * 1000000ULL) - 1) / (10ULL * TIMER_DIVIDER * 1000000ULL))
   #if ESP_IDF_VERSION_MAJOR>=5
     // IDF5 ESP32 - CORRECT field names from compiler hint
     #define TIMER_TX_UPDATE(TIMER_N)  (TIMERG0.hw_timer[TIMER_N].update.tx_update = 1)
@@ -49,12 +49,12 @@ ESP32Timer_t ESP32Timers[timerMax];
     #define TIMER_1_INT_CLR()         (TIMERG0.int_clr_timers.t1 = 1)
   #endif
 #elif CONFIG_IDF_TARGET_ESP32C3
-  #define TIMER_FINE_ADJ   (1.4*(esp_clk_apb_freq() / TIMER_DIVIDER)/1000000)
+  #define TIMER_FINE_ADJ   (((14ULL * (uint64_t)esp_clk_apb_freq()) + (10ULL * TIMER_DIVIDER * 1000000ULL) - 1) / (10ULL * TIMER_DIVIDER * 1000000ULL))
   #define TIMER_TX_UPDATE(TIMER_N) (TIMERG0.hw_timer[TIMER_N].update.tx_update = 1)
   #define TIMER_ALARM_EN(TIMER_N)  (TIMERG0.hw_timer[TIMER_N].config.tx_alarm_en = 1)
   #define TIMER_0_INT_CLR()        (TIMERG0.int_clr_timers.t0_int_clr = 1)
 #elif CONFIG_IDF_TARGET_ESP32S3
-  #define TIMER_FINE_ADJ   (1.4*(esp_clk_apb_freq() / TIMER_DIVIDER)/1000000)
+  #define TIMER_FINE_ADJ   (((14ULL * (uint64_t)esp_clk_apb_freq()) + (10ULL * TIMER_DIVIDER * 1000000ULL) - 1) / (10ULL * TIMER_DIVIDER * 1000000ULL))
   #define TIMER_TX_UPDATE(TIMER_N) (TIMERG0.hw_timer[TIMER_N].update.tn_update = 1)
   #define TIMER_ALARM_EN(TIMER_N)  (TIMERG0.hw_timer[TIMER_N].config.tn_alarm_en = 1)
   #define TIMER_0_INT_CLR()        (TIMERG0.int_clr_timers.t0_int_clr = 1)
@@ -174,8 +174,13 @@ void timer_Reschedule(int idx, uint64_t duration) {
   int timer_n = ESP32Timers[idx].index;
   
   if (duration < TIMER_FINE_ADJ + 1) duration = TIMER_FINE_ADJ + 1;
+#if ESP_IDF_VERSION_MAJOR >= 5
+  timer_group_set_alarm_value_in_isr(group, timer_n, duration - TIMER_FINE_ADJ);
+  timer_group_enable_alarm_in_isr(group, timer_n);
+#else
   timer_set_alarm_value(group, timer_n, duration - TIMER_FINE_ADJ);
   TIMER_ALARM_EN(timer_n);
+#endif
 }
 
 void timer_List() {

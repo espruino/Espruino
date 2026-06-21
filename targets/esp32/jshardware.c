@@ -34,9 +34,8 @@
 #include "rtosutil.h"
 #if ESP_IDF_VERSION_MAJOR>=5
 #include "driver/gptimer.h"
-#else
-#include "driver/timer.h"
 #endif
+#include "driver/timer.h"
 
 #ifdef BLUETOOTH
 #include "BLE/esp32_gap_func.h"
@@ -743,26 +742,20 @@ void jshSetSystemTime(JsSysTime newTime) {
   tz.tz_dsttime=0;
   settimeofday(&tm, &tz);
 }
-#if ESP_IDF_VERSION_MAJOR>=5
-  void jshUtilTimerDisable() {}
-  void jshUtilTimerStart(JsSysTime period) {}
-  void jshUtilTimerReschedule(JsSysTime period) {}
-#else
-  void jshUtilTimerDisable() {
-    timer_pause(TIMER_GROUP_0, 0);
-    timer_disable_intr(TIMER_GROUP_0, 0);
-  }
+void jshUtilTimerDisable() {
+  timer_pause(TIMER_GROUP_0, 0);
+  timer_disable_intr(TIMER_GROUP_0, 0);
+}
 
-  void jshUtilTimerStart(JsSysTime period) {
-    if(period <= 30){period = 30;}
-    timer_Start(0, period);
-  }
+void jshUtilTimerStart(JsSysTime period) {
+  if (period <= 30) period = 30;
+  timer_Start(0, period);
+}
 
-  void jshUtilTimerReschedule(JsSysTime period) {
-    if(period <= 30){period = 30;}
-    timer_Reschedule(0,(uint64_t)period);
-  }
-#endif
+void jshUtilTimerReschedule(JsSysTime period) {
+  if (period <= 30) period = 30;
+  timer_Reschedule(0, (uint64_t)period);
+}
 
 //===== Miscellaneous =====
 
