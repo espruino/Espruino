@@ -39,6 +39,7 @@ JsVar *jspNewBuiltin(const char *name);
 
 /// Create a new Class of the given instance and return its prototype (as a name 'prototype')
 NO_INLINE JsVar *jspNewPrototype(const char *instanceOf, bool returnObject);
+void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 
 /** Create a new object of the given instance and add it to root with name 'name'.
  * If name!=0, added to root with name, and the name is returned

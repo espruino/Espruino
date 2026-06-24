@@ -40,7 +40,6 @@ void jspeBlock();
 void jspeBlockNoBrackets();
 JsVar *jspeStatement();
 JsVar *jspeFactor();
-void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 #ifndef ESPR_NO_ARROW_FN
 JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a);
 #endif
@@ -1166,8 +1165,6 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   if (a) {
     jsvUnLock(thisObj);
     thisObj = a;
-  } else {
-    jsvUnLock(a);
   }
   return thisObj;
 }
