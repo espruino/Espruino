@@ -57,6 +57,7 @@ uint16_t ble_char_pos = (uint16_t)-1;
 uint16_t ble_char_cnt = 0;
 uint16_t ble_descr_pos = (uint16_t)-1;
 uint16_t ble_descr_cnt = 0;
+uint16_t ble_mtu_len = 23;
 
 struct gatts_service_inst *gatts_service = NULL;
 struct gatts_char_inst *gatts_char = NULL;
@@ -97,6 +98,9 @@ void sendNotifBuffer() {
   nusBufferLen = 0;
 }
 void gatts_sendNUSNotification(int c) {
+  /* FIXME: use gatts_service[g].mtu for max amount we can send. We should also be getting
+  data direct from the io buffer on idle rather than waiting for jshUSARTKick and doing it there.
+  If done right we should be able to avoid the global nusBuffer */
   if (nusBufferLen >= BLE_NUS_MAX_DATA_LEN)
     sendNotifBuffer();
   // Add this character to our buffer
@@ -192,6 +196,7 @@ static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt
     JsVar *args[1];
     gatts_service[g].conn_id = param->connect.conn_id;
     gatts_service[g].connected = true;
+    gatts_service[g].mtu = 23; // default
 
     ble_gap_addr_t ble_addr;
     espbtaddr_TO_bleaddr(param->connect.remote_bda, 5/*force an unknown type so '' is reported*/, &ble_addr);
@@ -392,7 +397,12 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
   case ESP_GATTS_UNREG_EVT:{gatts_unreg_app(event,gatts_if);break;}
 
   case ESP_GATTS_EXEC_WRITE_EVT:break;
-  case ESP_GATTS_MTU_EVT:break;
+  case ESP_GATTS_MTU_EVT: {
+    int g = getIndexFromGatts_if(gatts_if);
+    uint16_t effective_mtu = param->mtu.mtu;
+    if (g>=0) gatts_service[g].mtu = effective_mtu;
+    //jsble_queue_pending_buf(BLEP_MTU_UPDATE, g, (char*)effective_mtu, sizeof(effective_mtu)); // need to move BLEP_MTU_UPDATE from nRF52 into global
+  } break;
   case ESP_GATTS_CONF_EVT: // if (gatts_if==uart_gatts_if) UART indicate TX has finished
     break;
   case ESP_GATTS_ADD_INCL_SRVC_EVT:break;

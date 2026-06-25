@@ -41,6 +41,7 @@ struct gatts_service_inst {
   uint16_t num_handles;
   ble_uuid_t ble_uuid;
   uint16_t uuid16;
+  uint16_t mtu;
   BLEServiceFlags serviceFlag;
 };
 
