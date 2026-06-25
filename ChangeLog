@@ -20,6 +20,7 @@
             Improve BLE connection power save mode (fix #2635)
             STM32: Fix system time stopping if the chip's RTC overflows (year 2100)
             JIT: Added constructors: eg. new Array(1,2,3,4)
+            Bangle.js: holding button during reboot now doesn't clear pairing info. Add new item in recovery menu (#2713)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

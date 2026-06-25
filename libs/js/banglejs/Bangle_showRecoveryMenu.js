@@ -16,6 +16,18 @@
     },
     "Turn Off": () => {
       Bangle.off();
+    },
+    "Delete BT Pairing": () => {
+      E.showPrompt("Delete BT Pairing Info?",{title:"Bluetooth", buttons : {"No":0,"Soft":1,"Hard":2}}).then(type => {
+        if (!type) return Bangle.showRecoveryMenu();
+        NRF.disconnect();
+        Terminal.setConsole();
+        setTimeout(function() {
+          NRF.eraseBonds( type == 2/*hard*/ );
+          E.showMessage("Done!");
+        }, 500);
+        setTimeout(E.reboot, 1000);
+      });
     }
   };
   if (process.env.BOARD=="BANGLEJS2" || process.env.BOARD=="BANGLEJS3")

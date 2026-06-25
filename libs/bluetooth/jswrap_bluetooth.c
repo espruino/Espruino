@@ -808,7 +808,7 @@ void jswrap_ble_restart(JsVar *callback) {
     "#if" : "defined(NRF52_SERIES)",
     "generate" : "jswrap_ble_eraseBonds",
     "params" : [
-      ["callback","JsVar","[optional] A function to be called while the softdevice is uninitialised. Use with caution - accessing console/bluetooth will almost certainly result in a crash."]
+      ["hard","bool","[optional] If set, this resets bonds not by asking the softdevice, but by deleting the pages containing pairing info. You should restart the device after."]
     ]
 }
 Delete all data stored for all peers (bonding data used for secure connections). This cannot be done
@@ -817,12 +817,12 @@ while a connection is active, so if there is a connection it will be postponed u
 
 Booting your device while holding all buttons down together should also have the same effect.
 */
-void jswrap_ble_eraseBonds() {
+void jswrap_ble_eraseBonds(bool hard) {
 #if PEER_MANAGER_ENABLED
   if (jsble_has_connection()) {
     jsExceptionHere(JSET_ERROR, "BLE Connected, can't erase bonds.");
   } else {
-    jsble_central_eraseBonds();
+    jsble_central_eraseBonds(hard);
   }
 #endif
 }

@@ -2304,13 +2304,15 @@ static void peer_manager_init(bool erase_bonds) {
   if (bleStatus & BLE_PM_INITIALISED) return;
   bleStatus |= BLE_PM_INITIALISED;
 
-  /* If ALL buttons are pressed at boot, clear out flash
-   pages as well. Nice easy way to reset!
+  /* If ALL buttons are pressed at boot, clear out flash pages as well. Nice easy way to reset!
+
+   NOT on Bangle.js as it can be done by recovery menu.
 
    We know this only happens at boot because of the
    BLE_PM_INITIALISED check above.
   */
   bool buttonPressed = false;
+#ifndef BANGLEJS
 #ifdef BTN1_PININDEX
   buttonPressed = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
 #endif
@@ -2322,6 +2324,7 @@ static void peer_manager_init(bool erase_bonds) {
 #endif
 #ifdef BTN4_PININDEX
   buttonPressed &= jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE;
+#endif
 #endif
   if (buttonPressed) {
     peer_manager_erase_pages();
@@ -3805,9 +3808,10 @@ void jsble_central_setWhitelist(bool whitelist) {
 #endif
 }
 
-void jsble_central_eraseBonds() {
+void jsble_central_eraseBonds(bool hard) {
 #if PEER_MANAGER_ENABLED
-  jsble_check_error(pm_peers_delete());
+  if (hard) peer_manager_erase_pages();
+  else jsble_check_error(pm_peers_delete());
 #endif
 }
 

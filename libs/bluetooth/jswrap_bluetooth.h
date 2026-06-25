@@ -93,7 +93,7 @@ void jswrap_ble_disconnect();
 void jswrap_ble_sleep();
 void jswrap_ble_wake();
 void jswrap_ble_restart(JsVar *callback);
-void jswrap_ble_eraseBonds();
+void jswrap_ble_eraseBonds(bool hard);
 JsVar *jswrap_ble_getAddress(bool current);
 void jswrap_ble_setAddress(JsVar *address);
 JsVar *jswrap_ble_resolveAddress(JsVar *address);
