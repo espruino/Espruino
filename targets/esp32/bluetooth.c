@@ -298,7 +298,13 @@ void jsble_update_security() {
 
 /// Return an object showing the security status of the given connection
 JsVar *jsble_get_security_status(uint16_t conn_handle) {
-  return 0;
+  JsVar *result = jsvNewWithFlags(JSV_OBJECT);
+  bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
+  jsvObjectSetBoolChild(result, "advertising", isAdvertising);
+  jsvObjectSetBoolChild(result, "connected", jsble_has_connection() || jsble_has_central_connection()); // fixme: should check the connection handle
+  if (blePeriphConnectionInterval)
+    jsvObjectSetIntChild(result, "connectionInterval", blePeriphConnectionInterval);
+  return result;
 }
 
 /// Set the transmit power of the current (and future) connections

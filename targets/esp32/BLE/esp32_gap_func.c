@@ -32,6 +32,7 @@
 #define GAP_SCAN_FUNC "gap_scan_func"
 
 static uint8_t adv_config_done = 0;
+uint16_t blePeriphConnectionInterval = 0;
 
 static esp_ble_adv_params_t adv_params = {
     .adv_int_min        = 0x20,
@@ -99,6 +100,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
       break;
     }
     case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:{
+      blePeriphConnectionInterval = param->update_conn_params.conn_int;
       /*jsWarn("update connection params: status = %d, min_int = %d, max_int = %d, conn_int = %d, latency = %d, timeout = %d",
                   param->update_conn_params.status,
                   param->update_conn_params.min_int,

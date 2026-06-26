@@ -195,6 +195,7 @@ static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt
   if(g >= 0){
     JsVar *args[1];
     gatts_service[g].conn_id = param->connect.conn_id;
+    memcpy(gatts_service[g].bda, param->connect.remote_bda, ESP_BD_ADDR_LEN);
     gatts_service[g].connected = true;
     gatts_service[g].mtu = 23; // default
 
@@ -688,6 +689,26 @@ void gatts_update_service(uint16_t char_handle, char *data, int len, bool isNoti
           len,data,isIndicate /* false = notify */);
         if (err) jsiConsolePrintf("NRF.updateServices esp_ble_gatts_send_indicate failed with %d\n", err);
       }
+    }
+  }
+}
+
+/** Set the connection interval of the peripheral connection. Returns an error code. */
+uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max) {
+  esp_ble_conn_update_params_t conn_params = {0};
+
+  // Define your desired timing bounds (Multiples of 1.25ms)
+  conn_params.min_int = (int)(0.5 + (min/1.25));  // 1.25ms units
+  conn_params.max_int = (int)(0.5 + (max/1.25));  // 1.25ms units
+
+  conn_params.latency = 0;   // Number of connection events the peripheral can skip
+  conn_params.timeout = 400; // 400 * 10ms = 4000ms (Link loss timeout)
+
+  // Send the update request to the Central
+  for(int i = 0; i < ble_service_cnt;i++) {
+    if(gatts_service[i].connected) {
+      memcpy(conn_params.bda, gatts_service[i].bda, ESP_BD_ADDR_LEN);
+      esp_ble_gap_update_conn_params(&conn_params);
     }
   }
 }

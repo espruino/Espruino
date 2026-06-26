@@ -42,6 +42,7 @@ struct gatts_service_inst {
   ble_uuid_t ble_uuid;
   uint16_t uuid16;
   uint16_t mtu;
+  esp_bd_addr_t bda; // device address
   BLEServiceFlags serviceFlag;
 };
 

@@ -3716,7 +3716,7 @@ void jswrap_ble_setWhitelist(bool whitelist) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "setConnectionInterval",
-    "ifdef" : "NRF52_SERIES",
+    "#if" : "defined(NRF52_SERIES) || defined(ESP32)",
     "generate" : "jswrap_ble_setConnectionInterval",
     "params" : [
       ["interval","JsVar","The connection interval to use (see below)"]
@@ -3750,7 +3750,6 @@ connection interval.
 `NRF.setLowPowerConnection`
 */
 void jswrap_ble_setConnectionInterval(JsVar *interval) {
-#if NRF52_SERIES
   if (jsvIsUndefined(interval) || jsvIsStringEqual(interval,"auto")) {
     // allow automatic interval setting
     bleStatus &= ~BLE_DISABLE_DYNAMIC_INTERVAL;
@@ -3766,7 +3765,6 @@ void jswrap_ble_setConnectionInterval(JsVar *interval) {
     JsVarFloat max = jsvObjectGetFloatChild(interval,"maxInterval");
     jsble_check_error(jsble_set_periph_connection_interval(min, max));
   }
-#endif
 }
 
 /*JSON{
@@ -3965,7 +3963,7 @@ type NRFSecurityStatus = {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "getSecurityStatus",
-    "ifdef" : "NRF52_SERIES",
+    "#if" : "defined(NRF52_SERIES) || defined(ESP32)",
     "generate" : "jswrap_ble_getSecurityStatus",
     "return" : ["JsVar", "An object" ],
     "return_object" : "NRFSecurityStatus"
