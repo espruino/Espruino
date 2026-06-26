@@ -129,7 +129,8 @@ Returns:
   ptr : int, // (for EXEC) pointer to the function being executed
   userdata : int, // (for EXEC) userdata pointer
   buffer : JsVar, // (for WR8/WR16/RD8/RD16) the buffer being used
-  buffer2 : JsVar // (for WR8/WR16/RD8/RD16) the second buffer being used (if any)
+  buffer2 : JsVar, // (for WR8/WR16/RD8/RD16) the second buffer being used (if any)
+  finished : true // If the timer task has finished but hasn't yet been cleared up
 }
 ```
 
@@ -148,7 +149,7 @@ JsVar *jswrap_timer_get(int id) {
   JsVar *obj = jsvNewObject();
   jsvObjectSetIntChild(obj, "id", id);
   const char *typeStr = NULL;
-  switch (task.type) {
+  switch (task.type & UET_TYPE_MASK) {
   case UET_NONE: assert(0); break;
   case UET_WAKEUP : typeStr="WKUP"; break;
   case UET_SET :
@@ -205,6 +206,8 @@ JsVar *jswrap_timer_get(int id) {
     jsvObjectSetIntChild(obj, "stepIdx", task.data.step.pIndex);
   }
 #endif
+  if (task.type & UET_FINISHED)
+    jsvObjectSetBoolChild(obj, "finished", 1);
   jsvObjectSetChildAndUnLock(obj, "type", typeStr ? jsvNewFromString(typeStr) : jsvNewFromInteger(task.type));
   jsvObjectSetFloatChild(obj, "time", jshGetMillisecondsFromTime(task.time));
   if (task.repeatInterval)

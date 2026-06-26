@@ -676,7 +676,7 @@ bool jstStopPinTimerTask(Pin pin) {
 
 static void jstOnTaskFinished(int id) {
   // only called if UET_EVENT_SEND_TIMER_FINISHED(task)==true
-  if ((utilTimerTaskInfo[id].type&~UET_FINISHED) == UET_EXECUTE) { // if EXEC with a JS function, free the function
+  if ((utilTimerTaskInfo[id].type&UET_TYPE_MASK) == UET_EXECUTE) { // if EXEC with a JS function, free the function
     JsVar *timerFns = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_TIMER_RUN_JS_NAME);
     if (timerFns) {
       jsvRemoveArrayItem(timerFns, id);

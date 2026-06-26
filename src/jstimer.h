@@ -32,6 +32,7 @@ typedef enum {
 #ifdef ESPR_USE_STEPPER_TIMER
   UET_STEP, ///< Write stepper motor
 #endif
+  UET_TYPE_MASK = 15,
   UET_FINISHED = 16, ///< OR this into a timer task to flag it as finished (it's then cleaned up outside the IRQ) - set only if UET_EVENT_SEND_TIMER_FINISHED
 } PACKED_FLAGS UtilTimerEventType;
 
