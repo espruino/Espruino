@@ -15,6 +15,10 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 
+// defined in jswrap_timer
+void jswrap_timer_queue_interrupt_js(JsSysTime time, void* userdata);
+// -----------------------
+
 /// Data for our tasks (eg when, what they are, etc)
 UtilTimerTask utilTimerTaskInfo[UTILTIMERTASK_TASKS];
 /// List of tasks in time order (implemented as a circular buffer)
@@ -90,7 +94,7 @@ static inline unsigned char *jstUtilTimerInterruptHandlerByte(UtilTimerTask *tas
 // Handle sending an event when the task is finished
 static void jstUtilTimerTaskIsFinished(int timerId) {
   UtilTimerTask *task = &utilTimerTaskInfo[timerId];
-  if (UET_EVENT_SEND_TIMER_FINISHED(task->type)) {
+  if (UET_EVENT_SEND_TIMER_FINISHED(task)) {
     task->type |= UET_FINISHED;
     jshPushCustomEvent(EVC_TIMER_FINISHED | (timerId<<EVC_DATA_SHIFT));
   } else {
@@ -245,6 +249,7 @@ void jstUtilTimerInterruptHandler() {
     jshUtilTimerDisable();
   }
 }
+
 
 /// Return true if the utility timer is running
 bool jstUtilTimerIsRunning() {
@@ -590,10 +595,7 @@ bool jstStopExecuteFn(UtilTimerTaskExecFn fn, void *userdata) {
 
 /// Set the utility timer so we're woken up in whatever time period
 void jstSetWakeUp(JsSysTime period) {
-  bool hasTimer = false;
   int wakeupTime = (int)period;
-  int nextTime;
-
   int idx = utilTimerGetUnusedIndex(false/*don't wait*/);
   if (idx<0) return; // no free tasks!
   UtilTimerTask *task = &utilTimerTaskInfo[idx];
@@ -673,6 +675,7 @@ bool jstStopPinTimerTask(Pin pin) {
 }
 
 static void jstOnTaskFinished(int id) {
+  // only called if UET_EVENT_SEND_TIMER_FINISHED(task)==true
   if ((utilTimerTaskInfo[id].type&~UET_FINISHED) == UET_EXECUTE) { // if EXEC with a JS function, free the function
     JsVar *timerFns = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_TIMER_RUN_JS_NAME);
     if (timerFns) {
@@ -710,7 +713,6 @@ void jstOnCustomEvent(IOEventFlags eventFlags, uint8_t *data, int dataLen) {
     int id = customFlags >> EVC_DATA_SHIFT;
     if (utilTimerTaskInfo[id].type & UET_FINISHED) {
       jstOnTaskFinished(id);
-
     }
   }
 }

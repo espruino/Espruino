@@ -21,6 +21,8 @@
             STM32: Fix system time stopping if the chip's RTC overflows (year 2100)
             JIT: Added constructors: eg. new Array(1,2,3,4)
             Bangle.js: holding button during reboot now doesn't clear pairing info. Add new item in recovery menu (#2713)
+            Timers: ensure UET_EXECUTE timers only wait until idle to clear if they're for JS code
+            Puck.js: Fix IR transmit with >15 entries (2v29 regression)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

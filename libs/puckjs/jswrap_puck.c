@@ -1255,8 +1255,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
       if (hasPulses) jstPinOutputAtTime(time, &timerOffset, &anode, 1, pulsePolarity);
       else jshPinSetState(anode, JSHPINSTATE_GPIO_OUT);
     } else {
-      if (pulsePolarity) jstExecuteFn(_jswrap_puck_IR_on, NULL, time, 0, &timerOffset);
-      else jstExecuteFn(_jswrap_puck_IR_off, NULL, time, 0, &timerOffset);
+      jstExecuteFn(pulsePolarity ? _jswrap_puck_IR_on : _jswrap_puck_IR_off, NULL, time, 0, &timerOffset);
     }
     hasPulses = true;
     time += jshGetTimeFromMilliseconds(pulseTime);

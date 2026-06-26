@@ -34,7 +34,7 @@ This replaces `E.dumpTimers()` and `Pin.writeAtTime`
 */
 volatile bool runningInterruptingJS = false;
 
-static void jswrap_timer_queue_interrupt_js(JsSysTime time, void* userdata) {
+void jswrap_timer_queue_interrupt_js(JsSysTime time, void* userdata) {
   uint8_t timerIdx = (uint8_t)(size_t)userdata;
   // if we were already running interrupting JS, don't interrupt it to run more!
   if (!runningInterruptingJS) {

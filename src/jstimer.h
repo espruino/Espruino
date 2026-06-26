@@ -32,7 +32,7 @@ typedef enum {
 #ifdef ESPR_USE_STEPPER_TIMER
   UET_STEP, ///< Write stepper motor
 #endif
-  UET_FINISHED = 16, ///< OR this into a timer task to flag it as finished (it's then cleaned up outside the IRQ)
+  UET_FINISHED = 16, ///< OR this into a timer task to flag it as finished (it's then cleaned up outside the IRQ) - set only if UET_EVENT_SEND_TIMER_FINISHED
 } PACKED_FLAGS UtilTimerEventType;
 
 #define UET_IS_SET_EVENT(T) (\
@@ -69,10 +69,10 @@ typedef enum {
 #define UET_EVENT_HAS_PINS(T) (((T)==UET_SET) || UET_IS_STEPPER(T))
 
 // Should we send EVC_TIMER_FINISHED for an event? Some like pin events are fast so we don't want to fill our buffer with them
-#define UET_EVENT_SEND_TIMER_FINISHED(T) (\
-  ((T)==UET_EXECUTE) || \
-  UET_IS_BUFFER_EVENT(T) || \
-  UET_IS_STEPPER(T) \
+#define UET_EVENT_SEND_TIMER_FINISHED(TASK) (\
+  ((TASK->type==UET_EXECUTE) && TASK->data.execute.fn == jswrap_timer_queue_interrupt_js) || \
+  UET_IS_BUFFER_EVENT(TASK->type) || \
+  UET_IS_STEPPER(TASK->type) \
 )
 
 typedef struct UtilTimerTaskSet {
