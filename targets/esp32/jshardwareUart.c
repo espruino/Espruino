@@ -29,6 +29,9 @@
 
 bool serial2_initialized = false;
 bool serial3_initialized = false;
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+static bool uart_console_installed = false;
+#endif
 
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
 
@@ -40,7 +43,12 @@ void initUart(int uart_num, uart_config_t uart_config, int txpin, int rxpin){
 }
 
 void UartReset(){
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+  if (uart_console_installed) uart_driver_delete(uart_console);
+  usb_serial_jtag_driver_uninstall();
+#else
   uart_driver_delete(uart_console);
+#endif
   initConsole();
   if(serial2_initialized) uart_driver_delete(uart_Serial2);
   if(serial3_initialized) uart_driver_delete(uart_Serial3);
@@ -63,7 +71,13 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
     case 2: uart_config.parity = UART_PARITY_EVEN; break;
   }
   if(device == EV_SERIAL1) {
+#ifndef ESPR_USE_USB_SERIAL_JTAG
     initUart(uart_console,uart_config,-1,-1);
+#else
+    // Console I/O uses USB Serial/JTAG; UART0 driver blocks light sleep
+    // (IDF suspend_uarts waits for UART0 FSM idle when the peripheral is on).
+    uart_console_installed = false;
+#endif
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
   } else if(device == EV_SERIAL2){
     if(inf->pinTX == 0xff) inf->pinTX = 4;
@@ -93,8 +107,8 @@ void initConsole(){
                                                        .rx_buffer_size = 128};
   jsDebug(DBG_INFO, "initConsole: Installing usb_serial_jtag_driver \n");
   ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb_serial_config));
-#endif
-
+  uart_console_installed = false;
+#else
   uart_config_t uart_config = {
     .baud_rate = 115200,
     .data_bits = UART_DATA_8_BITS,
@@ -104,6 +118,7 @@ void initConsole(){
     .rx_flow_ctrl_thresh = 122,
   };
   initUart(uart_console,uart_config,-1,-1);
+#endif
 
   // should we use hardware flow control on most ESP32 boards?
   // No... It looks like CTS is not connected on most boards, so XON/XOFF is best!
