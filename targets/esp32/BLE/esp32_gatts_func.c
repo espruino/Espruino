@@ -59,6 +59,7 @@ uint16_t ble_descr_pos = (uint16_t)-1;
 uint16_t ble_descr_cnt = 0;
 uint16_t ble_mtu_len = 23;
 
+/// gatts_service appears to carry information on the active BLE peripheral connection as well
 struct gatts_service_inst *gatts_service = NULL;
 struct gatts_char_inst *gatts_char = NULL;
 struct gatts_descr_inst *gatts_descr = NULL;
@@ -90,10 +91,13 @@ uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
   return BLE_GATT_HANDLE_INVALID;
 }
 
+
 void sendNotifBuffer() {
   if(uart_gatts_if != ESP_GATT_IF_NONE){
     /*esp_err_t err = */esp_ble_gatts_send_indicate(uart_gatts_if,0,uart_tx_handle,nusBufferLen,nusBuffer,false);
     // check error? resend if there was one? I think this just blocks if it can't send immediately
+    // We can use ESP_GATTS_CONGEST_EVT: param->congest.congested = true will happen when we're sending too much, and we should
+    // avoid sending any more. Then we'll get another one with congested = false
   }
   nusBufferLen = 0;
 }
