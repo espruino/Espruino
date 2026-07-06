@@ -2221,23 +2221,14 @@ void jsiCtrlC() {
   execInfo.execute |= EXEC_CTRL_C;
 }
 
-/** Take an event for a UART and handle the characters we're getting, potentially
- * grabbing more characters as well if it's easy. If more character events are
- * grabbed, the number of extra events (not characters) is returned */
+/** Take an event for a UART and handle the characters we're getting. */
 int jsiHandleIOEventForSerial(JsVar *usartClass, IOEventFlags eventFlags, uint8_t *data, unsigned int length) {
-  int eventsHandled = length+2;
-  JsVar *stringData = length ? jsvNewStringOfLength(length, (char*)data) : NULL;
+  if (!length) return 2;
+  JsVar *stringData = jsvNewStringOfLength(length, (char*)data);
   if (stringData) {
-    while (jshIsTopEvent(IOEVENTFLAGS_GETTYPE(eventFlags))) {
-      jshPopIOEvent(data, &length); // we know data/length are big enough
-      eventsHandled += length+2;
-      jsvAppendStringBuf(stringData, (char*)data, length);
-      // don't use an iterator for appending as we just assume we're probably not handling *that* much data this way - normally it'll come in big chunks
-    }
-    // Now run the handler
     jswrap_stream_pushData(usartClass, stringData, true);
     jsvUnLock(stringData);
-  }
+  } // else if stringData=0 it'll be because of low memory, which will have reported its own error
   return length+2;
 }
 
