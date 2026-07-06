@@ -35,10 +35,18 @@
 #include "BLE/esp32_bluetooth_utils.h"
 #endif
 #include "jshardwareESP32.h"
+#include "jshardwareSpi.h"
 
-#include "jsutils.h"
-#include "jsinteractive.h"
-#include "jsparse.h"
+#ifndef ESP_IDF_VERSION_MAJOR
+#define ESP_IDF_VERSION_MAJOR 3
+#endif
+
+#ifndef ESP_ERR_SLEEP_REJECT
+#define ESP_ERR_SLEEP_REJECT ESP_ERR_INVALID_STATE
+#endif
+#ifndef ESP_ERR_SLEEP_TOO_SHORT_SLEEP_DURATION
+#define ESP_ERR_SLEEP_TOO_SHORT_SLEEP_DURATION ESP_ERR_INVALID_ARG
+#endif
 
 /*JSON{
   "type": "class",
@@ -81,7 +89,20 @@ void jswrap_ESP32_reboot() {
 static bool esp32IsValidDeepSleepWakeupPin(Pin pin) {
   gpio_num_t gpio = pinToESP32Pin(pin);
   if (gpio < 0 || gpio >= GPIO_NUM_MAX) return false;
+#if ESP_IDF_VERSION_MAJOR >= 4
   return esp_sleep_is_valid_wakeup_gpio(gpio);
+#else
+  switch (gpio) {
+    case GPIO_NUM_0: case GPIO_NUM_2: case GPIO_NUM_4:
+    case GPIO_NUM_12: case GPIO_NUM_13: case GPIO_NUM_14: case GPIO_NUM_15:
+    case GPIO_NUM_25: case GPIO_NUM_26: case GPIO_NUM_27:
+    case GPIO_NUM_32: case GPIO_NUM_33: case GPIO_NUM_34: case GPIO_NUM_35:
+    case GPIO_NUM_36: case GPIO_NUM_37: case GPIO_NUM_39:
+      return true;
+    default:
+      return false;
+  }
+#endif
 }
 
 static uint64_t esp32DeepSleepGpioMask(Pin pin) {
