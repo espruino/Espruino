@@ -1922,14 +1922,25 @@ static void jsiHandleConsoleChar(char ch) {
     inputState = IPS_PACKET_TRANSFER_BYTE1;
   } else if (inputState == IPS_PACKET_TRANSFER_BYTE1) {
     inputPacketLength |= (uint8_t)ch;
-    if ((inputPacketLength & PT_SIZE_MASK)==0)
+    uint16_t size = inputPacketLength & PT_SIZE_MASK;
+    if (size==0) {
       jsiPacketProcess();
-    else
+    } else {
+      // pre alloc the string to the full size to avoid per-char allocations during receive
+      jsiInputLineCursorMoved(); // free old iterator
+      jsvUnLock(inputLine);
+      inputLine = jsvNewStringOfLength(size, NULL);
+      inputLineLength = 0;
+      jsvStringIteratorNew(&inputLineIterator, inputLine, 0);
       inputState = IPS_PACKET_TRANSFER_DATA;
+    }
   } else if (inputState == IPS_PACKET_TRANSFER_DATA) {
-    jsiAppendToInputLine(ch);
+    jsvStringIteratorSetChar(&inputLineIterator, ch);
+    inputLineLength++;
     if (inputLineLength >= (inputPacketLength & PT_SIZE_MASK))
       jsiPacketProcess();
+    else
+      jsvStringIteratorNextInline(&inputLineIterator);
   } else if (ch == 0) {
     inputState = IPS_NONE; // ignore 0 - it's scary
   } else if (ch == 1) { // SOH
