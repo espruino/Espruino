@@ -398,8 +398,12 @@ void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event
 }
 #endif
 #if TWI_ENABLED
+static const nrf_drv_twi_t TWI0 = NRF_DRV_TWI_INSTANCE(0);
+bool twi0Initialised = false;
+#if ESPR_I2C_COUNT > 1
 static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
 bool twi1Initialised = false;
+#endif
 #endif
 #ifdef I2C_SLAVE
 static const nrf_drv_twis_t TWIS1 = NRF_DRV_TWIS_INSTANCE(1);
@@ -625,7 +629,10 @@ void spiFlashSleep() {
 
 #if TWI_ENABLED
 const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
-  if (device == EV_I2C1) return &TWI1;
+  if (device == EV_I2C1) return &TWI0;
+#if ESPR_I2C_COUNT > 1
+  if (device == EV_I2C2) return &TWI1;
+#endif
   return 0;
 }
 #endif
@@ -731,9 +738,14 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
                  break;
 #endif
 #if TWI_ENABLED
-  case JSH_I2C1: if (fInfo==JSH_I2C_SDA) NRF_TWI1->PSELSDA = pin;
+  case JSH_I2C1: if (fInfo==JSH_I2C_SDA) NRF_TWI0->PSELSDA = pin;
+                 else NRF_TWI0->PSELSCL = pin;
+                 break;
+#if ESPR_I2C_COUNT>1
+  case JSH_I2C2: if (fInfo==JSH_I2C_SDA) NRF_TWI1->PSELSDA = pin;
                  else NRF_TWI1->PSELSCL = pin;
                  break;
+#endif
 #endif
   default: assert(0);
   }
@@ -1774,7 +1786,10 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   if (device==EV_SPI1) return spi0Initialised;
 #endif
 #if TWI_ENABLED
-  if (device==EV_I2C1) return twi1Initialised;
+  if (device==EV_I2C1) return twi0Initialised;
+#if ESPR_I2C_COUNT>1
+  if (device==EV_I2C2) return twi1Initialised;
+#endif
 #endif
 #if ESPR_USART_COUNT>0
   if (DEVICE_IS_USART(device)) return uart[device-EV_SERIAL1].isInitialised;
@@ -2298,8 +2313,19 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     p_twi_config.frequency =
                       ((inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K));
     p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
-    if (twi1Initialised) nrf_drv_twi_uninit(twi);
-    twi1Initialised = true;
+    bool *twiInitialised = &twi0Initialised;
+    switch (device) {
+      case EV_I2C1:
+        twiInitialised = &twi0Initialised;
+        break;
+#if ESPR_I2C_COUNT > 1
+      case EV_I2C2:
+        twiInitialised = &twi1Initialised;
+        break;
+#endif
+    }
+    if (*twiInitialised) nrf_drv_twi_uninit(twi);
+    *twiInitialised = true;
     err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL, NULL);
     if (err_code != NRF_SUCCESS)
       jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d", err_code);
@@ -2307,12 +2333,23 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
       nrf_drv_twi_enable(twi);
   }
 #endif
-  // nrf_drv_spi_init will set pins, but this ensures we know so can reset state later
+  // nrf_drv_twi_init will set pins, but this ensures we know so can reset state later
+  JshPinFunction pinFuncDevice = 0;
+  switch (device) {
+    case EV_I2C1:
+      pinFuncDevice |= JSH_I2C1;
+      break;
+#if ESPR_I2C_COUNT > 1
+    case EV_I2C2:
+      pinFuncDevice |= JSH_I2C2;
+      break;
+#endif
+  }
   if (jshIsPinValid(inf->pinSCL)) {
-    jshPinSetFunction(inf->pinSCL, JSH_I2C1|JSH_I2C_SCL);
+    jshPinSetFunction(inf->pinSCL, pinFuncDevice|JSH_I2C_SCL);
   }
   if (jshIsPinValid(inf->pinSDA)) {
-    jshPinSetFunction(inf->pinSDA, JSH_I2C1|JSH_I2C_SDA);
+    jshPinSetFunction(inf->pinSDA, pinFuncDevice|JSH_I2C_SDA);
   }
 }
 #endif
