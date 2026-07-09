@@ -73,7 +73,7 @@
 k_tid_t main_thread_id;
 
 // Get the device binding for the console UART (usually "zephyr,console")
-const struct device *serial1_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+const struct device *serial1_dev = DEVICE_DT_GET(DT_NODELABEL(uart20)); // was using DT_CHOSEN(zephyr_console)
 const struct device *flash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
 
@@ -123,7 +123,7 @@ void jshInit() {
   // set up flow control/pins/etc
   jshInitDevices();
   // Ext flash
-	if (!device_is_ready(extflash_dev)) {
+	/*if (!device_is_ready(extflash_dev)) {
 		printf("%s: device not ready\n", extflash_dev->name);
 		return;
 	}
@@ -134,7 +134,7 @@ void jshInit() {
 		       id[0], id[1], id[2]);
 	} else {
 		printf("JEDEC ID read failed: %d\n", err);
-	}
+	}*/
   // Bluetooth!
   jsble_init();
 }
