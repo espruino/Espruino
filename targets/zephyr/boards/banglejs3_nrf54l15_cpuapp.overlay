@@ -35,13 +35,7 @@
 	};
 };
 
-&cpuflpr_vpr {
-	pinctrl-0 = <&sqspi_default>;
-	pinctrl-1 = <&sqspi_sleep>;
-	pinctrl-names = "default", "sleep";
-	interrupts = <76 NRF_DEFAULT_IRQ_PRIORITY>;
-	status = "okay";
-};
+
 
 / {
 	reserved-memory {

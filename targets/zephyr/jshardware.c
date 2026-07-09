@@ -74,6 +74,7 @@ k_tid_t main_thread_id;
 
 // Get the device binding for the console UART (usually "zephyr,console")
 const struct device *serial1_dev = DEVICE_DT_GET(DT_NODELABEL(uart20)); // was using DT_CHOSEN(zephyr_console)
+const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi22));
 const struct device *flash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
 
@@ -122,6 +123,8 @@ void jshInit() {
   uart_irq_rx_enable(serial1_dev);
   // set up flow control/pins/etc
   jshInitDevices();
+  // SPI 1
+  if (!device_is_ready(spi1_dev)) return;
   // Ext flash
 	/*if (!device_is_ready(extflash_dev)) {
 		printf("%s: device not ready\n", extflash_dev->name);

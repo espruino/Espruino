@@ -144,6 +144,14 @@
 	};
 };
 
+&spi22 {
+   	status = "okay";
+	cs-gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&spi22_default>;
+	pinctrl-1 = <&spi22_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
 &adc {
 	status = "okay";
 };
@@ -154,6 +162,14 @@
     pinctrl-0 = <&uart20_default>;
     pinctrl-1 = <&uart20_sleep>;
     pinctrl-names = "default", "sleep";
+};
+
+&cpuflpr_vpr {
+	pinctrl-0 = <&sqspi_default>;
+	pinctrl-1 = <&sqspi_sleep>;
+	pinctrl-names = "default", "sleep";
+	interrupts = <76 NRF_DEFAULT_IRQ_PRIORITY>;
+	status = "okay";
 };
 
 /*
