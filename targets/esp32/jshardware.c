@@ -326,6 +326,10 @@ void jshPinSetState(
     pull_mode= GPIO_PULLUP_ONLY;
     if (negated) jsError( "jshPinSetState: can't do Open Drain on negated pin");
     break;
+  case JSHPINSTATE_ADC_IN:
+    mode = GPIO_MODE_INPUT;
+    pull_mode = GPIO_FLOATING;
+    break;
   default:
     jsError( "jshPinSetState: Unexpected state: %d", state);
   return;
