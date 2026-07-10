@@ -1929,7 +1929,17 @@ static void jsiHandleConsoleChar(char ch) {
       // pre alloc the string to the full size to avoid per-char allocations during receive
       jsiInputLineCursorMoved(); // free old iterator
       jsvUnLock(inputLine);
-      inputLine = jsvNewStringOfLength(size, NULL);
+      JsVar *pkFile = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_FILE");
+      JsVar *reuse = pkFile ? jsvObjectGetChildIfExists(pkFile, "buf") : NULL;
+      if (reuse && jsvGetStringLength(reuse) == size) {
+        inputLine = reuse;
+      } else {
+        if (reuse) jsvObjectRemoveChild(pkFile, "buf");
+        jsvUnLock(reuse);
+        inputLine = jsvNewStringOfLength(size, NULL);
+        if (pkFile) jsvObjectSetChild(pkFile, "buf", inputLine);
+      }
+      jsvUnLock(pkFile);
       inputLineLength = 0;
       jsvStringIteratorNew(&inputLineIterator, inputLine, 0);
       inputState = IPS_PACKET_TRANSFER_DATA;
