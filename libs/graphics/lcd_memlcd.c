@@ -25,8 +25,12 @@
 #define LCD_SPI EV_SPI1
 #if LCD_BPP==6
 #define LCD_ROWHEADER 0 // 6 bit LCD doesn't need row headers
+#define LCD_CS_ON 0
+#define LCD_CS_OFF 1
 #else
 #define LCD_ROWHEADER 2
+#define LCD_CS_ON 1
+#define LCD_CS_OFF 0
 #endif
 #define LCD_STRIDE (LCD_ROWHEADER+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
 
@@ -349,7 +353,7 @@ void lcdMemLCD_flip_spi_ovr_callback() {}
 // used to allow SPI send to work async for normal sends.
 void lcdMemLCD_flip_spi_callback() {
 #ifndef EMULATED
-  jshPinSetValue(LCD_SPI_CS, 0);
+  jshPinSetValue(LCD_SPI_CS, LCD_CS_OFF);
 #endif
   lcdIsBusy = false;
 }
@@ -385,7 +389,12 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
   }
 
 #ifndef EMULATED
-  jshPinSetValue(LCD_SPI_CS, 1);
+  jshPinSetValue(LCD_SPI_CS, LCD_CS_ON);
+#endif
+#ifdef LCD_CONTROLLER_ZJ012BD01A
+  jshDelayMicroseconds(100); // give it time to wake
+  uint8_t cmd[1] = { 2 }; // PY32_CMD_DISPLAY
+  jshSPISendMany(LCD_SPI, cmd, NULL, 1, NULL);
 #endif
   if (hasOverlay) {
     /* If lcdOverlayImage is defined, we want to overlay this image
@@ -447,7 +456,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     lcdIsBusy = true;
     if (!jshSPISendMany(LCD_SPI, &lcdBuffer[LCD_STRIDE*y1], NULL, (l*LCD_STRIDE)+2, lcdMemLCD_flip_spi_callback))
       lcdMemLCD_flip_spi_callback();
-    // lcdMemLCD_flip_spi_callback will call jshPinSetValue(LCD_SPI_CS, 0); when done and set lcdIsBusy=false
+    // lcdMemLCD_flip_spi_callback will call jshPinSetValue(LCD_SPI_CS, LCD_CS_OFF); when done and set lcdIsBusy=false
 #endif
   }
   // Reset modified-ness
@@ -474,8 +483,8 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   }
 #endif
 
-#ifndef EMULATED
-  jshPinOutput(LCD_SPI_CS,0);
+#ifdef NRF52_SERIES
+  jshPinOutput(LCD_SPI_CS,LCD_CS_OFF);
   jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
   jshPinOutput(LCD_DISP,1);
@@ -493,7 +502,7 @@ void lcdMemLCD_init(JsGraphics *gfx) {
 
 // pulse EXTCOMIN to avoid burn-in
 void lcdMemLCD_extcominToggle() {
-#ifndef EMULATED
+#ifdef NRF52_SERIES
   if (!isBacklightOn) {
     jshPinSetValue(LCD_EXTCOMIN, 1);
     jshDelayMicroseconds(2); // datasheet saus 2uS min rise time
@@ -505,7 +514,7 @@ void lcdMemLCD_extcominToggle() {
 // If backlight is on, we need to raise EXTCOMIN freq (use HW PWM)
 void lcdMemLCD_extcominBacklight(bool isOn) {
   isBacklightOn = isOn;
-#ifndef EMULATED
+#ifdef NRF52_SERIES
   if (isOn) {
     jshPinAnalogOutput(LCD_EXTCOMIN, 0.0003, 120, JSAOF_NONE); // ~3us
   } else {

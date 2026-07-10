@@ -5769,7 +5769,7 @@ static bool _jswrap_banglejs_shouldWake() {
 Turn Bangle.js off. It can only be woken by pressing BTN1.
 */
 void jswrap_banglejs_off() {
-#ifndef EMULATED
+#ifdef NRF52_SERIES
   // If BTN1 is pressed wait until it is released
   while (_jswrap_banglejs_shouldWake());
   // turn peripherals off
@@ -5793,7 +5793,7 @@ Turn Bangle.js (mostly) off, but keep the CPU in sleep mode until BTN1 is
 pressed to preserve the RTC (current time).
 */
 void jswrap_banglejs_softOff() {
-#ifndef EMULATED
+#ifdef NRF52_SERIES
   // If BTN1 is pressed wait until it is released
   while (jshPinGetValue(BTN1_PININDEX));
   // turn BLE and peripherals off

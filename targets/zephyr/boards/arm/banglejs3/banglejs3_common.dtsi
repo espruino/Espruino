@@ -146,7 +146,7 @@
 
 &spi22 {
    	status = "okay";
-	cs-gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
+	/* cs-gpios = <&gpio0 3 GPIO_ACTIVE_LOW>; */
 	pinctrl-0 = <&spi22_default>;
 	pinctrl-1 = <&spi22_sleep>;
 	pinctrl-names = "default", "sleep";
@@ -170,15 +170,4 @@
 	pinctrl-names = "default", "sleep";
 	interrupts = <76 NRF_DEFAULT_IRQ_PRIORITY>;
 	status = "okay";
-};
-
-/*
- * Note this SPI instance conflicts with UART30. Disable or reconfigure pinctrl for UART30
- * to use this SPI instance.
- */
-nordic_expansion_spi: &spi22 {
-	cs-gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
-	pinctrl-0 = <&spi22_default>;
-	pinctrl-1 = <&spi22_sleep>;
-	pinctrl-names = "default", "sleep";
 };

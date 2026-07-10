@@ -14,3 +14,7 @@ cmake: $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h $(PININFOFILE).c $(WRAPPERFILE)
 	@echo "" >> $(CMAKEFILE)
 	@echo "target_compile_options(app PRIVATE -DZEPHYR=1)" >> $(CMAKEFILE)
 	@echo "target_compile_options(app PRIVATE $(DEFINES))" >> $(CMAKEFILE)
+	@echo ""
+	@echo "========================================================================="
+	@echo "  Now build the project in targets/zephyr with NRF Connect SDK"
+	@echo "========================================================================="

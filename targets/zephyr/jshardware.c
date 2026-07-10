@@ -26,6 +26,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/drivers/spi.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/rtc.h>
@@ -78,6 +79,16 @@ const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi22));
 const struct device *flash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
 
+struct spi_config spi1_config = {
+        .frequency = 250000, // 250kHz //1000000U, // 1 MHz
+        .operation = SPI_OP_MODE_MASTER |   // Master mode
+                     SPI_WORD_SET(8) |      // 8-bit words
+                     SPI_TRANSFER_MSB     // Send MSB first
+                     /*SPI_MODE_SET(0)*/,
+        .slave     = 0,                     // Target index
+        .cs        = { .gpio = { .port = NULL } }
+    };
+
 // ----------------------------------------------------------------------------
 
 void serial_cb(const struct device *dev, void *user_data) {
@@ -114,7 +125,45 @@ const struct device *jshToZephyrPort(JsvPinInfoPort port) {
 }
 
 // ----------------------------------------------------------------------------
+// FIXME: share header
+typedef enum {
+  PY32_CMD_NONE,
+  PY32_CMD_SET_OUTPUT,
+  PY32_CMD_DISPLAY
+} PY32Command;
+/*
+PY32_CMD_NONE:
+  Does nothing, but still outputs state:
+  eg [0,0,0] returns [buttons, out_lo, out_hi]
+
+PY32_CMD_SET_OUTPUT:
+  [1, out_lo, out_hi]
+  eg. [1,1,0] enables backlight
+
+PY32_CMD_DISPLAY:
+  o
+*/
+
+typedef enum {
+  PY32_OUT_LCD_BL = 1,
+  PY32_OUT_TORCH_ON = 2,
+
+  PY32_OUT_RGB_ON = 8,
+  PY32_OUT_SPEAKER_ON = 16,
+  PY32_OUT_VIBRATE_ON = 32,
+  PY32_OUT_CHARGE_EN = 64,
+  PY32_OUT_WIFI_ON = 128,
+  PY32_OUT_WIFI_BOOTLOADER = 256,
+  PY32_OUT_AUX_SWAP = 512,
+  PY32_OUT_AUX_POWER = 1024,
+  PY32_OUT_TOUCH_RST = 2048,
+  PY32_OUT_HRM_AUX = 4096,
+  // PY32_OUT_IR_ON = ?,
+  // IR SCAN?
+} PY32OutputState;
+// ----------------------------------------------------------------------------
 unsigned short sxValues = 0;
+PY32OutputState pyOutputState = 0;
 
 void jshVirtualPinInitialise() {
   sxValues    = 0;
@@ -124,12 +173,29 @@ void jshVirtualPinSetValue(Pin pin, bool state) {
   int p = pinInfo[pin].pin;
   if (state) sxValues |= 1<<p;
   else sxValues &= ~(1<<p);
-  // send t
+  // FIXME: send to PY32
+  uint8_t buf[4];
+  pyOutputState &= ~(PY32_OUT_TORCH_ON);
+  if (pin == LED1_PININDEX) pyOutputState |= PY32_OUT_TORCH_ON;
+  buf[0] = PY32_CMD_SET_OUTPUT;
+  buf[1] = pyOutputState&255;
+  buf[2] = pyOutputState>>8;
+  jshPinSetValue(LCD_SPI_CS, 0);
+  jshDelayMicroseconds(100); // give it time to wake
+  //jshSPISendMany(EV_SPI1, buf, buf, sizeof(buf), NULL);
+  jshPinSetValue(LCD_SPI_CS, 1);
 }
 
 bool jshVirtualPinGetValue(Pin pin) {
   int p = pinInfo[pin].pin;
   return ((sxValues >> p) & 1) != 0;
+}
+
+void jshVirtualPinSetState(Pin pin, JshPinState state) {
+}
+
+JshPinState jshVirtualPinGetState(Pin pin) {
+  return IS_PIN_A_LED(pin) ? JSHPINSTATE_GPIO_OUT : JSHPINSTATE_GPIO_IN;
 }
 // ----------------------------------------------------------------------------
 
@@ -215,7 +281,7 @@ void jshDelayMicroseconds(int microsec) {
 void jshPinSetState(Pin pin, JshPinState state) {
 #if JSH_PORTV_COUNT>0
   // ignore virtual ports (eg. pins on an IO Expander)
-  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV) return;
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV) return jshVirtualPinSetState(pin, state);
 #endif
   uint32_t flags = GPIO_DISCONNECTED;
   switch (state) {
@@ -242,7 +308,7 @@ JshPinState jshPinGetState(Pin pin) {
 #if JSH_PORTV_COUNT>0
   // handle virtual ports (eg. pins on an IO Expander)
   if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
-    return IS_PIN_A_LED(pin) ? JSHPINSTATE_GPIO_OUT : JSHPINSTATE_GPIO_IN;
+    return jshVirtualPinGetState(pin);
 #endif
   return JSHPINSTATE_UNDEFINED;
 }
@@ -353,11 +419,44 @@ void jshUSARTKick(IOEventFlags device) {
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 }
 
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+  /*jsiConsolePrintf("jshSPISendMany %d [%d,...]\n", count, tx[0]);
+  struct spi_buf tx_buf = { .buf = tx, .len = count  };
+  struct spi_buf rx_buf = { .buf = rx, .len = count  };
+  struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
+  struct spi_buf_set rx_set = { .buffers = &rx_buf, .count = 1 };
+  int err;
+  if (rx) err = spi_transceive(spi1_dev, &spi1_config, &tx_set, &rx_set);
+  else err = spi_write(spi1_dev, &spi1_config, &tx_set);
+  if (err < 0) {
+      // Handle SPI bus runtime or hardware failure
+      jsWarn("SPI err %d\n",err);
+      return false;
+  }*/
+ // FIXME: user hardware! above code isn't working at the moment
+ for (unsigned int i=0;i<count;i++) {
+    int data = tx[i];
+    int bit;
+    for (bit=8 - 1;bit>=0;bit--) {
+      jshPinSetValue(LCD_SPI_MOSI, (data>>bit)&1 );
+      jshPinSetValue(LCD_SPI_SCK, 1 );
+      jshPinSetValue(LCD_SPI_SCK, 0 );
+    }
+  }
+
+  // FIXME use spi_transceive_cb for async writes (and use CONFIG_SPI_ASYNC=y)
+  if (callback) callback();
+  return true;
+}
+
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(IOEventFlags device, int data) {
-  return 0;
+  if (data<0) return 0; // it was blocking
+  uint8_t buf = data;
+  jshSPISendMany(device, &buf, &buf, 1, NULL);
+  return buf;
 }
 
 /** Send 16 bit data through the given SPI device. */

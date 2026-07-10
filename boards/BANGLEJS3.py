@@ -111,6 +111,11 @@ devices = { # 'V' pins are virtual
             'width' : 240, 'height' : 240,
             'bpp' : 6,
             'controller' : 'ZJ012BD01A', # ZJ012BD-01A
+            'pin_irq' : 'A4',
+            'pin_cs' : 'A3',
+            'pin_sck' : 'A0',
+            'pin_mosi' : 'A1',
+            'pin_miso' : 'A2',
           },
   'BAT' : {
             'pin_charging' : 'C9', # active low

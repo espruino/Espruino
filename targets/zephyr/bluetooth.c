@@ -166,7 +166,7 @@ static void security_changed(struct bt_conn *conn, bt_security_t level,
 	if (!err) {
 		LOG_INF("Security changed: %s level %u", addr, level);
 	} else {
-		LOG_WRN("Security failed: %s level %u err %d %s", addr, level, err,
+		LOG_ERR("Security failed: %s level %u err %d %s", addr, level, err,
 			bt_security_err_to_str(err));
 	}
 }
