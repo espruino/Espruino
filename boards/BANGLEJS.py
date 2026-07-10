@@ -37,7 +37,7 @@ info = {
      'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
      'BLACKLIST=boards/BANGLEJS.blocklist', # force some stuff to be removed to save space
      'DEFINES += -DESPR_HWVERSION=1',
-     'DEFINES += -DBANGLEJS_F18',
+     'DEFINES += -DBANGLEJS1 -DBANGLEJS_F18',
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES += -DDFU_APP_DATA_RESERVED=0', # allow firmware updates right up to the amount of available flash

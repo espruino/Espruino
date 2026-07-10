@@ -37,7 +37,7 @@ info = {
      'USE_DEBUGGER=0', # We can't use debugger in emulator as we're single-threaded and it uses IRQs on embedded to work
      'DEFINES += -DESPR_HWVERSION=1',
      'DEFINES += -DUSE_CALLFUNCTION_HACK', # required to handle calls properly
-     'DEFINES += -DBANGLEJS -DBANGLEJS_F18 -DEMULATED -DEMSCRIPTEN',
+     'DEFINES += -DBANGLEJS -DBANGLEJS1 -DBANGLEJS_F18 -DEMULATED -DEMSCRIPTEN',
      'DEFINES += -DSPIFLASH_BASE=0x8000000 -DSPIFLASH_LENGTH=4194304',
 #     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',

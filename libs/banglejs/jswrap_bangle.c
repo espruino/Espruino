@@ -37,7 +37,7 @@
 #include "bitmap_font_6x8.h"
 #ifndef EMULATED
 #include "jswrap_bluetooth.h"
-#ifdef NRF52
+#ifdef NRF52_SERIES
 #include "app_timer.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
@@ -833,7 +833,7 @@ NMEAFixInfo gpsFix;
 float batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
 #endif // ESPR_BATTERY_FULL_VOLTAGE
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
 /// Nordic app timer to handle call of peripheralPollHandler
 APP_TIMER_DEF(m_peripheral_poll_timer_id);
 #endif
@@ -1243,7 +1243,7 @@ bool getDeviceRequested(const char *deviceName) {
 
 void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
   pollInterval = (uint16_t)msec;
-#ifdef NRF52
+#ifdef NRF52_SERIES
   app_timer_stop(m_peripheral_poll_timer_id);
   #if NRF_SD_BLE_API_VERSION<5
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
@@ -4305,7 +4305,7 @@ NO_INLINE void jswrap_banglejs_init() {
   hrm_sensor_init();
 #endif
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens
   //  - the bootloader probably already set this up so the
@@ -4391,7 +4391,7 @@ NO_INLINE void jswrap_banglejs_init() {
   "generate" : "jswrap_banglejs_kill"
 }*/
 void jswrap_banglejs_kill() {
-#ifdef NRF52
+#ifdef NRF52_SERIES
 #ifdef BANGLEJS_F18
   app_timer_stop(m_backlight_on_timer_id);
   app_timer_stop(m_backlight_off_timer_id);
@@ -5714,7 +5714,7 @@ static void jswrap_banglejs_periph_off() {
 #endif
 #endif // PRESSURE_DEVICE
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
 #ifdef BTN2_PININDEX
   nrf_gpio_cfg_sense_set(pinInfo[BTN2_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
@@ -5737,7 +5737,7 @@ static void jswrap_banglejs_periph_off() {
   no longer works. To work around this we just call our standard pin watch function
   to re-enable everything. */
   jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
-#ifdef NRF52
+#ifdef NRF52_SERIES
   nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
 #endif
 #ifdef DICKENS
@@ -6437,7 +6437,7 @@ displays a circle on the display
     "name" : "LED1",
     "generate_js" : "libs/js/banglejs/LED1.min.js",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "#if" : "defined(BANGLEJS1) || defined(BANGLESJS2)",
+    "#if" : "defined(BANGLEJS1) || defined(BANGLEJS2)",
     "no_docs":1
 }
 
@@ -6453,7 +6453,7 @@ displays a circle on the display
     "name" : "LED2",
     "generate_js" : "libs/js/banglejs/LED2.min.js",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "#if" : "defined(BANGLEJS1) || defined(BANGLESJS2)",
+    "#if" : "defined(BANGLEJS1) || defined(BANGLEJS2)",
     "no_docs":1
 }
 
