@@ -431,10 +431,11 @@ if "LCD" in board.devices:
       codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
     if "pin_reset" in board.devices["LCD"]:
       codeOutDevicePin("LCD", "pin_reset", "LCD_RESET")
-  if board.devices["LCD"]["controller"]=="ssd1306" or board.devices["LCD"]["controller"]=="st7567" or board.devices["LCD"]["controller"]=="st7789v" or board.devices["LCD"]["controller"]=="st7735" or board.devices["LCD"]["controller"]=="gc9a01":
+  if "pin_rst" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_rst", "LCD_SPI_RST")
-  if board.devices["LCD"]["controller"]=="LPM013M126":
+  if "pin_disp" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_disp", "LCD_DISP")
+  if "pin_extcomin" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_extcomin", "LCD_EXTCOMIN")
   if "pin_cs" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_cs", "LCD_SPI_CS")

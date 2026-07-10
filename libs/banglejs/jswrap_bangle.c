@@ -37,12 +37,14 @@
 #include "bitmap_font_6x8.h"
 #ifndef EMULATED
 #include "jswrap_bluetooth.h"
+#ifdef NRF52
 #include "app_timer.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_soc.h"
 #include "nrf_saadc.h"
 #include "nrf5x_utils.h"
+#endif
 
 #include "bluetooth.h" // for self-test
 #include "jsi2c.h" // accelerometer/etc
@@ -123,7 +125,7 @@ type ShortBoolean = boolean | 0 | 1;
   "type" : "variable",
   "name" : "VIBRATE",
   "generate_full" : "VIBRATE_PIN",
-  "ifdef" : "BANGLEJS",
+  "#if" : "defined(BANGLEJS1) || defined(BANGLEJS2)",
   "return" : ["pin",""]
 }
 The Bangle.js's vibration motor.
@@ -578,12 +580,13 @@ Can be used for housekeeping tasks that don't want to be run during the day.
 #ifdef BANGLEJS3
 #ifndef EMULATED
 JshI2CInfo i2cInternal;
-#define ACCEL_I2C &i2cInternal
-#define MAG_I2C &i2cInternal
-#define TOUCH_I2C &i2cInternal
-#define PRESSURE_I2C &i2cInternal
-#define HRM_I2C &i2cInternal
-#define HEARTRATE 1
+//FIXMEBJS3
+//#define ACCEL_I2C &i2cInternal
+//#define MAG_I2C &i2cInternal
+//#define TOUCH_I2C &i2cInternal
+//#define PRESSURE_I2C &i2cInternal
+//#define HRM_I2C &i2cInternal
+//#define HEARTRATE 1
 #endif // EMULATED
 
 #define HOME_BTN 4
@@ -830,7 +833,7 @@ NMEAFixInfo gpsFix;
 float batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
 #endif // ESPR_BATTERY_FULL_VOLTAGE
 
-#ifndef EMULATED
+#ifdef NRF52
 /// Nordic app timer to handle call of peripheralPollHandler
 APP_TIMER_DEF(m_peripheral_poll_timer_id);
 #endif
@@ -1240,7 +1243,7 @@ bool getDeviceRequested(const char *deviceName) {
 
 void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
   pollInterval = (uint16_t)msec;
-#ifndef EMULATED
+#ifdef NRF52
   app_timer_stop(m_peripheral_poll_timer_id);
   #if NRF_SD_BLE_API_VERSION<5
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
@@ -1248,6 +1251,7 @@ void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval), NULL);
   #endif
 #endif
+// FIXMEBJS3
 }
 
 /* If we're busy and really don't want to be interrupted (eg clearing flash memory)
@@ -1489,6 +1493,7 @@ void peripheralPollHandler() {
     }
   }
 #endif // MAG_I2C
+bool hasAccelData;
 #ifdef ACCEL_I2C
 #ifdef ACCEL_DEVICE_KX023
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
@@ -1496,7 +1501,7 @@ void peripheralPollHandler() {
   jsi2cReadReg(ACCEL_I2C, ACCEL_ADDR, 0x12/*INS1*/, 2, buf);
   // 0 -> 0x12 INS1 - tap event
   // 1 -> 0x13 INS2 - what kind of event
-  bool hasAccelData = (buf[1]&16)!=0; // DRDY
+  hasAccelData = (buf[1]&16)!=0; // DRDY
   int tapType = (buf[1]>>2)&3; // TDTS0/1
   if (tapType) {
     tapInfo = buf[0] | (tapType<<6);
@@ -1522,14 +1527,14 @@ void peripheralPollHandler() {
 #ifdef ACCEL_DEVICE_KXTJ3_1057
   // read interrupt source data
   jsi2cReadReg(ACCEL_I2C, ACCEL_ADDR, 0x16/*INT_SOURCE1*/, 1, buf);
-  bool hasAccelData = (buf[0]&16)!=0; // DRDY
+  hasAccelData = (buf[0]&16)!=0; // DRDY
 #endif
 #ifdef ACCEL_DEVICE_KX126
   // read interrupt source data (INS1 and INS2 registers)
   jsi2cReadReg(ACCEL_I2C, ACCEL_ADDR, KX126_INS1, 2, buf);
   // 0 -> INS1 - step counter & tap events
   // 1 -> INS2 - what kind of event
-  bool hasAccelData = (buf[1] & KX126_INS2_DRDY)!=0; // Is new data ready?
+  hasAccelData = (buf[1] & KX126_INS2_DRDY)!=0; // Is new data ready?
   int tapType = (buf[1]>>2)&3; // TDTS0/1
   if (tapType) {
     // report tap
@@ -1740,7 +1745,7 @@ void peripheralPollHandler() {
     }
   }
 
-#endif
+#endif // ACCEL_I2C
 #ifdef PRESSURE_DEVICE
   if (bangleFlags & JSBF_BAROMETER_ON) {
     if (jswrap_banglejs_barometerPoll()) {
@@ -3930,7 +3935,7 @@ NO_INLINE void jswrap_banglejs_init() {
   IOEventFlags channel;
   bool firstRun = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_banglejs_init was called?
 
-#ifndef EMULATED
+#if defined(VIBRATE_PIN) && !defined(EMULATED)
   // turn vibrate off every time Bangle is reset
   jshPinOutput(VIBRATE_PIN,0);
 #endif
@@ -4300,7 +4305,7 @@ NO_INLINE void jswrap_banglejs_init() {
   hrm_sensor_init();
 #endif
 
-#ifndef EMULATED
+#ifdef NRF52
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens
   //  - the bootloader probably already set this up so the
@@ -4386,7 +4391,7 @@ NO_INLINE void jswrap_banglejs_init() {
   "generate" : "jswrap_banglejs_kill"
 }*/
 void jswrap_banglejs_kill() {
-#ifndef EMULATED
+#ifdef NRF52
 #ifdef BANGLEJS_F18
   app_timer_stop(m_backlight_on_timer_id);
   app_timer_stop(m_backlight_off_timer_id);
@@ -5512,7 +5517,7 @@ static NO_INLINE void _jswrap_banglejs_setVibration() {
   int beep = 0;
   if (bangleFlags & JSBF_BEEP_VIBRATE)
     beep = beepFreq;
-
+#ifdef VIBRATE_PIN
   if (buzzAmt==0 && beep==0)
     jshPinOutput(VIBRATE_PIN,0); // vibrate off
   else if (beep==0) { // vibrate only
@@ -5520,6 +5525,7 @@ static NO_INLINE void _jswrap_banglejs_setVibration() {
   } else { // beep and vibrate
     jshPinAnalogOutput(VIBRATE_PIN, 0.2 + buzzAmt*0.6/255, beep, JSAOF_NONE);
   }
+#endif
 }
 
 /*JSON{
@@ -5678,7 +5684,9 @@ static void jswrap_banglejs_periph_off() {
 #ifdef GPS_PIN_RX
   jswrap_banglejs_pwrGPS(false); // GPS off
 #endif
+#ifdef VIBRATE_PIN
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
+#endif
   //jswrap_banglejs_setLCDPower calls JS events (and sometimes timers), so avoid it and manually turn controller + backlight off:
   _jswrap_banglejs_setLocked(1,NULL); // disable touchscreen if we have one
   jswrap_banglejs_setLCDPowerController(0);
@@ -5706,7 +5714,7 @@ static void jswrap_banglejs_periph_off() {
 #endif
 #endif // PRESSURE_DEVICE
 
-
+#ifdef NRF52
 #ifdef BTN2_PININDEX
   nrf_gpio_cfg_sense_set(pinInfo[BTN2_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
@@ -5715,6 +5723,7 @@ static void jswrap_banglejs_periph_off() {
 #endif
 #ifdef BTN4_PININDEX
   nrf_gpio_cfg_sense_set(pinInfo[BTN4_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
+#endif
 #endif
 
 #ifndef DICKENS // RB: the call to jswrap_banglejs_kill via jswInit can cause increased power draw
@@ -5728,7 +5737,9 @@ static void jswrap_banglejs_periph_off() {
   no longer works. To work around this we just call our standard pin watch function
   to re-enable everything. */
   jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
+#ifdef NRF52
   nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
+#endif
 #ifdef DICKENS
   jshPinWatch(BAT_PIN_CHARGING, true, JSPW_NONE); // watch for when power applied
   nrf_gpio_cfg_sense_set(pinInfo[BAT_PIN_CHARGING].pin, NRF_GPIO_PIN_SENSE_LOW); // falling -> on charge
@@ -6426,7 +6437,8 @@ displays a circle on the display
     "name" : "LED1",
     "generate_js" : "libs/js/banglejs/LED1.min.js",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "ifdef" : "BANGLEJS", "no_docs":1
+    "#if" : "defined(BANGLEJS1) || defined(BANGLESJS2)",
+    "no_docs":1
 }
 
 On most Espruino board there are LEDs, in which case `LED1` will be an actual
@@ -6441,7 +6453,8 @@ displays a circle on the display
     "name" : "LED2",
     "generate_js" : "libs/js/banglejs/LED2.min.js",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "ifdef" : "BANGLEJS", "no_docs":1
+    "#if" : "defined(BANGLEJS1) || defined(BANGLESJS2)",
+    "no_docs":1
 }
 
 On most Espruino board there are LEDs, in which case `LED2` will be an actual

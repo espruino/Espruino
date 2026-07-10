@@ -112,9 +112,31 @@ const struct device *jshToZephyrPort(JsvPinInfoPort port) {
     default: assert(0); return 0;
   }
 }
+
+// ----------------------------------------------------------------------------
+unsigned short sxValues = 0;
+
+void jshVirtualPinInitialise() {
+  sxValues    = 0;
+}
+
+void jshVirtualPinSetValue(Pin pin, bool state) {
+  int p = pinInfo[pin].pin;
+  if (state) sxValues |= 1<<p;
+  else sxValues &= ~(1<<p);
+  // send t
+}
+
+bool jshVirtualPinGetValue(Pin pin) {
+  int p = pinInfo[pin].pin;
+  return ((sxValues >> p) & 1) != 0;
+}
 // ----------------------------------------------------------------------------
 
 void jshInit() {
+#if JSH_PORTV_COUNT>0
+  jshVirtualPinInitialise();
+#endif
   main_thread_id = k_current_get();
   if (!device_is_ready(serial1_dev)) return;
   // 1. Set the callback function
@@ -191,6 +213,10 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
+#if JSH_PORTV_COUNT>0
+  // ignore virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV) return;
+#endif
   uint32_t flags = GPIO_DISCONNECTED;
   switch (state) {
     case JSHPINSTATE_UNDEFINED: flags = GPIO_DISCONNECTED; break;
@@ -213,18 +239,35 @@ void jshPinSetState(Pin pin, JshPinState state) {
 }
 
 JshPinState jshPinGetState(Pin pin) {
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return IS_PIN_A_LED(pin) ? JSHPINSTATE_GPIO_OUT : JSHPINSTATE_GPIO_IN;
+#endif
   return JSHPINSTATE_UNDEFINED;
 }
 
 void jshPinSetValue(Pin pin, bool value) {
   const JshPinInfo *p = &pinInfo[pin];
   if (p->port & JSH_PIN_NEGATED) value=!value;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((p->port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinSetValue(pin, value);
+#endif
   gpio_pin_set_raw(jshToZephyrPort(p->port), p->pin, value);
 }
 
 bool jshPinGetValue(Pin pin) {
   const JshPinInfo *p = &pinInfo[pin];
-  bool value =  gpio_pin_get_raw(jshToZephyrPort(p->port), p->pin);
+  bool value;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((p->port & JSH_PORT_MASK)==JSH_PORTV)
+    value = jshVirtualPinGetValue(pin);
+  else
+#endif
+  value = gpio_pin_get_raw(jshToZephyrPort(p->port), p->pin);
   if (p->port & JSH_PIN_NEGATED) value=!value;
   return value;
 }
