@@ -83,6 +83,10 @@ else # no BOOTLOADER
     # Neopixel support (only NRF52)
     SOURCES    += targets/nrf5x/i2s_ws2812b_drive.c
   endif
+  ifeq ($(USE_I2S),1)
+    # I2S support
+    SOURCES += targets/nrf5x/jsi2s.c
+  endif
 endif
 
 # Careful here.. All these includes and sources assume a SoftDevice. Not efficient/clean if softdevice (ble) is not enabled...
