@@ -78,38 +78,39 @@ void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, u
       graphicsSetPixelDevice(gfx,x,y, col);
 }
 
-void graphicsFallbackBlit(JsGraphics *gfx, int x1, int y1, int w, int h, int x2, int y2) {
-  for (int y=0;y<h;y++)
+static void graphicsFallbackBlitX(JsGraphics *gfx, int x1, int y1, int w, int x2, int y2) {
+  if (x1 >= x2) {
     for (int x=0;x<w;x++)
-      gfx->setPixel(gfx, (int)(x+x2),(int)(y+y2),
-        gfx->getPixel(gfx, (int)(x+x1),(int)(y+y1)));
-}
-
-void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto, int x1, int x2) {
-  int x;
-  if (xdir<=0) {
-    int w = x2+xdir;
-    for (x=x1;x<=w;x++)
-      gfx->setPixel(gfx, (int)x,(int)yto,
-          gfx->getPixel(gfx, (int)(x-xdir),(int)yfrom));
-  } else { // >0
-    for (x=x2-xdir;x>=x1;x--)
-      gfx->setPixel(gfx, (int)(x+xdir),(int)yto,
-          gfx->getPixel(gfx, (int)x,(int)yfrom));
+      gfx->setPixel(gfx, x+x2, y2,
+        gfx->getPixel(gfx, x+x1, y1));
+  } else {
+    for (int x=w-1;x>=0;x--)
+      gfx->setPixel(gfx, x+x2, y2,
+        gfx->getPixel(gfx, x+x1, y1));
   }
 }
 
+/// blit a WxH area of x1y1 to x2y2 - all guaranteed to be in range
+void graphicsFallbackBlit(JsGraphics *gfx, int x1, int y1, int w, int h, int x2, int y2) {
+  if (y1 >= y2) {
+    for (int y=0;y<h;y++)
+      graphicsFallbackBlitX(gfx, x1, y+y1, w, x2, y+y2);
+  } else {
+    for (int y=h-1;y>=0;y--)
+      graphicsFallbackBlitX(gfx, x1, y1, w, x2, y2);
+  }
+}
+
+/// scroll - leave unscrolled area undefined (all values guaranteed to be in range)
 void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
   if (xdir==0 && ydir==0) return;
-  int y;
-  if (ydir<=0) {
-    int h = y2+ydir;
-    for (y=y1;y<=h;y++)
-      graphicsFallbackScrollX(gfx, xdir, y-ydir, y, x1, x2);
-  } else { // >0
-    for (y=y2-ydir;y>=y1;y--)
-      graphicsFallbackScrollX(gfx, xdir, y, y+ydir, x1, x2);
-  }
+  #define MAX(a,b) ((a) > (b) ? (a) : (b))
+  #define MIN(a,b) ((a) < (b) ? (a) : (b))
+  graphicsFallbackBlit(gfx, x1-MIN(xdir,0), y1-MIN(ydir,0),
+    x2-(x1+abs(xdir)), y2-(y1+abs(xdir)), // width/height
+    x1+MAX(xdir,0), y1+MAX(ydir,0));
+  #undef MIN
+  #undef MAX
 }
 
 // ----------------------------------------------------------------------------------------------

@@ -24,6 +24,7 @@
             Timers: ensure UET_EXECUTE timers only wait until idle to clear if they're for JS code
             Puck.js: Fix IR transmit with >15 entries (2v29 regression)
             Fix data loss if >64b data appears in one packet - issue only spotted on ESP32 (#2718)
+            Fix builtin `g.blit` when overlapping areas - also use for `g.scroll`
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes
