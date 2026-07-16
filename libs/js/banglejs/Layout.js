@@ -173,25 +173,16 @@ Layout.prototype.render = function (l) {
         gfx.setFont(l.font).setFontAlign(0,0,l.r).drawString(l.label, l.x+(l.w>>1), l.y+(l.h>>1));
       }
     }, "btn":function(l){"ram";
-      var x = l.x+(0|l.pad), y = l.y+(0|l.pad),
-          w = l.w-(l.pad<<1), h = l.h-(l.pad<<1);
-      var poly = [
-        x,y+4,
-        x+4,y,
-        x+w-5,y,
-        x+w-1,y+4,
-        x+w-1,y+h-5,
-        x+w-5,y+h-1,
-        x+4,y+h-1,
-        x,y+h-5,
-        x,y+4
-      ],
-      btnborder = l.btnBorderCol!==undefined?l.btnBorderCol:gfx.theme.fg2,
-      btnface = l.btnFaceCol!==undefined?l.btnFaceCol:gfx.theme.bg2;
-    if(l.selected){
-      btnface = gfx.theme.bgH; btnborder = gfx.theme.fgH;
+    var x = l.x+(0|l.pad), y = l.y+(0|l.pad),
+        w = l.w-(l.pad<<1), h = l.h-(l.pad<<1),
+        btnborder = l.btnBorderCol!==undefined?l.btnBorderCol:gfx.theme.fg2,
+        btnface = l.btnFaceCol!==undefined?l.btnFaceCol:gfx.theme.bg2,
+        r = {x:x,y:y,w:w-1,h:h-1,r:10};
+    if (l.selected){
+      btnface = gfx.theme.bgH; 
+      btnborder = gfx.theme.fgH;
     }
-    gfx.setColor(btnface).fillPoly(poly).setColor(btnborder).drawPoly(poly);
+    gfx.setColor(btnface).fillRect(r).setColor(btnborder).drawRect(r);
     if (l.col!==undefined) gfx.setColor(l.col);
     if (l.src) gfx.setBgColor(btnface).drawImage(
       "function"==typeof l.src?l.src():l.src,
@@ -265,13 +256,15 @@ Layout.prototype.update = function() {
         var m = gfx.setFont(l.font).stringMetrics(l.label);
         l._w = m.width; l._h = m.height;
       }
-    }, "btn": function(l) {"ram";
-      if (l.font && l.font.endsWith("%"))
-        l.font = "Vector"+rnd(gfx.getHeight()*l.font.slice(0,-1)/100);
-      var m = l.src?gfx.imageMetrics("function"==typeof l.src?l.src():l.src):gfx.setFont(l.font||"6x8:2").stringMetrics(l.label);
-      l._h = 16 + m.height;
-      l._w = 20 + m.width;
-    }, "img": function(l) {"ram";
+    }, "btn": function(l) { "ram";
+        if (l.font && l.font.endsWith("%"))
+          l.font = "Vector"+rnd(gfx.getHeight()*l.font.slice(0,-1)/100);
+        var s = l.scale || 1, m = l.src
+          ? gfx.imageMetrics("function"==typeof l.src ? l.src() : l.src)
+          : gfx.setFont(l.font||"6x8:2").stringMetrics(l.label);
+        l._h = 16 + Math.ceil(m.height * s);
+        l._w = 20 + Math.ceil(m.width * s);
+      }, "img": function(l) {"ram";
       var m = gfx.imageMetrics("function"==typeof l.src?l.src():l.src), s=l.scale||1; // get width and height out of image
       l._w = m.width*s;
       l._h = m.height*s;
