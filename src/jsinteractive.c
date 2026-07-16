@@ -1688,7 +1688,7 @@ static void packet_file_write(PacketWriteData *data, JsVar *var) {
   } else
 #endif
   {
-    data->ok |= jsfWriteFile(jsfNameFromVar(data->fn), inputLine, JSFF_NONE, data->fileOffset, data->fileSize);
+    data->ok |= jsfWriteFile(jsfNameFromVar(data->fn), var, JSFF_NONE, data->fileOffset, data->fileSize);
   }
   data->fileOffset += data->idx;
   data->idx = 0;

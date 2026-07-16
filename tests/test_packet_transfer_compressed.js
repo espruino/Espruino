@@ -8,7 +8,7 @@ repl.inject("\x10\x01\x60"+String.fromCharCode(json.length)+json);
 repl.inject("\x10\x01\x80"+String.fromCharCode(compressedData.length)+E.toString(compressedData));
 setTimeout(function() {
   let contents = require("Storage").read("test");
-  console.log("test", contents);
-  require("Storage").erase("test");
+  console.log("test", E.toJS(contents));
   result = contents==data;  
+  require("Storage").erase("test");
 }, 100);
