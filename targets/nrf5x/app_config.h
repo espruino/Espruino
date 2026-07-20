@@ -74,8 +74,12 @@
 
 #if ESPR_I2C_COUNT>0
 #define TWI_ENABLED 1
+#define TWI0_ENABLED 1
+#define TWI0_USE_EASY_DMA 0
+#if ESPR_I2C_COUNT>1
 #define TWI1_ENABLED 1
 #define TWI1_USE_EASY_DMA 0
+#endif
 #else
 #define TWI_ENABLED 0
 #endif // ESPR_I2C_COUNT
