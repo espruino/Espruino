@@ -9,7 +9,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Hardware interface Layer to be used with STM32L4 family.
+ * Hardware interface Layer to be used with STM32L4 and STM32F7 families.
  *
  * This is implementing the jshardware.h interface. This is an adaptation from
  * targets/stm32/jshardware.c file with ST Low Layer interface.
@@ -30,6 +30,7 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 
+#ifdef STM32L4
 #include "stm32l4xx_ll_gpio.h"
 #include "stm32l4xx_ll_bus.h"
 #include "stm32l4xx_ll_rcc.h"
@@ -44,8 +45,28 @@
 #include "stm32l4xx_ll_cortex.h"
 #include "stm32l4xx_ll_dac.h"
 #include "stm32l4xx_ll_pwr.h"
+#elif defined(STM32F7)
+#include "stm32f7xx_ll_gpio.h"
+#include "stm32f7xx_ll_bus.h"
+#include "stm32f7xx_ll_rcc.h"
+#include "stm32f7xx_ll_system.h"
+#include "stm32f7xx_ll_utils.h"
+#include "stm32f7xx_ll_usart.h"
+#include "stm32f7xx_ll_exti.h"
+#include "stm32f7xx_ll_tim.h"
+#include "stm32f7xx_ll_i2c.h"
+#include "stm32f7xx_ll_spi.h"
+#include "stm32f7xx_ll_adc.h"
+#include "stm32f7xx_ll_cortex.h"
+#include "stm32f7xx_ll_dac.h"
+#include "stm32f7xx_ll_pwr.h"
+#endif
 
+#ifdef STM32L4
 #include "stm32l4xx_hal.h" // Used for flash management
+#elif defined(STM32F7)
+#include "stm32f7xx_hal_flash.h"
+#endif
 
 #if defined(USE_FULL_ASSERT)
 #include "stm32_assert.h"
@@ -799,6 +820,11 @@ volatile unsigned char jshSPIBuf[ESPR_SPI_COUNT][JSH_SPIBUF_MASK+1]; // Need to 
   */
 void SystemClock_Config(void)
 {
+  /* Clock trees differ completely per family (no shared setup):
+   *   STM32L4: MSI -> PLL, 80 MHz, voltage scale 1, HSI48 for USB
+   *   STM32F7: HSE -> PLL, 216 MHz, flash latency 7 + ART accelerator
+   * Only the SysTick priority config at the very end is common. */
+#if defined(STM32L4)
   /* code directly coming from cube MX, L496 disco board */
 
   LL_FLASH_SetLatency(LL_FLASH_LATENCY_4);
@@ -859,6 +885,35 @@ void SystemClock_Config(void)
   LL_RCC_SetUSBClockSource(LL_RCC_USB_CLKSOURCE_HSI48);
 #endif
 
+#elif defined(STM32F7)
+  /* STM32F7: 216 MHz from HSE (8 MHz via ST-LINK MCO on Nucleo-144) */
+  /* Enable HSE */
+  LL_RCC_HSE_Enable();
+  while(!LL_RCC_HSE_IsReady());
+
+  /* Configure Flash prefetch and ART accelerator for 216 MHz */
+  LL_FLASH_SetLatency(LL_FLASH_LATENCY_7);
+  while(LL_FLASH_GetLatency() != LL_FLASH_LATENCY_7);
+
+  /* Main PLL config: HSE /4 * 216 /2 = 216 MHz */
+  LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSE, LL_RCC_PLLM_DIV_4, 216, LL_RCC_PLLP_DIV_2);
+  LL_RCC_PLL_Enable();
+  while(!LL_RCC_PLL_IsReady());
+
+  /* Set prescalers */
+  LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
+  LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_4);  /* APB1 max 54 MHz */
+  LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_2);  /* APB2 max 108 MHz */
+
+  /* Switch sysclk to PLL */
+  LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL);
+  while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL);
+
+  /* Update system core clock and SysTick */
+  LL_Init1msTick(216000000);
+  LL_SetSystemCoreClock(216000000);
+#endif
+
   /* SysTick_IRQn interrupt configuration */
   NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
 }
@@ -878,7 +933,10 @@ static void jshResetPeripherals() {
     }
   }
   // Initialise UART if we have a default console device on it
-  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
+#ifdef USB
+  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL)
+#endif
+  {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
 #ifdef DEFAULT_CONSOLE_TX_PIN
@@ -919,17 +977,24 @@ void jshInit(){
 
   // enable clocks
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
+#if defined(STM32L4)
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ALL);
+#elif defined(STM32F7)
+  LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_ALL);
+#endif
 
 #ifdef USB
+#if defined(STM32L4)
   __HAL_RCC_PWR_CLK_ENABLE();
 
   /* enable USB power on Pwrctrl CR2 register */
   HAL_PWREx_EnableVddUSB();
+#elif defined(STM32F7)
+  __HAL_RCC_PWR_CLK_ENABLE();
+#endif
 #endif
 
-
-#if defined(GPIOG)
+#if defined(GPIOG) && defined(STM32L4)
   /* enable the Vddio2 power supply to use PG[15:2] */
   HAL_PWREx_EnableVddIO2();
 #endif
@@ -1109,20 +1174,15 @@ void jshKill(){
  */
 int jshGetSerialNumber(unsigned char *data, int maxChars){
   NOT_USED(maxChars); // bad :)
-  __IO uint32_t *addr = (__IO uint32_t*)(0x1FFF7590);
-
-  data[ 0] = (unsigned char)((addr[0]      ) & 0xFF);
-  data[ 1] = (unsigned char)((addr[0] >>  8) & 0xFF);
-  data[ 2] = (unsigned char)((addr[0] >> 16) & 0xFF);
-  data[ 3] = (unsigned char)((addr[0] >> 24) & 0xFF);
-  data[ 4] = (unsigned char)((addr[1]      ) & 0xFF);
-  data[ 5] = (unsigned char)((addr[1] >>  8) & 0xFF);
-  data[ 6] = (unsigned char)((addr[1] >> 16) & 0xFF);
-  data[ 7] = (unsigned char)((addr[1] >> 24) & 0xFF);
-  data[ 8] = (unsigned char)((addr[2]      ) & 0xFF);
-  data[ 9] = (unsigned char)((addr[2] >>  8) & 0xFF);
-  data[10] = (unsigned char)((addr[2] >> 16) & 0xFF);
-  data[11] = (unsigned char)((addr[2] >> 24) & 0xFF);
+  // Read the 96-bit unique device ID via the vendor LL accessors, which resolve
+  // to the correct UID_BASE for whichever STM32 family this target is built for.
+  uint32_t uid[3] = { LL_GetUID_Word0(), LL_GetUID_Word1(), LL_GetUID_Word2() };
+  for (int w = 0; w < 3; w++) {
+    data[w*4+0] = (unsigned char)((uid[w]    )&0xFF);
+    data[w*4+1] = (unsigned char)((uid[w]>> 8)&0xFF);
+    data[w*4+2] = (unsigned char)((uid[w]>>16)&0xFF);
+    data[w*4+3] = (unsigned char)((uid[w]>>24)&0xFF);
+  }
   return 12;
 }
 
@@ -1256,6 +1316,7 @@ static NO_INLINE int jshAnalogRead(Pin pin, JsvPinInfoAnalog analog, bool fastCo
   LL_GPIO_EnablePinAnalogControl(stmPort(pin), stmPin(pin));
 #endif /* GPIO_ASCR_ASC0 */
 
+#if defined(STM32L4)
   if(ADCx == ADC1 || ADCx == ADC2) {
     adcIRQ = ADC1_2_IRQn;
   }else if(ADCx == ADC3) {
@@ -1310,13 +1371,20 @@ static NO_INLINE int jshAnalogRead(Pin pin, JsvPinInfoAnalog analog, bool fastCo
   }
 
   LL_ADC_ClearFlag_EOC(ADCx);
+#elif defined(STM32F7)
+  // TODO: Implement ADC using F7 LL/HAL
+  jsExceptionHere(JSET_INTERNALERROR, "ADC not yet implemented for F7");
+  return 0;
+#endif
 
+#if defined(STM32L4)
   /* Retrieve ADC conversion data */
   /* (data scale corresponds to ADC resolution: 12 bits) */
   value = LL_ADC_REG_ReadConversionData12(ADCx);
 
   LL_AHB2_GRP1_ForceReset(LL_AHB2_GRP1_PERIPH_ADC);
   LL_AHB2_GRP1_ReleaseReset(LL_AHB2_GRP1_PERIPH_ADC);
+#endif
 
   return value;
 }
@@ -1345,6 +1413,7 @@ int jshPinAnalogFast(Pin pin){
 
 
 void jshAnalogConfigureDAC(uint32_t DAC_Channel){
+#if defined(STM32L4)
   uint32_t wait_loop_index = 0;
 
   /* Configure GPIO in analog mode to be used as DAC output */
@@ -1382,6 +1451,10 @@ void jshAnalogConfigureDAC(uint32_t DAC_Channel){
   }
 
   LL_DAC_EnableTrigger(DAC1, DAC_Channel);
+#elif defined(STM32F7)
+  // TODO: Implement DAC
+  jsExceptionHere(JSET_INTERNALERROR, "DAC not yet implemented for F7");
+#endif
 }
 
 /// Output an analog value on a pin - either via DAC, hardware PWM, or software PWM
@@ -1866,6 +1939,7 @@ JsVar *jshFlashGetFree(){
   * @param  Addr: Address of the FLASH Memory
   * @retval The bank of a given address
   */
+#if defined(STM32L4)
 static uint32_t GetBank(uint32_t Addr){
   uint32_t bank = 0;
   if (READ_BIT(SYSCFG->MEMRMP, SYSCFG_MEMRMP_FB_MODE) == 0){
@@ -1886,7 +1960,42 @@ static uint32_t GetBank(uint32_t Addr){
 
   return bank;
 }
+#endif
 
+#if defined(STM32F7)
+/**
+  * @brief  Gets the sector of a given address
+  * @param  Addr: Address of the FLASH Memory
+  * @retval The sector number (0-11 for a 2MB F767 in single-bank mode)
+  *
+  * Unlike STM32L4, F7 flash is non-uniform, so erasing needs this address>sector lookup.
+  */
+static uint32_t GetSector(uint32_t Addr){
+  uint32_t sector = 0;
+  uint32_t offset = Addr - FLASH_BASE;
+  /* STM32F767 single-bank (2MB) sector layout:
+   * Sectors 0-3:  4 x 32KB   = 128KB
+   * Sector  4:    1 x 128KB  = 128KB
+   * Sectors 5-11: 7 x 256KB  = 1792KB
+   * Total = 2048KB
+   */
+  if (offset < 0x08000) { sector = 0; }        /* 0x00000 - 0x07FFF:  32KB */
+  else if (offset < 0x10000) { sector = 1; }   /* 0x08000 - 0x0FFFF:  32KB */
+  else if (offset < 0x18000) { sector = 2; }   /* 0x10000 - 0x17FFF:  32KB */
+  else if (offset < 0x20000) { sector = 3; }   /* 0x18000 - 0x1FFFF:  32KB */
+  else if (offset < 0x40000) { sector = 4; }   /* 0x20000 - 0x3FFFF: 128KB */
+  else if (offset < 0x80000) { sector = 5; }   /* 0x40000 - 0x7FFFF: 256KB */
+  else if (offset < 0xC0000) { sector = 6; }   /* 0x80000 - 0xBFFFF: 256KB */
+  else if (offset < 0x100000) { sector = 7; }  /* 0xC0000 - 0xFFFFF: 256KB */
+  else if (offset < 0x140000) { sector = 8; }  /* 0x100000 - 0x13FFFF: 256KB */
+  else if (offset < 0x180000) { sector = 9; }  /* 0x140000 - 0x17FFFF: 256KB */
+  else if (offset < 0x1C0000) { sector = 10; } /* 0x180000 - 0x1BFFFF: 256KB */
+  else { sector = 11; }                        /* 0x1C0000 - 0x1FFFFF: 256KB (saved code) */
+  return sector;
+}
+#endif
+
+#if defined(STM32L4)
 /**
   * @brief  Gets the page of a given address
   * @param  Addr: Address of the FLASH Memory
@@ -1905,23 +2014,34 @@ static uint32_t GetPage(uint32_t Addr){
 
   return page;
 }
+#endif
 
 /// Erase the flash page containing the address
 void jshFlashErasePage(uint32_t addr){
   static FLASH_EraseInitTypeDef EraseInitStruct;
-  uint32_t bank = GetBank(addr);
-  uint32_t page = GetPage(addr);
   uint32_t PAGEError = 0;
 
   HAL_FLASH_Unlock();
 
+#if defined(STM32F7)
   // Clear All pending flags
-  //__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | /*FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR*/);
+  __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS | FLASH_FLAG_EOP);
+#endif
 
+#if defined(STM32L4)
+  uint32_t bank = GetBank(addr);
+  uint32_t page = GetPage(addr);
   EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
   EraseInitStruct.Banks       = bank;
   EraseInitStruct.Page        = page;
   EraseInitStruct.NbPages     = 1;
+#elif defined(STM32F7)
+  uint32_t sector = GetSector(addr);
+  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_SECTORS;
+  EraseInitStruct.Sector      = sector;
+  EraseInitStruct.NbSectors   = 1;
+  EraseInitStruct.VoltageRange = FLASH_VOLTAGE_RANGE_3; /* 2.7V-3.6V */
+#endif
 
   HAL_StatusTypeDef res = HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError);
   if( res != HAL_OK){
@@ -1938,6 +2058,7 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   memcpy(buf, (void*)addr, len);
 }
 
+#if defined(STM32L4)
 static void jshFlashWrite64(uint64_t data, uint32_t addr) {
   assert(!(addr&7));
   //jsiConsolePrintf("Write 0x%08x%08x to 0x%08x\n", (uint32_t)(data>>32),(uint32_t)data, addr);
@@ -1947,6 +2068,16 @@ static void jshFlashWrite64(uint64_t data, uint32_t addr) {
     jsExceptionHere(JSET_INTERNALERROR, "Flash Write Error %d,0x%x (0x%08x)", res, HAL_FLASH_GetError(), addr);
   }
 }
+#elif defined(STM32F7)
+static void jshFlashWrite32(uint32_t data, uint32_t addr) {
+  assert(!(addr&3));
+  HAL_StatusTypeDef res = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr, (uint64_t)data);
+  if(res != HAL_OK){
+    // see HAL_FLASH_GetError for info on error codes
+    jsExceptionHere(JSET_INTERNALERROR, "Flash Write Error %d,0x%x (0x%08x)", res, HAL_FLASH_GetError(), addr);
+  }
+}
+#endif
 
 /** Write data to flash memory from the buffer, the buffer address and flash address are
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
@@ -1956,6 +2087,18 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   assert(!(len&3));
 
   HAL_FLASH_Unlock();
+#if defined(STM32F7)
+  __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS | FLASH_FLAG_EOP);
+  // F7 programs 32-bit words (addr/len are 4-byte aligned per contract)
+  while (len>3 && !jspIsInterrupted()) {
+    uint32_t w;
+    memcpy(&w, cbuf, 4);
+    jshFlashWrite32(w, addr);
+    cbuf += 4;
+    addr += 4;
+    len -= 4;
+  }
+#else
   // bodge up single 32 bit writes
   if (addr&4) {
     addr -= 4;
@@ -1983,6 +2126,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
     jshFlashRead(&buf64[4],addr+4,4);
     jshFlashWrite64(*((uint64_t*)buf64), addr);
   }
+#endif
 
   HAL_FLASH_Lock();
 }

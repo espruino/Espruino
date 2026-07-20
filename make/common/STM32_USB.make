@@ -21,6 +21,14 @@ targetlibs/stm32l4/lib/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pcd_ex.c
 INCLUDE += -I$(ROOT)/targets/stm32
 endif
 
+ifeq ($(FAMILY),STM32F7)
+TARGETSOURCES +=                                 \
+targetlibs/stm32f7/lib/stm32f7xx_hal_pcd.c \
+targetlibs/stm32f7/lib/stm32f7xx_hal_pcd_ex.c
+
+INCLUDE += -I$(ROOT)/targets/stm32
+endif
+
 INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
 TARGETSOURCES +=                                 \
 targetlibs/stm32usb/usbd_conf.c \
