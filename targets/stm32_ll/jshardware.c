@@ -1372,9 +1372,39 @@ static NO_INLINE int jshAnalogRead(Pin pin, JsvPinInfoAnalog analog, bool fastCo
 
   LL_ADC_ClearFlag_EOC(ADCx);
 #elif defined(STM32F7)
-  // TODO: Implement ADC using F7 LL/HAL
-  jsExceptionHere(JSET_INTERNALERROR, "ADC not yet implemented for F7");
-  return 0;
+  /* Enable ADC peripheral clock (per instance) */
+  if (ADCx == ADC1) LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC1);
+  else if (ADCx == ADC2) LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC2);
+  else if (ADCx == ADC3) LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC3);
+
+  /* PCLK2 is 108MHz at 216MHz sysclk; /4 = 27MHz, under the 36MHz ADC max */
+  LL_ADC_SetCommonClock(__LL_ADC_COMMON_INSTANCE(ADCx), LL_ADC_CLOCK_SYNC_PCLK_DIV4);
+  LL_ADC_SetResolution(ADCx, LL_ADC_RESOLUTION_12B);
+  LL_ADC_REG_SetSequencerLength(ADCx, LL_ADC_REG_SEQ_SCAN_DISABLE);
+  LL_ADC_REG_SetSequencerRanks(ADCx, LL_ADC_REG_RANK_1, stmADCChannel(analog));
+  LL_ADC_SetChannelSamplingTime(ADCx, stmADCChannel(analog), LL_ADC_SAMPLINGTIME_480CYCLES);
+
+  /* Enable ADC */
+  LL_ADC_Enable(ADCx);
+  jshDelayMicroseconds(10);
+
+  /* Perform ADC group regular conversion start, poll for conversion        */
+  LL_ADC_REG_StartConversionSWStart(ADCx);
+
+  Timeout = ADC_UNITARY_CONVERSION_TIMEOUT_MS*5;
+  while (LL_ADC_IsActiveFlag_EOCS(ADCx) == 0) {
+    if (LL_SYSTICK_IsActiveCounterFlag()) {
+      if (Timeout-- == 0) {
+        jsiConsolePrintf("\n  jshAnalogRead Timeout !!!");
+        break;
+      }
+    }
+  }
+
+  /* Retrieve ADC conversion data */
+  value = LL_ADC_REG_ReadConversionData12(ADCx);
+  LL_ADC_ClearFlag_EOCS(ADCx);
+  LL_ADC_Disable(ADCx);
 #endif
 
 #if defined(STM32L4)
@@ -1452,8 +1482,26 @@ void jshAnalogConfigureDAC(uint32_t DAC_Channel){
 
   LL_DAC_EnableTrigger(DAC1, DAC_Channel);
 #elif defined(STM32F7)
-  // TODO: Implement DAC
-  jsExceptionHere(JSET_INTERNALERROR, "DAC not yet implemented for F7");
+  /* Enable DAC clock */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_DAC1);
+
+  /* Select trigger source */
+  LL_DAC_SetTriggerSource(DAC1, DAC_Channel, LL_DAC_TRIG_SOFTWARE);
+  LL_DAC_SetOutputBuffer(DAC1, DAC_Channel, LL_DAC_OUTPUT_BUFFER_ENABLE);
+
+  /* Enable DAC channel */
+  LL_DAC_Enable(DAC1, DAC_Channel);
+
+  /* Delay for DAC channel voltage settling time from DAC channel startup */
+  {
+    volatile uint32_t wait_loop_index = ((LL_DAC_DELAY_STARTUP_VOLTAGE_SETTLING_US * (SystemCoreClock / (100000 * 2))) / 10);
+    while (wait_loop_index != 0)
+    {
+      wait_loop_index--;
+    }
+  }
+
+  LL_DAC_EnableTrigger(DAC1, DAC_Channel);
 #endif
 }
 
