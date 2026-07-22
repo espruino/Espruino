@@ -897,6 +897,9 @@ void SystemClock_Config(void)
 
   /* Main PLL config: HSE /4 * 216 /2 = 216 MHz */
   LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSE, LL_RCC_PLLM_DIV_4, 216, LL_RCC_PLLP_DIV_2);
+  /* PLL for USB: HSE /4 * 216 /9 = 48 MHz */
+  LL_RCC_PLL_ConfigDomain_48M(LL_RCC_PLLSOURCE_HSE, LL_RCC_PLLM_DIV_4, 216, LL_RCC_PLLQ_DIV_9);
+  LL_RCC_SetCK48MClockSource(LL_RCC_CK48M_CLKSOURCE_PLL);
   LL_RCC_PLL_Enable();
   while(!LL_RCC_PLL_IsReady());
 

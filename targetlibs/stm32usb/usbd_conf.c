@@ -41,6 +41,9 @@
 
 #ifdef STM32L4
 #include "stm32l4xx_hal.h"
+#elif defined(STM32F7)
+#include "stm32f7xx_ll_bus.h"
+#include "stm32f7xx_ll_gpio.h"
 #else
 #include "misc.h"
 #include "Legacy/stm32_hal_legacy.h"
@@ -105,6 +108,48 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
 
   /* Enable USB FS Interrupt */
   HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+  }
+#endif
+
+#ifdef STM32F7
+  LL_GPIO_InitTypeDef  GPIO_InitStruct;
+
+  if(hpcd->Instance==USB_OTG_FS)
+  {
+  /* Configure USB FS GPIOs */
+  LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
+
+  /* Configure DM DP Pins */
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_11 | LL_GPIO_PIN_12;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  GPIO_InitStruct.Alternate = LL_GPIO_AF_10;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* Configure VBUS Pin */
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_9;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* Configure ID pin */
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_10;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+  GPIO_InitStruct.Alternate = LL_GPIO_AF_10;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* Enable USB FS Clock */
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_OTGFS);
+
+  /* Set USB FS Interrupt priority */
+  NVIC_SetPriority(OTG_FS_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 7, 0));
+
+  /* Enable USB FS Interrupt */
+  NVIC_EnableIRQ(OTG_FS_IRQn);
   }
 #endif
 
@@ -384,7 +429,7 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   /* Link The driver to the stack */
   hpcd_USB_OTG_FS.pData = pdev;
   pdev->pData = &hpcd_USB_OTG_FS;
-#ifdef STM32L4
+#if defined(STM32L4) || defined(STM32F7)
   /* Set LL Driver parameters */
   hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
   hpcd_USB_OTG_FS.Init.dev_endpoints = 5;

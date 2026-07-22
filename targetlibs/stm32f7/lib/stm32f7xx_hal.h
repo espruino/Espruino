@@ -9,4 +9,8 @@
 
 #include "stm32f7xx_hal_conf.h"
 
+#ifdef HAL_PCD_MODULE_ENABLED
+#include "stm32f7xx_hal_pcd.h"
+#endif
+
 #endif /* __STM32F7xx_HAL_H */

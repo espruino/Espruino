@@ -23,6 +23,7 @@ endif
 
 ifeq ($(FAMILY),STM32F7)
 TARGETSOURCES +=                                 \
+targetlibs/stm32f7/lib/stm32f7xx_ll_usb.c \
 targetlibs/stm32f7/lib/stm32f7xx_hal_pcd.c \
 targetlibs/stm32f7/lib/stm32f7xx_hal_pcd_ex.c
 

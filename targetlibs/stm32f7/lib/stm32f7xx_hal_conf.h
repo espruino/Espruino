@@ -100,6 +100,8 @@ extern "C" {
 
 /* Minimal HAL_GetTick for flash timeout handling */
 uint32_t HAL_GetTick(void);
+void HAL_Delay(uint32_t Delay);
+uint32_t HAL_RCC_GetHCLKFreq(void);
 
 #ifdef __cplusplus
 }

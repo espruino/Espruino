@@ -80,12 +80,10 @@ devices = {
         'pin_CK' : 'A14',
         'pin_DI' : 'A15'
           },
-  # TODO(F7): Enable USB. 
-#  'USB' : { 'pin_otg_pwr' : 'C0',
-#            'pin_dm' : 'A11',
-#            'pin_dp' : 'A12',
-#            'pin_vbus' : 'A9',
-#            'pin_id' : 'A10', },
+  'USB' : { 'pin_dm' : 'A11',
+            'pin_dp' : 'A12',
+            'pin_vbus' : 'A9',
+            'pin_id' : 'A10', },
   # TODO: NUCLEO_A and NUCLEO_D Arduino header mappings for Nucleo-144
   # These are temporary values from Nucleo-64 to allow compilation
   'NUCLEO_A' : [ 'A0','A1','A4','B0','C1','C0' ],
