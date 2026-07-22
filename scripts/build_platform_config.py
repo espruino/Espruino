@@ -94,6 +94,8 @@ else: # NOT LINUX
     flash_page_size = 2*1024
   if board.chip["family"]=="STM32F4":
     flash_page_size = 128*1024
+  if board.chip["family"]=="STM32F7":
+    flash_page_size = 128*1024
   if board.chip["family"]=="NRF51":
     flash_page_size = 1024
   if board.chip["family"]=="NRF52":
@@ -214,6 +216,9 @@ elif board.chip["family"]=="STM32L4":
   codeOut('#include "stm32l4xx_ll_bus.h"')
   codeOut('#include "stm32l4xx_ll_rcc.h"')
   codeOut('#include "stm32l4xx_ll_adc.h"')
+elif board.chip["family"]=="STM32F7":
+  board.chip["class"]="STM32_LL"
+  codeOut('#include "stm32f7xx.h"')
 elif board.chip["family"]=="NRF51":
   board.chip["class"]="NRF51"
   linker_etext_var = "__etext";
