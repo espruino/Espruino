@@ -17,6 +17,9 @@
    Enable others here only if adding HAL source files to STM32F7.make. */
 
 #define HAL_FLASH_MODULE_ENABLED
+#ifdef USB
+#define HAL_PCD_MODULE_ENABLED
+#endif
 
 /* ########################## HSE/HSI Values adaptation ##################### */
 /* NUCLEO-F767ZI: ST-LINK MCO provides 8 MHz to HSE */
