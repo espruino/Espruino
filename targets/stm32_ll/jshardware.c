@@ -993,7 +993,7 @@ void jshInit(){
   /* enable USB power on Pwrctrl CR2 register */
   HAL_PWREx_EnableVddUSB();
 #elif defined(STM32F7)
-  __HAL_RCC_PWR_CLK_ENABLE();
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 #endif
 #endif
 
