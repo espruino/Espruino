@@ -6422,7 +6422,7 @@ To remove the window, call `E.showAlert()` with no arguments.
     "name" : "LED",
     "generate" : "gen_jswrap_LED1",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "ifdef" : "BANGLEJS", "no_docs":1
+    "#if" : "defined(BANGLEJS1) || defined(BANGLEJS2)", "no_docs":1
 }
 
 On most Espruino board there are LEDs, in which case `LED` will be an actual
