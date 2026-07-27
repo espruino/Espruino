@@ -206,6 +206,7 @@ def codeOutSymbolTable(builtin):
   # output tables
   listSymbols = []
   listChars = ""
+  listCharItems = []
   strLen = 0
   for sym in builtin["functions"]:
     symName = sym["name"];
@@ -214,6 +215,10 @@ def codeOutSymbolTable(builtin):
       continue # don't include libraries on global namespace
     if "generate" in sym:
       listSymbols.append("JSWSYMPTR_ENTRY("+", ".join([str(strLen), getArgumentSpecifier(sym), "(void*)"+sym["generate"]])+")")
+      if symName in listCharItems:
+        print("ERROR: duplicate symbol "+symName+" in symbol table for jswSymbols_"+codeName)
+        exit(1)
+      listCharItems.append(symName);
       listChars = listChars + symName + "\\0";
       strLen = strLen + len(symName) + 1
     else:
