@@ -110,7 +110,7 @@ devices = { # 'V' pins are virtual
   'LCD' : {
             'width' : 240, 'height' : 240,
             'bpp' : 6,
-            'controller' : 'ZJ012BD01A', # ZJ012BD-01A
+            'controller' : 'ZJ012BD01A', # ZJ012BD-01A (via Puya PY32)
             'pin_irq' : 'A4',
             'pin_cs' : 'A3',
             'pin_sck' : 'A0',

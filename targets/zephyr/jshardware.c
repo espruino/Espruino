@@ -163,7 +163,23 @@ typedef enum {
 } PY32OutputState;
 // ----------------------------------------------------------------------------
 unsigned short sxValues = 0;
-PY32OutputState pyOutputState = 0;
+PY32OutputState pyOutputState = 0; // current output values
+uint8_t pyButtonState = 0;
+
+
+// Send state to PY32
+void jshUpdatePY32() {
+  uint8_t buf[4];
+  buf[0] = PY32_CMD_SET_OUTPUT;
+  buf[1] = pyOutputState&255;
+  buf[2] = pyOutputState>>8;
+  jshPinSetValue(LCD_SPI_CS, 0);
+  jshDelayMicroseconds(100); // give it time to wake
+  jshSPISendMany(EV_SPI1, buf, buf, sizeof(buf), NULL);
+  jshPinSetValue(LCD_SPI_CS, 1);
+  pyButtonState = buf[0];
+  jsiConsolePrintf("BTN %d\n", pyButtonState);
+}
 
 void jshVirtualPinInitialise() {
   sxValues    = 0;
@@ -173,17 +189,10 @@ void jshVirtualPinSetValue(Pin pin, bool state) {
   int p = pinInfo[pin].pin;
   if (state) sxValues |= 1<<p;
   else sxValues &= ~(1<<p);
-  // FIXME: send to PY32
-  uint8_t buf[4];
+  // set status flags for PY32
   pyOutputState &= ~(PY32_OUT_TORCH_ON);
-  if (pin == LED1_PININDEX) pyOutputState |= PY32_OUT_TORCH_ON;
-  buf[0] = PY32_CMD_SET_OUTPUT;
-  buf[1] = pyOutputState&255;
-  buf[2] = pyOutputState>>8;
-  jshPinSetValue(LCD_SPI_CS, 0);
-  jshDelayMicroseconds(100); // give it time to wake
-  //jshSPISendMany(EV_SPI1, buf, buf, sizeof(buf), NULL);
-  jshPinSetValue(LCD_SPI_CS, 1);
+  if (sxValues&(1<<pinInfo[LED1_PININDEX].pin)) pyOutputState |= PY32_OUT_TORCH_ON;
+  jshUpdatePY32();
 }
 
 bool jshVirtualPinGetValue(Pin pin) {
@@ -420,8 +429,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 }
 
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
-  /*jsiConsolePrintf("jshSPISendMany %d [%d,...]\n", count, tx[0]);
-  struct spi_buf tx_buf = { .buf = tx, .len = count  };
+  /*struct spi_buf tx_buf = { .buf = tx, .len = count  };
   struct spi_buf rx_buf = { .buf = rx, .len = count  };
   struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
   struct spi_buf_set rx_set = { .buffers = &rx_buf, .count = 1 };
@@ -433,14 +441,19 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
       jsWarn("SPI err %d\n",err);
       return false;
   }*/
- // FIXME: user hardware! above code isn't working at the moment
+
+ // FIXME: use hardware! above code isn't working at the moment
+ const JshPinInfo *mosi = &pinInfo[LCD_SPI_MOSI];
+ const JshPinInfo *sck = &pinInfo[LCD_SPI_SCK];
+ const struct device *mosiport = jshToZephyrPort(mosi->port);
+ const struct device *sckport = jshToZephyrPort(sck->port);
  for (unsigned int i=0;i<count;i++) {
     int data = tx[i];
     int bit;
     for (bit=8 - 1;bit>=0;bit--) {
-      jshPinSetValue(LCD_SPI_MOSI, (data>>bit)&1 );
-      jshPinSetValue(LCD_SPI_SCK, 1 );
-      jshPinSetValue(LCD_SPI_SCK, 0 );
+      gpio_pin_set_raw(mosiport, mosi->pin, (data>>bit)&1);
+      gpio_pin_set_raw(sckport, sck->pin, 1);
+      gpio_pin_set_raw(sckport, sck->pin, 0);
     }
   }
 

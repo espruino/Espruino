@@ -24,7 +24,7 @@
 
 #define LCD_SPI EV_SPI1
 #if LCD_BPP==6
-#define LCD_ROWHEADER 0 // 6 bit LCD doesn't need row headers
+#define LCD_ROWHEADER 1 // 6 bit LCD uses row headers for LCD command
 #define LCD_CS_ON 0
 #define LCD_CS_OFF 1
 #else
@@ -393,8 +393,6 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
 #endif
 #ifdef LCD_CONTROLLER_ZJ012BD01A
   jshDelayMicroseconds(100); // give it time to wake
-  uint8_t cmd[1] = { 2 }; // PY32_CMD_DISPLAY
-  jshSPISendMany(LCD_SPI, cmd, NULL, 1, NULL);
 #endif
   if (hasOverlay) {
     /* If lcdOverlayImage is defined, we want to overlay this image
@@ -445,7 +443,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     jsvStringIteratorFree(&it);
     _jswrap_graphics_freeImageInfo(&overlayImg);
     // and 2 final bytes to finish the transfer
-#ifndef EMULATED
+#if defined(LCD_CONTROLLER_LPM013M126) && !defined(EMULATED)
     jshSPISendMany(LCD_SPI, lcdBuffer, NULL, 2, NULL);
     lcdMemLCD_flip_spi_callback();
 #endif
@@ -454,7 +452,11 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     memcpy(fakeLCDBuffer, lcdBuffer, LCD_HEIGHT*LCD_STRIDE);
 #else
     lcdIsBusy = true;
-    if (!jshSPISendMany(LCD_SPI, &lcdBuffer[LCD_STRIDE*y1], NULL, (l*LCD_STRIDE)+2, lcdMemLCD_flip_spi_callback))
+    int trailingBytes = 0;
+#if defined(LCD_CONTROLLER_LPM013M126)
+    trailingBytes = 2;
+#endif
+    if (!jshSPISendMany(LCD_SPI, &lcdBuffer[LCD_STRIDE*y1], NULL, (l*LCD_STRIDE)+trailingBytes, lcdMemLCD_flip_spi_callback))
       lcdMemLCD_flip_spi_callback();
     // lcdMemLCD_flip_spi_callback will call jshPinSetValue(LCD_SPI_CS, LCD_CS_OFF); when done and set lcdIsBusy=false
 #endif
@@ -473,13 +475,17 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   memset(lcdBuffer,0,sizeof(lcdBuffer));
 #if LCD_ROWHEADER>0
   for (int y=0;y<LCD_HEIGHT;y++) {
-#if LCD_BPP==3
-    lcdBuffer[y*LCD_STRIDE]=jswrap_espruino_reverseByte(0b10000000);
+#ifdef LCD_CONTROLLER_ZJ012BD01A
+  lcdBuffer[y*LCD_STRIDE] = 2; // PY32_CMD_DISPLAY
+#else
+  #if LCD_BPP==3
+      lcdBuffer[y*LCD_STRIDE]=jswrap_espruino_reverseByte(0b10000000);
+  #endif
+  #if LCD_BPP==4
+      lcdBuffer[y*LCD_STRIDE]=jswrap_espruino_reverseByte(0b10010000);
+  #endif
+      lcdBuffer[(y*LCD_STRIDE)+1]=jswrap_espruino_reverseByte(y+1);
 #endif
-#if LCD_BPP==4
-    lcdBuffer[y*LCD_STRIDE]=jswrap_espruino_reverseByte(0b10010000);
-#endif
-    lcdBuffer[(y*LCD_STRIDE)+1]=jswrap_espruino_reverseByte(y+1);
   }
 #endif
 
