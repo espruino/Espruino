@@ -1786,6 +1786,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf){
   // Enable RX interrupt (No TX IRQ wanted)
   LL_SPI_EnableIT_RXNE(SPIx);
 
+  // Disable first in case baud rate changes in init
+  LL_SPI_Disable(SPIx);
+
   /* Enable SPI  */
   LL_SPI_Init(SPIx, &LL_SPI_InitStructure);
   LL_SPI_Enable(SPIx );
