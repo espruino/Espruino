@@ -26,6 +26,7 @@
             Fix data loss if >64b data appears in one packet - issue only spotted on ESP32 (#2718)
             Fix builtin `g.blit` when overlapping areas - also use for `g.scroll`
             Fix compressed packet uploads (`{...c:1}`)
+            Ensure that after defrag, flat strings stay 4-byte aligned (fix #2726)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

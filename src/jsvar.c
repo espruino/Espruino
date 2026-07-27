@@ -4408,11 +4408,9 @@ static void _jsvDefragment_moveReferences(JsVarRef defragFromRef, JsVarRef defra
   for (JsVarRef vr=1;vr<=lastAllocated;vr++) {
     JsVar *v = _jsvGetAddressOf(vr);
     if ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
-      if (jsvIsFlatString(v)) {
-        // finding a hole of the right size is a pain - so let's just shift back
-        // find the last available item by searching forward (we can't just search back as we might hit a flat string)
+      if (jsvIsFlatString(v)) { // flat string -> doesn't contain references to other things
         vr += (unsigned int)jsvGetFlatStringBlocks(v); // skip forward
-      } else {
+      } else { // not a flat string
         if (jsvHasSingleChild(v) || jsvHasChildren(v))
           if (jsvGetFirstChild(v)==defragFromRef)
             jsvSetFirstChild(v,defragToRef);
@@ -4481,15 +4479,21 @@ void jsvDefragment() {
           bool isClear = false;
           while (!isClear && (defragFromRef > fsToRef+minMove)) {
             isClear = true;
-            // check area in fsToRef to see if it's clear
-            for (unsigned int i=0;i<blocksNeeded;i++) {
-              // TODO: what if we want to overlap with ourself?? would have to ensure we don't clear overlapping area
-              if ((_jsvGetAddressOf(fsToRef+i)->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
-                isClear = false; // it's not clear!
-                fsToRef += i; // jump to this used block
-                break;
-              }
+            if ((size_t)(jsvGetAddressOf(fsToRef+1))&3) {
+              // Only allow if the next block is aligned on a 4 byte boundary or not (https://github.com/espruino/Espruino/issues/2726)
+              isClear = false;
+              fsToRef++;
             }
+
+            if (isClear) // check area in fsToRef to see if it's clear
+              for (unsigned int i=0;i<blocksNeeded;i++) {
+                // TODO: what if we want to overlap with ourself?? would have to ensure we don't clear overlapping area
+                if ((_jsvGetAddressOf(fsToRef+i)->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
+                  isClear = false; // it's not clear!
+                  fsToRef += i; // jump to this used block
+                  break;
+                }
+              }
             // if it wasn't clear, try and jump to the next item
             if (!isClear) {
               JsVar *v = _jsvGetAddressOf(fsToRef);
