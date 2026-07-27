@@ -405,7 +405,7 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   } else if (device==JSH_I2C1) {
       if(cmd == ENABLE) {
         LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
-        LL_RCC_SetI2CClockSource(LL_RCC_I2C1_CLKSOURCE_SYSCLK); // What's happen if we don't specify this ?
+        LL_RCC_SetI2CClockSource(LL_RCC_I2C1_CLKSOURCE_HSI);
       } else {
         LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C1);
       }
@@ -418,7 +418,7 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   } else if (device==JSH_I2C2) {
       if(cmd == ENABLE) {
         LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C2);
-        LL_RCC_SetI2CClockSource(LL_RCC_I2C2_CLKSOURCE_SYSCLK);
+        LL_RCC_SetI2CClockSource(LL_RCC_I2C1_CLKSOURCE_HSI);
       } else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C2);
       /* Seems some F103 parts require this reset step - some hardware problem */
       //LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C2);
@@ -429,7 +429,7 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   } else if (device==JSH_I2C3) {
       if(cmd == ENABLE) {
         LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C3);
-        LL_RCC_SetI2CClockSource(LL_RCC_I2C3_CLKSOURCE_SYSCLK);
+        LL_RCC_SetI2CClockSource(LL_RCC_I2C1_CLKSOURCE_HSI);
       } else LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_I2C3);
       /* Seems some F103 parts require this reset step - some hardware problem */
       //LL_APB1_GRP1_ForceReset(LL_APB1_GRP1_PERIPH_I2C3);
@@ -1887,6 +1887,10 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf){
   if (!I2Cx) return;
 
   LL_I2C_Disable(I2Cx);
+  
+  // Ensure HSI is running, it's used for i2c clocking
+  LL_RCC_HSI_Enable();
+  while (!LL_RCC_HSI_IsReady());
 
   LL_I2C_SetTiming(I2Cx, 0x00F02B86);
 
