@@ -452,6 +452,8 @@ if "LCD" in board.devices:
     codeOutDevicePin("LCD", "pin_sck", "LCD_SPI_SCK")
   if "pin_dc" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_dc", "LCD_SPI_DC")
+  if "pin_irq" in board.devices["LCD"]:
+    codeOutDevicePin("LCD", "pin_irq", "LCD_SPI_IRQ")
   if "spi_device" in board.devices["LCD"]:
     codeOut("#define LCD_SPI_DEVICE "+board.devices["LCD"]["spi_device"])
   if "pin_tearing" in board.devices["LCD"]:

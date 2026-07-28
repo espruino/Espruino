@@ -11,7 +11,7 @@
 
 / {
 	compatible = "nordic,nrf54l15dk_nrf54l15-cpuapp";
-	model = "Nordic nRF54L15 DK nRF54L15 Application MCU";
+	model = "Bangle.js 3";
 
 	chosen {
 		zephyr,code-partition = &slot0_partition;

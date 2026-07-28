@@ -91,6 +91,10 @@ struct spi_config spi1_config = {
 
 // ----------------------------------------------------------------------------
 
+Pin eventFlagsToPin[ESPR_EXTI_COUNT];
+static struct gpio_callback eventData[ESPR_EXTI_COUNT]; // used for handling zephyr events
+// ----------------------------------------------------------------------------
+
 void serial_cb(const struct device *dev, void *user_data) {
   uint8_t c[32];
   // TODO: check serial1_dev?
@@ -168,17 +172,22 @@ uint8_t pyButtonState = 0;
 
 
 // Send state to PY32
-void jshUpdatePY32() {
+void jshUpdatePY32(bool setOutput) {
+  // FIXME: what if we're transferring data for the LCD?
   uint8_t buf[4];
-  buf[0] = PY32_CMD_SET_OUTPUT;
-  buf[1] = pyOutputState&255;
-  buf[2] = pyOutputState>>8;
+  if (setOutput) {
+    buf[0] = PY32_CMD_SET_OUTPUT;
+    buf[1] = pyOutputState&255;
+    buf[2] = pyOutputState>>8;
+  } else {
+    buf[0] = PY32_CMD_NONE;
+  }
   jshPinSetValue(LCD_SPI_CS, 0);
-  jshDelayMicroseconds(100); // give it time to wake
+  for (volatile int i=0;i<100000;i++); // delay (we can't use k_usleep as we could be in an IRQ here)
   jshSPISendMany(EV_SPI1, buf, buf, sizeof(buf), NULL);
   jshPinSetValue(LCD_SPI_CS, 1);
   pyButtonState = buf[0];
-  jsiConsolePrintf("BTN %d\n", pyButtonState);
+  sxValues = (sxValues&~15) | (pyButtonState&15);
 }
 
 void jshVirtualPinInitialise() {
@@ -192,7 +201,7 @@ void jshVirtualPinSetValue(Pin pin, bool state) {
   // set status flags for PY32
   pyOutputState &= ~(PY32_OUT_TORCH_ON);
   if (sxValues&(1<<pinInfo[LED1_PININDEX].pin)) pyOutputState |= PY32_OUT_TORCH_ON;
-  jshUpdatePY32();
+  jshUpdatePY32(true);
 }
 
 bool jshVirtualPinGetValue(Pin pin) {
@@ -206,9 +215,31 @@ void jshVirtualPinSetState(Pin pin, JshPinState state) {
 JshPinState jshVirtualPinGetState(Pin pin) {
   return IS_PIN_A_LED(pin) ? JSHPINSTATE_GPIO_OUT : JSHPINSTATE_GPIO_IN;
 }
+
+void jshVirtualPinIRQHandler(bool state, IOEventFlags flags) {
+  if (!state) {
+    // IRQ low, so something ready
+    uint8_t lastState = pyButtonState;
+    jshUpdatePY32(false); // no set
+    uint8_t changed = lastState ^ pyButtonState;
+    /*if (changed & 16)
+      jsiConsolePrintf("Touch IRQ");*/
+    if (changed & 15) {
+      for (int i=0;i<ESPR_EXTI_COUNT;i++)
+        if (((changed&1) && eventFlagsToPin[i]==BTN1_PININDEX) ||
+            ((changed&2) && eventFlagsToPin[i]==BTN2_PININDEX) ||
+            ((changed&4) && eventFlagsToPin[i]==BTN3_PININDEX) ||
+            ((changed&8) && eventFlagsToPin[i]==BTN4_PININDEX))
+          jshPushIOWatchEvent(EV_EXTI0+i);
+    }
+  }
+}
+
 // ----------------------------------------------------------------------------
 
 void jshInit() {
+  for (int i=0;i<ESPR_EXTI_COUNT;i++)
+    eventFlagsToPin[i] = PIN_UNDEFINED;
 #if JSH_PORTV_COUNT>0
   jshVirtualPinInitialise();
 #endif
@@ -218,10 +249,13 @@ void jshInit() {
   uart_irq_callback_set(serial1_dev, serial_cb);
   // 2. Enable the RX interrupt
   uart_irq_rx_enable(serial1_dev);
-  // set up flow control/pins/etc
-  jshInitDevices();
   // SPI 1
   if (!device_is_ready(spi1_dev)) return;
+  // set up flow control/pins/etc
+  jshInitDevices();
+  // reset LCD/etc
+  jshReset();
+
   // Ext flash
 	/*if (!device_is_ready(extflash_dev)) {
 		printf("%s: device not ready\n", extflash_dev->name);
@@ -241,6 +275,12 @@ void jshInit() {
 
 void jshReset() {
   jshResetDevices();
+  // LCD controller
+  jshPinSetValue(LCD_SPI_CS, 1);
+  jshPinSetState(LCD_SPI_CS, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(LCD_SPI_IRQ, JSHPINSTATE_GPIO_IN_PULLUP);
+  IOEventFlags channel = jshPinWatch(LCD_SPI_IRQ, true, JSPW_NONE);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, jshVirtualPinIRQHandler);
 }
 
 void jshKill() {
@@ -288,11 +328,12 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
+  const JshPinInfo *p = &pinInfo[pin];
 #if JSH_PORTV_COUNT>0
   // ignore virtual ports (eg. pins on an IO Expander)
-  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV) return jshVirtualPinSetState(pin, state);
+  if ((p->port & JSH_PORT_MASK)==JSH_PORTV) return jshVirtualPinSetState(pin, state);
 #endif
-  uint32_t flags = GPIO_DISCONNECTED;
+  gpio_flags_t flags = GPIO_DISCONNECTED;
   switch (state) {
     case JSHPINSTATE_UNDEFINED: flags = GPIO_DISCONNECTED; break;
     case JSHPINSTATE_GPIO_OUT: flags = GPIO_OUTPUT; break;
@@ -309,16 +350,29 @@ void jshPinSetState(Pin pin, JshPinState state) {
     default: assert(0);
   }
   // GPIO_LINE_DRIVE_STRENGTH_HIGH is an option too
-  const JshPinInfo *p = &pinInfo[pin];
   gpio_pin_configure(jshToZephyrPort(p->port), p->pin, flags);
 }
 
 JshPinState jshPinGetState(Pin pin) {
+  const JshPinInfo *p = &pinInfo[pin];
 #if JSH_PORTV_COUNT>0
   // handle virtual ports (eg. pins on an IO Expander)
-  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+  if ((p->port & JSH_PORT_MASK)==JSH_PORTV)
     return jshVirtualPinGetState(pin);
 #endif
+  gpio_flags_t flags;
+  gpio_pin_get_config(jshToZephyrPort(p->port), p->pin, &flags);
+  if (flags==GPIO_DISCONNECTED) return JSHPINSTATE_ADC_IN;
+  if (flags&GPIO_OUTPUT) {
+    if ((flags&(GPIO_OPEN_DRAIN|GPIO_PULL_UP)) == (GPIO_OPEN_DRAIN|GPIO_PULL_UP)) return JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP;
+    if (flags&GPIO_OPEN_DRAIN) return JSHPINSTATE_GPIO_OUT_OPENDRAIN;
+    return JSHPINSTATE_GPIO_OUT;
+  }
+  if (flags&GPIO_INPUT) {
+    if (flags&GPIO_PULL_UP) return JSHPINSTATE_GPIO_IN_PULLUP;
+    if (flags&GPIO_PULL_DOWN) return JSHPINSTATE_GPIO_IN_PULLDOWN;
+    return JSHPINSTATE_GPIO_IN;
+  }
   return JSHPINSTATE_UNDEFINED;
 }
 
@@ -394,15 +448,55 @@ bool jshCanWatch(Pin pin) {
 }
 
 IOEventFlags jshGetEventFlagsForPin(Pin pin) {
+  for (int i=0;i<ESPR_EXTI_COUNT;i++)
+    if (eventFlagsToPin[i]==pin)
+      return EV_EXTI0+i;
   return EV_NONE;
 }
 
+static void jshPinWatchCallback(const struct device *gpio_dev, struct gpio_callback *cb, uint32_t pins) {
+  //jsiConsolePrintf("Pin changed state! Bitmask: 0x%x\n", pins);
+  for (int i=0;i<ESPR_EXTI_COUNT;i++)
+    if (&eventData[i]==cb)
+      return jshPushIOWatchEvent(EV_EXTI0+i);
+}
+
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
+  const JshPinInfo *p = &pinInfo[pin];
+  if (shouldWatch) {
+    for (int i=0;i<ESPR_EXTI_COUNT;i++) {
+      if (eventFlagsToPin[i]==PIN_UNDEFINED) {
+        eventFlagsToPin[i]=pin;
+        if ((p->port & JSH_PORT_MASK)!=JSH_PORTV) {
+          const struct device *gpio_dev = jshToZephyrPort(p->port);
+          gpio_init_callback(&eventData[i], jshPinWatchCallback, BIT(p->pin));
+          gpio_add_callback(gpio_dev, &eventData[i]);
+          int ret = gpio_pin_interrupt_configure(gpio_dev, p->pin, GPIO_INT_EDGE_BOTH);
+          if (ret < 0) {
+              jsiConsolePrintf("Failed to configure interrupt: %d\n", ret);
+              return 0;
+          }
+        }
+        return EV_EXTI0+i;
+      }
+    }
+  } else {
+    for (int i=0;i<ESPR_EXTI_COUNT;i++) {
+      if (eventFlagsToPin[i]==pin) {
+        if ((p->port & JSH_PORT_MASK)!=JSH_PORTV) {
+          const struct device *gpio_dev = jshToZephyrPort(p->port);
+          gpio_pin_interrupt_configure(gpio_dev, p->pin, GPIO_INT_DISABLE);
+          gpio_remove_callback(gpio_dev, &eventData[i]);
+        }
+        eventFlagsToPin[i]=PIN_UNDEFINED;
+      }
+    }
+  }
   return EV_NONE;
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {
-  return false;//jshPinGetValue(eventFlagsToPin[device-EV_EXTI0]);
+  return jshPinGetValue(eventFlagsToPin[device-EV_EXTI0]);
 }
 
 bool jshIsEventForPin(IOEventFlags eventFlags, Pin pin) {
@@ -444,17 +538,21 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
 
  // FIXME: use hardware! above code isn't working at the moment
  const JshPinInfo *mosi = &pinInfo[LCD_SPI_MOSI];
+ const JshPinInfo *miso = &pinInfo[LCD_SPI_MISO];
  const JshPinInfo *sck = &pinInfo[LCD_SPI_SCK];
  const struct device *mosiport = jshToZephyrPort(mosi->port);
+ const struct device *misoport = jshToZephyrPort(miso->port);
  const struct device *sckport = jshToZephyrPort(sck->port);
  for (unsigned int i=0;i<count;i++) {
-    int data = tx[i];
+    int data = tx[i], rxdata = 0;
     int bit;
-    for (bit=8 - 1;bit>=0;bit--) {
+    for (bit=7;bit>=0;bit--) {
       gpio_pin_set_raw(mosiport, mosi->pin, (data>>bit)&1);
       gpio_pin_set_raw(sckport, sck->pin, 1);
+      rxdata |= gpio_pin_get_raw(misoport, miso->pin) ? (1<<bit) : 0;
       gpio_pin_set_raw(sckport, sck->pin, 0);
     }
+    if (rx) rx[i] = rxdata;
   }
 
   // FIXME use spi_transceive_cb for async writes (and use CONFIG_SPI_ASYNC=y)

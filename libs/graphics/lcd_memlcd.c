@@ -392,7 +392,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
   jshPinSetValue(LCD_SPI_CS, LCD_CS_ON);
 #endif
 #ifdef LCD_CONTROLLER_ZJ012BD01A
-  jshDelayMicroseconds(100); // give it time to wake
+  jshDelayMicroseconds(10); // give it time to wake
 #endif
   if (hasOverlay) {
     /* If lcdOverlayImage is defined, we want to overlay this image
@@ -476,7 +476,7 @@ void lcdMemLCD_init(JsGraphics *gfx) {
 #if LCD_ROWHEADER>0
   for (int y=0;y<LCD_HEIGHT;y++) {
 #ifdef LCD_CONTROLLER_ZJ012BD01A
-  lcdBuffer[y*LCD_STRIDE] = 2; // PY32_CMD_DISPLAY
+  lcdBuffer[y*LCD_STRIDE] = 128+(y>>1); // PY32_CMD_DISPLAY
 #else
   #if LCD_BPP==3
       lcdBuffer[y*LCD_STRIDE]=jswrap_espruino_reverseByte(0b10000000);
