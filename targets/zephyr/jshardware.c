@@ -24,6 +24,8 @@
 #include "bluetooth.h"
 #include <time.h>
 
+#include "banglejs3_py32/src/const.h"
+
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/spi.h>
@@ -129,61 +131,26 @@ const struct device *jshToZephyrPort(JsvPinInfoPort port) {
 }
 
 // ----------------------------------------------------------------------------
-// FIXME: share header
-typedef enum {
-  PY32_CMD_NONE,
-  PY32_CMD_SET_OUTPUT,
-  PY32_CMD_DISPLAY
-} PY32Command;
-/*
-PY32_CMD_NONE:
-  Does nothing, but still outputs state:
-  eg [0,0,0] returns [buttons, out_lo, out_hi]
-
-PY32_CMD_SET_OUTPUT:
-  [1, out_lo, out_hi]
-  eg. [1,1,0] enables backlight
-
-PY32_CMD_DISPLAY:
-  o
-*/
-
-typedef enum {
-  PY32_OUT_LCD_BL = 1,
-  PY32_OUT_TORCH_ON = 2,
-
-  PY32_OUT_RGB_ON = 8,
-  PY32_OUT_SPEAKER_ON = 16,
-  PY32_OUT_VIBRATE_ON = 32,
-  PY32_OUT_CHARGE_EN = 64,
-  PY32_OUT_WIFI_ON = 128,
-  PY32_OUT_WIFI_BOOTLOADER = 256,
-  PY32_OUT_AUX_SWAP = 512,
-  PY32_OUT_AUX_POWER = 1024,
-  PY32_OUT_TOUCH_RST = 2048,
-  PY32_OUT_HRM_AUX = 4096,
-  // PY32_OUT_IR_ON = ?,
-  // IR SCAN?
-} PY32OutputState;
-// ----------------------------------------------------------------------------
 unsigned short sxValues = 0;
-PY32OutputState pyOutputState = 0; // current output values
 uint8_t pyButtonState = 0;
 
 
 // Send state to PY32
 void jshUpdatePY32(bool setOutput) {
   // FIXME: what if we're transferring data for the LCD?
-  uint8_t buf[4];
+  uint8_t buf[3];
   if (setOutput) {
+    PY32OutputState pyOutputState = sxValues>>4; // current output values
     buf[0] = PY32_CMD_SET_OUTPUT;
     buf[1] = pyOutputState&255;
     buf[2] = pyOutputState>>8;
   } else {
     buf[0] = PY32_CMD_NONE;
+    buf[1] = 0;
+    buf[2] = 0;
   }
   jshPinSetValue(LCD_SPI_CS, 0);
-  for (volatile int i=0;i<100000;i++); // delay (we can't use k_usleep as we could be in an IRQ here)
+  for (volatile int i=0;i<100000;i++); // delay (FIXME: we can't use k_usleep as we could be in an IRQ here)
   jshSPISendMany(EV_SPI1, buf, buf, sizeof(buf), NULL);
   jshPinSetValue(LCD_SPI_CS, 1);
   pyButtonState = buf[0];
@@ -196,11 +163,11 @@ void jshVirtualPinInitialise() {
 
 void jshVirtualPinSetValue(Pin pin, bool state) {
   int p = pinInfo[pin].pin;
-  if (state) sxValues |= 1<<p;
-  else sxValues &= ~(1<<p);
+  if (!IS_PIN_A_BUTTON(pin)) { // buttons read only
+    if (state) sxValues |= 1<<p;
+    else sxValues &= ~(1<<p);
+  }
   // set status flags for PY32
-  pyOutputState &= ~(PY32_OUT_TORCH_ON);
-  if (sxValues&(1<<pinInfo[LED1_PININDEX].pin)) pyOutputState |= PY32_OUT_TORCH_ON;
   jshUpdatePY32(true);
 }
 
@@ -279,6 +246,8 @@ void jshReset() {
   jshPinSetValue(LCD_SPI_CS, 1);
   jshPinSetState(LCD_SPI_CS, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(LCD_SPI_IRQ, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshDelayMicroseconds(100); // wait for pins to settle
+  jshUpdatePY32(false); // update current status (and clear IRQ line)
   IOEventFlags channel = jshPinWatch(LCD_SPI_IRQ, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, jshVirtualPinIRQHandler);
 }

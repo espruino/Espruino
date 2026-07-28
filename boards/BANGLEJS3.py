@@ -16,6 +16,24 @@
 
 See "targets/zephyr/Banglejs 3 Notes.md"
 
+V0 = BTN1
+V1 = BTN2
+V2 = BTN3
+V3 = BTN4
+V4 = PY32_OUT_LCD_BL
+V5 = PY32_OUT_TORCH_ON
+V6 = PY32_OUT_RGB_ON
+V7 = PY32_OUT_SPEAKER_ON
+V8 = PY32_OUT_VIBRATE_ON
+V9 = PY32_OUT_CHARGE_EN 
+V10 = PY32_OUT_WIFI_ON
+V11 = PY32_OUT_WIFI_BOOTLOADER 
+V12 = PY32_OUT_AUX_SWAP 
+V13 = PY32_OUT_AUX_POWER
+V14 = PY32_OUT_TOUCH_RST
+V15 = PY32_OUT_HRM_AUX 
+
+FIXME: separate virtual outputs for torch R/G/B?
 '''
 
 import pinutils;
@@ -102,7 +120,7 @@ devices = { # 'V' pins are virtual
   'BTN2' : { 'pin' : 'V1' },
   'BTN3' : { 'pin' : 'V2' },
   'BTN4' : { 'pin' : 'V3' },  
-  'LED1' : { 'pin' : 'V4' },
+  'LED1' : { 'pin' : 'V5' },
   'SPIFLASH' : {
     'size' : 64*1024*1024, # 64MB
     'memmap_base' : 0x60000000 # map into the address space (in software)
@@ -111,6 +129,7 @@ devices = { # 'V' pins are virtual
             'width' : 240, 'height' : 240,
             'bpp' : 6,
             'controller' : 'ZJ012BD01A', # ZJ012BD-01A (via Puya PY32)
+            'pin_bl' : 'V4',
             'pin_irq' : 'A4',
             'pin_cs' : 'A3',
             'pin_sck' : 'A0',
@@ -131,7 +150,7 @@ board["_css"] = """
 
 def get_pins():
   # GPIO 0/1/2 + virtual pins which come from the PY32 (acting as IO expander)
-  pins = pinutils.generate_pins(0,4,"A") + pinutils.generate_pins(0,14,"B") + pinutils.generate_pins(0,10,"C") + pinutils.generate_pins(0,4,"V");
+  pins = pinutils.generate_pins(0,4,"A") + pinutils.generate_pins(0,14,"B") + pinutils.generate_pins(0,10,"C") + pinutils.generate_pins(0,15,"V");
   # pinutils.findpin(pins, "PAxx", True)["functions"]["..."]=0;
   # ...
 

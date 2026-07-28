@@ -110,6 +110,10 @@ static ALWAYS_INLINE void lcdMemLCD_waitForSendComplete() {
   }
 }
 
+bool lcdMemLCD_isBusy() {
+  return lcdIsBusy;
+}
+
 // ======================================================================
 
 // return a pointer to the LCD's memory buffer
@@ -371,6 +375,12 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
 
   int y1 = gfx->data.modMinY;
   int y2 = gfx->data.modMaxY;
+#ifdef LCD_CONTROLLER_ZJ012BD01A
+  // on this we can only start on even lines, and only send 8 at a time
+  y1 = y1 & ~1;
+  y2 = (y2+1) & ~1;
+  y2 = y1 + ((7+y2-y1)&~7) - 1; // pad out to 8px
+#endif
   int l = 1+y2-y1;
 
   bool hasOverlay = false;
