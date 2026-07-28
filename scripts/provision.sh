@@ -45,6 +45,7 @@ if [ "$BOARDNAME" = "ALL" ]; then
   PROVISION_STM32F4=1
   PROVISION_STM32L4=1
   PROVISION_RASPBERRYPI=1
+  PROVISION_RP2350=1
   PROVISION_EMSCRIPTEN=1
   PROVISION_EMSCRIPTEN2=1
 else
@@ -161,6 +162,20 @@ if [ "$PROVISION_RASPBERRYPI" = "1" ]; then
         # wiringpi?
         cd ../..
     fi
+fi
+#--------------------------------------------------------------------------------
+if [ "$PROVISION_RP2350" = "1" ]; then
+    echo "===== RP2350"
+    PICO_SDK_VERSION="2.1.1"
+    if [ ! -d "pico-sdk" ]; then
+        echo "Installing Pico SDK $PICO_SDK_VERSION to Espruino/pico-sdk"
+        git clone --depth=1 -b "$PICO_SDK_VERSION" https://github.com/raspberrypi/pico-sdk.git
+    else
+        echo "Pico SDK installation found"
+    fi
+    export PICO_SDK_PATH=$(pwd)/pico-sdk
+    echo "PICO_SDK_PATH=$PICO_SDK_PATH"
+    ARM=1
 fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_NRF52" = "1" ]; then

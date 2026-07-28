@@ -832,11 +832,11 @@ $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 	$(Q)$(PYTHON) scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
-ifndef NRF5X # nRF5x devices use their own linker files that aren't automatically generated.
+ifeq (,$(NRF5X)$(RP2350)) # nRF5x and RP2350 use their own (vendor) linker files that aren't generated.
 $(LINKER_FILE): scripts/build_linker.py
 	@echo ================================== Generating linker scripts
 	$(Q)$(PYTHON) scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
-endif # NRF5X
+endif # NRF5X / RP2350
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo ================================== Generating platform configs

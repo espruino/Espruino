@@ -251,6 +251,10 @@ elif board.chip["family"]=="EMBED":
   board.chip["class"]="EMBED"
 elif board.chip["family"]=="ZEPHYR":
   board.chip["class"]="ZEPHYR"  
+elif board.chip["family"]=="RP2350":
+  board.chip["class"]="RP2350"
+  linker_etext_var = "__etext" # linker symbols come from the Pico SDK linker script
+  exti_count = 8
 else:
   die('Unknown chip family '+board.chip["family"])
 
@@ -306,6 +310,8 @@ else:
     codeOut("#define FLASH_START                     "+hex(0x0))
   elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
     codeOut("#define FLASH_START                     "+hex(0x0))
+  elif board.chip["family"]=="RP2350":
+    codeOut("#define FLASH_START                     "+hex(0x10000000))
   elif board.chip["class"]=="EFM32":
     codeOut("#define FLASH_START                     FLASH_BASE // FLASH_BASE defined in em_device.h")
   else:
