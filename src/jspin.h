@@ -142,7 +142,10 @@ typedef enum {
   JSH_SPI1     = 0x0200,
   JSH_SPI2     = 0x0210,
   JSH_SPI3     = 0x0220,
-  JSH_SPIMAX   = JSH_SPI3,
+  JSH_SPI4     = 0x0230,
+  JSH_SPI5     = 0x0240,
+  JSH_SPI6     = 0x0250,
+  JSH_SPIMAX   = JSH_SPI6,
   JSH_I2C1     = 0x0280,
   JSH_I2C2     = 0x0290,
   JSH_I2C3     = 0x02A0,
@@ -154,7 +157,9 @@ typedef enum {
   JSH_USART4   = 0x0330,
   JSH_USART5   = 0x0340,
   JSH_USART6   = 0x0350,
-  JSH_USARTMAX = JSH_USART6,
+  JSH_USART7   = 0x0360,
+  JSH_USART8   = 0x0370,
+  JSH_USARTMAX = JSH_USART8,
 
   // ---------------------------- JSH_MASK_INFO
 
@@ -194,7 +199,7 @@ typedef enum {
   (((F)&JSH_MASK_TYPE)==JSH_DAC))
 #define JSH_PINFUNCTION_IS_USART(F) ( \
   (((F)&JSH_MASK_TYPE)>=JSH_USART1) && \
-  (((F)&JSH_MASK_TYPE)<=JSH_USART6))
+  (((F)&JSH_MASK_TYPE)<=JSH_USARTMAX))
 #define JSH_PINFUNCTION_IS_I2C(F) ( \
   (((F)&JSH_MASK_TYPE)>=JSH_I2C1) && \
   (((F)&JSH_MASK_TYPE)<=JSH_I2CMAX))
