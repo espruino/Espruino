@@ -895,8 +895,8 @@ else ifdef ESP32_IDF4
 include make/targets/ESP32_IDF4.make
 else ifdef ESP32
 include make/targets/ESP32.make
-else ifdef RP2040
-include make/targets/RP2040.make
+else ifdef RP2_FAMILY
+include make/common/RP2XXX.make
 else ifdef ESP8266
 include make/targets/ESP8266.make
 else ifdef ESPR_EMBED
