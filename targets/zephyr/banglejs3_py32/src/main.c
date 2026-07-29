@@ -117,16 +117,17 @@ void flip_from_spi() {
         c |= *(px++)<<8;
         c |= *(px++)<<16;
         c = ((c&172074)>>1) | ((c&11012736)>>6);
-        /* FAST:
+        #if 1 // FAST
         *GPIOA_ODR = ODR | (c&63); // LCD_COL(...)
         *GPIOA_BSRR = (1<<6); // LCD_HCK(1);
         *GPIOA_ODR = ODR | (1<<6) | ((c>>12)&63); // LCD_COL(...)
         *GPIOA_BRR = (1<<6); // LCD_HCK(0);
-        */
+        #else // SLOW
         LCD_COL(c); // already ANDs by 63
         LCD_HCK(1);
         LCD_COL(c>>12);
         LCD_HCK(0);
+        #endif
       }
       D();
       LCD_VCK(0);D();
@@ -143,10 +144,17 @@ void flip_from_spi() {
         c |= *(px++)<<8;
         c |= *(px++)<<16;
         c = (c&86037) | ((c&5506368)>>5);
+        #if 1 // FAST
+        *GPIOA_ODR = ODR | (c&63); // LCD_COL(...)
+        *GPIOA_BSRR = (1<<6); // LCD_HCK(1);
+        *GPIOA_ODR = ODR | (1<<6) | ((c>>12)&63); // LCD_COL(...)
+        *GPIOA_BRR = (1<<6); // LCD_HCK(0);
+        #else // SLOW
         LCD_COL(c); // already ANDs by 63
         LCD_HCK(1);
         LCD_COL(c>>12);
         LCD_HCK(0);
+        #endif
       }
       D();
       LCD_VCK(1);D();
@@ -538,12 +546,9 @@ static void APP_GPIO_Config(void)
    // Force the internal SSI bit HIGH initially so the slave is deselected
    //SET_BIT(SPI1->CR1, SPI_CR1_SSI);
 
-  // Enable Slave Fast Speed Mode if Master SCK >= PCLK/4
-  //SET_BIT(SPI1->CR2, SPI_CR2_SLVFM); /// FIXME: not on F040?
+  // No need to enable Slave Fast Speed Mode (SPI_CR2_SLVFM) if Master SCK >= PCLK/4 on PY32F040
 
   // Enable Core Interrupts
-
-
   HAL_NVIC_SetPriority(SPI1_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(SPI1_IRQn);
 

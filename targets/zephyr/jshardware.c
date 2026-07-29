@@ -77,12 +77,13 @@ k_tid_t main_thread_id;
 
 // Get the device binding for the console UART (usually "zephyr,console")
 const struct device *serial1_dev = DEVICE_DT_GET(DT_NODELABEL(uart20)); // was using DT_CHOSEN(zephyr_console)
-const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi22));
+const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi30));
 const struct device *flash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
 
 struct spi_config spi1_config = {
-        .frequency = 250000, // 250kHz //1000000U, // 1 MHz
+        .frequency = 4000000U, // 4 MHz - works - 8Mhz sends data too fast for PY32 to output it at the moment
+        //.frequency = 5333333U, // 5.3 MHz - magic number that seems to be allowed
         .operation = SPI_OP_MODE_MASTER |   // Master mode
                      SPI_WORD_SET(8) |      // 8-bit words
                      SPI_TRANSFER_MSB     // Send MSB first
@@ -217,7 +218,9 @@ void jshInit() {
   // 2. Enable the RX interrupt
   uart_irq_rx_enable(serial1_dev);
   // SPI 1
-  if (!device_is_ready(spi1_dev)) return;
+  if (!device_is_ready(spi1_dev)) {
+    jsWarn("spi30 not ready\n");
+  }
   // set up flow control/pins/etc
   jshInitDevices();
   // reset LCD/etc
@@ -492,20 +495,21 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 }
 
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
-  /*struct spi_buf tx_buf = { .buf = tx, .len = count  };
+#if 1
+  struct spi_buf tx_buf = { .buf = tx, .len = count  };
   struct spi_buf rx_buf = { .buf = rx, .len = count  };
   struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
   struct spi_buf_set rx_set = { .buffers = &rx_buf, .count = 1 };
   int err;
+
   if (rx) err = spi_transceive(spi1_dev, &spi1_config, &tx_set, &rx_set);
   else err = spi_write(spi1_dev, &spi1_config, &tx_set);
   if (err < 0) {
       // Handle SPI bus runtime or hardware failure
       jsWarn("SPI err %d\n",err);
       return false;
-  }*/
-
- // FIXME: use hardware! above code isn't working at the moment
+  }
+#else
  const JshPinInfo *mosi = &pinInfo[LCD_SPI_MOSI];
  const JshPinInfo *miso = &pinInfo[LCD_SPI_MISO];
  const JshPinInfo *sck = &pinInfo[LCD_SPI_SCK];
@@ -523,6 +527,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
     }
     if (rx) rx[i] = rxdata;
   }
+#endif
 
   // FIXME use spi_transceive_cb for async writes (and use CONFIG_SPI_ASYNC=y)
   if (callback) callback();
