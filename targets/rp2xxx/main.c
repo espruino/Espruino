@@ -13,11 +13,11 @@ int main(void) {
 
   // start Espruino
   jsiInit(true);
-  rp2040EarlyLog("RP2040 boot: jsiInit ok\r\n");
+  rp2EarlyLog("RP2 boot: jsiInit ok\r\n");
 
   // Start RP2040 USB after interpreter init so regular idle/task servicing is
   // immediately available during enumeration.
-  rp2040UsbInitNow();
+  rp2UsbInitNow();
 
   // main interpreter loop
   while (1) {

@@ -46,17 +46,17 @@
 #include "tusb.h"
 #endif
 
-#define RP2040_FLASH_SECTOR_SIZE FLASH_SECTOR_SIZE
-#define RP2040_FLASH_PROGRAM_SIZE FLASH_PAGE_SIZE
-#define RP2040_XIP_BASE 0x10000000u
+#define RP2_FLASH_SECTOR_SIZE FLASH_SECTOR_SIZE
+#define RP2_FLASH_PROGRAM_SIZE FLASH_PAGE_SIZE
+#define RP2_XIP_BASE 0x10000000u
 
 // Early boot logging is only intended for bring-up and explicit diagnostics.
 // Release builds stay quiet by default, and debug builds only log when the
 // dedicated RP2040_DEBUG_EARLY_BOOT define is enabled.
-#if !defined(RELEASE) && defined(RP2040_DEBUG_EARLY_BOOT)
-#define RP2040_EARLY_LOG_ENABLED 1
+#if !defined(RELEASE) && defined(RP2_DEBUG_EARLY_BOOT)
+#define RP2_EARLY_LOG_ENABLED 1
 #else
-#define RP2040_EARLY_LOG_ENABLED 0
+#define RP2_EARLY_LOG_ENABLED 0
 #endif
 
 static bool rpFirstIdle = true;
@@ -806,7 +806,7 @@ static bool rpFlashSafeExecute(void (*func)(void *), void *param, const char *op
 // low-level bring-up messages can be emitted before USB or Espruino devices are
 // available.
 static void rpEarlyLogInit(void) {
-#if RP2040_EARLY_LOG_ENABLED
+#if RP2_EARLY_LOG_ENABLED
   if (rpEarlyLogInitialised) return;
   uart_init(uart0, 115200);
   gpio_set_function(0, GPIO_FUNC_UART);
@@ -817,8 +817,8 @@ static void rpEarlyLogInit(void) {
 #endif
 }
 
-void rp2040EarlyLog(const char *msg) {
-#if RP2040_EARLY_LOG_ENABLED
+void rp2EarlyLog(const char *msg) {
+#if RP2_EARLY_LOG_ENABLED
   if (!rpEarlyLogInitialised || !msg) return;
   uart_puts(uart0, msg);
 #else
@@ -826,24 +826,24 @@ void rp2040EarlyLog(const char *msg) {
 #endif
 }
 
-void rp2040EarlyLogf(const char *fmt, ...) {
-#if RP2040_EARLY_LOG_ENABLED
+void rp2EarlyLogf(const char *fmt, ...) {
+#if RP2_EARLY_LOG_ENABLED
   if (!rpEarlyLogInitialised || !fmt) return;
   char msg[96];
   va_list ap;
   va_start(ap, fmt);
   vsnprintf(msg, sizeof(msg), fmt, ap);
   va_end(ap);
-  rp2040EarlyLog(msg);
+  rp2EarlyLog(msg);
 #else
   NOT_USED(fmt);
 #endif
 }
 
-void rp2040UsbInitNow(void) {
+void rp2UsbInitNow(void) {
 #ifdef USB
   if (!rpUsbInitialised) {
-    rp2040EarlyLog("RP2040 usb: init start\r\n");
+    rp2EarlyLog("RP2040 usb: init start\r\n");
     tusb_init();
     tud_connect();
     rpUsbInitialised = true;
@@ -879,7 +879,7 @@ void jshInit() {
   rpWatchdogEnabled = false;
   rpWatchdogTimeoutMs = 0;
   rpEarlyLogInit();
-  rp2040EarlyLog("RP2040 boot: jshInit ok\r\n");
+  rp2EarlyLog("RP2 boot: jshInit ok\r\n");
   if (!rpWatchIrqHandlerInstalled) {
     irq_add_shared_handler(IO_IRQ_BANK0, rpWatchBank0Irq, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
     irq_set_enabled(IO_IRQ_BANK0, true);
@@ -1558,8 +1558,8 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
   if (!rpFlashAddrValid(addr, 1)) return false;
-  if (startAddr) *startAddr = addr - (addr % RP2040_FLASH_SECTOR_SIZE);
-  if (pageSize) *pageSize = RP2040_FLASH_SECTOR_SIZE;
+  if (startAddr) *startAddr = addr - (addr % RP2_FLASH_SECTOR_SIZE);
+  if (pageSize) *pageSize = RP2_FLASH_SECTOR_SIZE;
   return true;
 }
 
@@ -1575,15 +1575,15 @@ JsVar *jshFlashGetFree() {
 // Flash erase is only valid inside the reserved saved-code bank. Page addresses
 // are normalised to RP2040 4 KB erase sectors before calling flash_safe_execute.
 void jshFlashErasePage(uint32_t addr) {
-  uint32_t pageAddr = addr - (addr % RP2040_FLASH_SECTOR_SIZE);
-  if (!rpFlashAddrInSavedCode(pageAddr, RP2040_FLASH_SECTOR_SIZE)) {
+  uint32_t pageAddr = addr - (addr % RP2_FLASH_SECTOR_SIZE);
+  if (!rpFlashAddrInSavedCode(pageAddr, RP2_FLASH_SECTOR_SIZE)) {
     jsExceptionHere(JSET_ERROR, "jshFlashErasePage: address 0x%08x outside saved flash", addr);
     return;
   }
 
   RpFlashEraseOp op = {
     .offset = rpFlashOffset(pageAddr),
-    .count = RP2040_FLASH_SECTOR_SIZE,
+    .count = RP2_FLASH_SECTOR_SIZE,
   };
   rpFlashSafeExecute(rpFlashEraseUnsafe, &op, "jshFlashErasePage");
 }
@@ -1594,7 +1594,7 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
     memset(buf, 0xFF, len);
     return;
   }
-  memcpy(buf, (const void *)(RP2040_XIP_BASE + rpFlashOffset(addr)), len);
+  memcpy(buf, (const void *)(RP2_XIP_BASE + rpFlashOffset(addr)), len);
 }
 
 // RP2040 flash programs in 256-byte pages. Partial writes therefore read the
@@ -1608,25 +1608,25 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   }
 
   uint8_t *src = (uint8_t *)buf;
-  uint8_t pageBuf[RP2040_FLASH_PROGRAM_SIZE];
+  uint8_t pageBuf[RP2_FLASH_PROGRAM_SIZE];
   while (len) {
-    uint32_t pageAddr = addr - (addr % RP2040_FLASH_PROGRAM_SIZE);
+    uint32_t pageAddr = addr - (addr % RP2_FLASH_PROGRAM_SIZE);
     uint32_t pageOffset = addr - pageAddr;
-    uint32_t writeLen = RP2040_FLASH_PROGRAM_SIZE - pageOffset;
+    uint32_t writeLen = RP2_FLASH_PROGRAM_SIZE - pageOffset;
     if (writeLen > len) writeLen = len;
 
-    memcpy(pageBuf, (const void *)(RP2040_XIP_BASE + rpFlashOffset(pageAddr)), RP2040_FLASH_PROGRAM_SIZE);
+    memcpy(pageBuf, (const void *)(RP2_XIP_BASE + rpFlashOffset(pageAddr)), RP2_FLASH_PROGRAM_SIZE);
     memcpy(pageBuf + pageOffset, src, writeLen);
 
     RpFlashProgramOp op = {
       .offset = rpFlashOffset(pageAddr),
-      .count = RP2040_FLASH_PROGRAM_SIZE,
+      .count = RP2_FLASH_PROGRAM_SIZE,
       .data = pageBuf,
     };
     if (!rpFlashSafeExecute(rpFlashProgramUnsafe, &op, "jshFlashWrite"))
       return;
 
-    if (memcmp((const void *)(RP2040_XIP_BASE + rpFlashOffset(pageAddr)), pageBuf, RP2040_FLASH_PROGRAM_SIZE) != 0) {
+    if (memcmp((const void *)(RP2_XIP_BASE + rpFlashOffset(pageAddr)), pageBuf, RP2_FLASH_PROGRAM_SIZE) != 0) {
       jsExceptionHere(JSET_INTERNALERROR, "jshFlashWrite: verification failed at 0x%08x", pageAddr);
       return;
     }
@@ -1640,7 +1640,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 size_t jshFlashGetMemMapAddress(size_t ptr) {
   uint32_t addr = (uint32_t)ptr;
   if (rpFlashAddrValid(addr, 1))
-    return RP2040_XIP_BASE + rpFlashOffset(addr);
+    return RP2_XIP_BASE + rpFlashOffset(addr);
   return ptr;
 }
 

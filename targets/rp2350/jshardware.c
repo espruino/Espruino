@@ -63,6 +63,8 @@ void jshInit() {
   uart_set_irq_enables(consoleUART, true /*rx*/, false /*tx*/);
   irq_set_enabled(UART0_IRQ, true);
 
+  adc_init();
+
   jshInitDevices();
 }
 
@@ -124,8 +126,15 @@ void jshDelayMicroseconds(int microsec) {
 // ----------------------------------------------------------------------------
 // GPIO
 
+// RP2350 has no true open-drain, so we emulate it (drive low / float high) in
+// jshPinSetValue - these track which pins need that treatment.
+BITFIELD_DECL(jshPinOpendrain, JSH_PIN_COUNT);
+BITFIELD_DECL(jshPinOpendrainPullup, JSH_PIN_COUNT);
+
 void jshPinSetState(Pin pin, JshPinState state) {
   uint gpio = gpioFromPin(pin);
+  BITFIELD_SET(jshPinOpendrain, pin, JSHPINSTATE_IS_OPENDRAIN(state));
+  BITFIELD_SET(jshPinOpendrainPullup, pin, state==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   switch (state) {
     case JSHPINSTATE_UNDEFINED:
       gpio_set_function(gpio, GPIO_FUNC_NULL);
@@ -134,13 +143,15 @@ void jshPinSetState(Pin pin, JshPinState state) {
       gpio_init(gpio);
       gpio_set_dir(gpio, GPIO_OUT);
       break;
-    case JSHPINSTATE_GPIO_OUT_OPENDRAIN: // TODO: no true open-drain, needs emulation
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN: // emulated: latch stays low, toggle dir to sink/float
       gpio_init(gpio);
-      gpio_set_dir(gpio, GPIO_OUT);
+      gpio_put(gpio, 0);
+      gpio_set_dir(gpio, GPIO_IN); // released (high) until a 0 is written
       break;
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
       gpio_init(gpio);
-      gpio_set_dir(gpio, GPIO_OUT);
+      gpio_put(gpio, 0);
+      gpio_set_dir(gpio, GPIO_IN);
       gpio_pull_up(gpio);
       break;
     case JSHPINSTATE_GPIO_IN:
@@ -158,9 +169,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
       gpio_pull_down(gpio);
       break;
     case JSHPINSTATE_ADC_IN:
-      gpio_init(gpio);
-      gpio_set_dir(gpio, GPIO_IN);
-      gpio_set_function(gpio, GPIO_FUNC_NULL); // ADC function selected via adc_gpio_init
+      adc_gpio_init(gpio); // disables digital IO + pulls on the pad
       break;
     default:
       break;
@@ -168,15 +177,35 @@ void jshPinSetState(Pin pin, JshPinState state) {
 }
 
 JshPinState jshPinGetState(Pin pin) {
-  // TODO: Read actual pin state
-  return JSHPINSTATE_UNDEFINED;
+  uint gpio = gpioFromPin(pin);
+  if (BITFIELD_GET(jshPinOpendrain, pin)) {
+    // released (dir IN) reads as high, sinking (dir OUT) reads as low
+    JshPinState state = BITFIELD_GET(jshPinOpendrainPullup, pin)
+      ? JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP : JSHPINSTATE_GPIO_OUT_OPENDRAIN;
+    if (!gpio_is_dir_out(gpio)) state |= JSHPINSTATE_PIN_IS_ON;
+    return state;
+  }
+  // not SIO => unconfigured or peripheral-driven; can't reconstruct exact state
+  if (gpio_get_function(gpio) != GPIO_FUNC_SIO)
+    return JSHPINSTATE_UNDEFINED;
+  if (gpio_is_dir_out(gpio)) {
+    JshPinState state = JSHPINSTATE_GPIO_OUT;
+    if (gpio_get_out_level(gpio)) state |= JSHPINSTATE_PIN_IS_ON;
+    return state;
+  }
+  if (gpio_is_pulled_up(gpio)) return JSHPINSTATE_GPIO_IN_PULLUP;
+  if (gpio_is_pulled_down(gpio)) return JSHPINSTATE_GPIO_IN_PULLDOWN;
+  return JSHPINSTATE_GPIO_IN;
 }
 
 void jshPinSetValue(Pin pin, bool value) {
   uint gpio = gpioFromPin(pin);
   const JshPinInfo *p = &pinInfo[pin];
   if (p->port & JSH_PIN_NEGATED) value = !value;
-  gpio_put(gpio, value);
+  if (BITFIELD_GET(jshPinOpendrain, pin))
+    gpio_set_dir(gpio, value ? GPIO_IN : GPIO_OUT); // 1 floats, 0 sinks (latch is low)
+  else
+    gpio_put(gpio, value);
 }
 
 bool jshPinGetValue(Pin pin) {
@@ -222,8 +251,8 @@ JsVarFloat jshPinAnalog(Pin pin) {
   uint adc_channel = gpio - 26; // ADC channels 0-3 are on GPIO 26-29
   if (adc_channel > 3) return 0;
 
-  adc_init();
-  adc_gpio_init(gpio);
+  if (!jshGetPinStateIsManual(pin))
+    jshPinSetState(pin, JSHPINSTATE_ADC_IN);
   adc_select_input(adc_channel);
   return (JsVarFloat)adc_read() / 4095.0;
 }
@@ -378,7 +407,6 @@ void jshKickWatchDog() {
 
 JsVarFloat jshReadTemperature() {
   // Internal temperature sensor on ADC channel 4: 27C at 0.706V, -2.7mV/C
-  adc_init();
   adc_set_temp_sensor_enabled(true);
   adc_select_input(4);
   JsVarFloat voltage = (JsVarFloat)adc_read() * 3.3 / 4095.0;
