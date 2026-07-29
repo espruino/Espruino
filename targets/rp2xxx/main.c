@@ -11,8 +11,13 @@ int main(void) {
   jswHWInit();
   jsvInit(JSVAR_CACHE_SIZE);
 
+  bool buttonState = false;
+#ifdef BTN1_PININDEX
+  buttonState = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
+#endif
+
   // start Espruino
-  jsiInit(true);
+  jsiInit(!buttonState); // pressing button on boot skips autoload from flash
   rp2EarlyLog("RP2 boot: jsiInit ok\r\n");
 
   // Start RP2040 USB after interpreter init so regular idle/task servicing is
