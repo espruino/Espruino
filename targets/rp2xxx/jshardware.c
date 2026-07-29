@@ -104,6 +104,9 @@ static Pin rpSpiPinSck[2] = { PIN_UNDEFINED, PIN_UNDEFINED };
 static Pin rpSpiPinMiso[2] = { PIN_UNDEFINED, PIN_UNDEFINED };
 static Pin rpSpiPinMosi[2] = { PIN_UNDEFINED, PIN_UNDEFINED };
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+// RP2 has no true open-drain, so it's emulated: the output latch is held low and
+// the direction is toggled to sink (out) or float (in)
+BITFIELD_DECL(jshPinOpendrain, JSH_PIN_COUNT);
 
 static uint32_t rpIrqStateStack[8];
 static uint8_t rpIrqStateStackLen = 0;
@@ -714,17 +717,25 @@ static void rpPinApplyState(Pin pin, JshPinState state) {
 
   gpio_init(gpio);
   gpio_disable_pulls(gpio);
+  BITFIELD_SET(jshPinOpendrain, pin, 0);
 
   switch (state & JSHPINSTATE_MASK) {
     case JSHPINSTATE_GPIO_OUT:
-    case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
-    case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
     case JSHPINSTATE_AF_OUT:
-    case JSHPINSTATE_AF_OUT_OPENDRAIN:
+    case JSHPINSTATE_AF_OUT_OPENDRAIN: // driven by a peripheral, which does its own open-drain
     case JSHPINSTATE_USART_OUT:
     case JSHPINSTATE_DAC_OUT:
       gpio_set_dir(gpio, GPIO_OUT);
       gpio_put(gpio, (state & JSHPINSTATE_PIN_IS_ON) ? 1 : 0);
+      break;
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
+      // emulated: latch stays low, direction floats (high) or sinks (low)
+      BITFIELD_SET(jshPinOpendrain, pin, 1);
+      if ((state & JSHPINSTATE_MASK) == JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP)
+        gpio_pull_up(gpio);
+      gpio_put(gpio, 0);
+      gpio_set_dir(gpio, (state & JSHPINSTATE_PIN_IS_ON) ? GPIO_IN : GPIO_OUT);
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP:
       gpio_set_dir(gpio, GPIO_IN);
@@ -1143,7 +1154,10 @@ void jshDelayMicroseconds(int microsec) {
 void jshPinSetValue(Pin pin, bool value) {
   if (!rpPinIsValid(pin)) return;
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value = !value;
-  gpio_put(rpPinToGpio(pin), value);
+  if (BITFIELD_GET(jshPinOpendrain, pin))
+    gpio_set_dir(rpPinToGpio(pin), value ? GPIO_IN : GPIO_OUT); // 1 floats, 0 sinks (latch is low)
+  else
+    gpio_put(rpPinToGpio(pin), value);
 }
 
 bool jshPinGetValue(Pin pin) {
