@@ -116,7 +116,7 @@ void flip_from_spi() {
         #if 1 // FAST
         *GPIOA_ODR = ODR | (c&63); // LCD_COL(...)
         *GPIOA_BSRR = (1<<6); // LCD_HCK(1);
-        *GPIOA_ODR = ODR | (1<<6) | ((c>>12)&63); // LCD_COL(...)
+        *GPIOA_ODR = ODR | (1<<6) | (c>>12); // LCD_COL(...)
         *GPIOA_BRR = (1<<6); // LCD_HCK(0);
         #else // SLOW
         LCD_COL(c); // already ANDs by 63
@@ -143,7 +143,7 @@ void flip_from_spi() {
         #if 1 // FAST
         *GPIOA_ODR = ODR | (c&63); // LCD_COL(...)
         *GPIOA_BSRR = (1<<6); // LCD_HCK(1);
-        *GPIOA_ODR = ODR | (1<<6) | ((c>>12)&63); // LCD_COL(...)
+        *GPIOA_ODR = ODR | (1<<6) | (c>>12); // LCD_COL(...)
         *GPIOA_BRR = (1<<6); // LCD_HCK(0);
         #else // SLOW
         LCD_COL(c); // already ANDs by 63

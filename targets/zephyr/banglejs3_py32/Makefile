@@ -68,6 +68,7 @@ CC			= $(PREFIX)gcc
 AS			= $(PREFIX)as
 LD			= $(PREFIX)ld
 OBJCOPY		= $(PREFIX)objcopy
+OBJDUMP		= $(PREFIX)objdump
 # `$(shell pwd)` or `.`, both works
 TOP			= .
 BDIR		= $(TOP)/$(BUILD_DIR)
@@ -170,6 +171,13 @@ $(BDIR)/$(PROJECT).elf: $(OBJS) $(TOP)/$(LDSCRIPT)
 %.hex: %.elf
 	@printf "  OBJCP HEX\t$@\n"
 	$(Q)$(OBJCOPY) -I elf32-littlearm -O ihex  $< $@
+
+# Listing
+%.lst: %.elf
+	@printf "  OBJCP LST\t$@\n"
+	$(Q)$(OBJDUMP) -x -S $< > $@ 
+
+lst: $(BDIR)/$(PROJECT).lst
 
 clean:
 	rm -rf $(BDIR)/*
