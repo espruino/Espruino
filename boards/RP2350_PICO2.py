@@ -30,7 +30,7 @@ info = {
    'optimizeflags' : '-Os',
    'libraries' : [
      'GRAPHICS',
-     'FILESYSTEM',
+    #  'FILESYSTEM',
      'JIT',
    ],
    'makefile' : [
@@ -63,6 +63,7 @@ chip = {
 
 devices = {
   'LED1' : { 'pin' : 'D25' },  # Onboard LED on GP25
+  "USB": {}
 };
 
 def get_pins():
