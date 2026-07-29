@@ -44,7 +44,7 @@ chip = {
   "adc": 1,
   "dac": 0,
   "saved_code": {
-    "address": 0x081C0000,
+    "address": 0x101C0000,  # last 256KB of the 2MB flash, at the XIP base
     "page_size": 4096,
     "pages": 64,
     "flash_available": 1792,

@@ -104,7 +104,7 @@ else: # NOT LINUX
     flash_page_size = 4*1024
   if board.chip["family"]=="STM32L4":
     flash_page_size = 128*1024
-  if board.chip["family"]=="RP2040":
+  if board.chip["family"]=="RP2040" or board.chip["family"]=="RP2350":
     flash_page_size = 4*1024
   flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be a full page, so we're rounding up
   # F4 has different page sizes in different places
@@ -246,9 +246,9 @@ elif board.chip["family"]=="ESP8266":
 elif board.chip["family"]=="ESP32" or board.chip["family"]=="ESP32_IDF4":
   board.chip["class"]="ESP32"
   exti_count = 40
-elif board.chip["family"]=="RP2040":
-  board.chip["class"]="RP2040"
-  linker_etext_var = "__flash_binary_end"
+elif board.chip["family"]=="RP2040" or board.chip["family"]=="RP2350":
+  board.chip["class"]="RP2XXX"
+  linker_etext_var = "__flash_binary_end" # linker symbols come from the Pico SDK linker script
   exti_count = 30
   codeOut("void NVIC_SystemReset(void);")
 elif board.chip["family"]=="SAMD":
@@ -258,10 +258,6 @@ elif board.chip["family"]=="EMBED":
   board.chip["class"]="EMBED"
 elif board.chip["family"]=="ZEPHYR":
   board.chip["class"]="ZEPHYR"  
-elif board.chip["family"]=="RP2350":
-  board.chip["class"]="RP2350"
-  linker_etext_var = "__etext" # linker symbols come from the Pico SDK linker script
-  exti_count = 8
 else:
   die('Unknown chip family '+board.chip["family"])
 
@@ -317,8 +313,8 @@ else:
     codeOut("#define FLASH_START                     "+hex(0x0))
   elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
     codeOut("#define FLASH_START                     "+hex(0x0))
-  elif board.chip["family"]=="RP2350":
-    codeOut("#define FLASH_START                     "+hex(0x10000000))
+  elif board.chip["family"]=="RP2040" or board.chip["family"]=="RP2350":
+    codeOut("#define FLASH_START                     "+hex(0x10000000)) # flash is memory-mapped (XIP) here on both
   elif board.chip["class"]=="EFM32":
     codeOut("#define FLASH_START                     FLASH_BASE // FLASH_BASE defined in em_device.h")
   else:
