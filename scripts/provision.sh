@@ -44,6 +44,7 @@ if [ "$BOARDNAME" = "ALL" ]; then
   PROVISION_STM32F1=1
   PROVISION_STM32F4=1
   PROVISION_STM32L4=1
+  PROVISION_RP2040=1
   PROVISION_RASPBERRYPI=1
   PROVISION_RP2350=1
   PROVISION_EMSCRIPTEN=1
@@ -268,6 +269,61 @@ fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_SAMD" = "1" ]; then
     ARM=1
+fi
+#--------------------------------------------------------------------------------
+if [ "$PROVISION_RP2040" = "1" ]; then
+    echo "===== RP2040"
+    ARM=1
+    PICO_PICOTOOL_INSTALL="$(pwd)/picotool-install"
+
+    if cmake --version >/dev/null 2>&1; then
+      echo "cmake installed"
+    else
+      echo "Installing cmake"
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y cmake
+    fi
+
+    if ninja --version >/dev/null 2>&1; then
+      echo "ninja installed"
+    else
+      echo "Installing ninja-build"
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y ninja-build
+    fi
+
+    if [ ! -d "pico-sdk" ]; then
+      echo "Installing pico-sdk"
+      git clone --depth=1 -b 2.0.0 https://github.com/raspberrypi/pico-sdk.git
+      (cd pico-sdk && git submodule update --init)
+    else
+      echo "pico-sdk folder found"
+    fi
+
+    if [ ! -f "pico-sdk/external/pico_sdk_import.cmake" ]; then
+      echo "Initialising pico-sdk submodules"
+      (cd pico-sdk && git submodule update --init)
+    fi
+
+    if [ ! -x "$PICO_PICOTOOL_INSTALL/picotool/picotool" ]; then
+      echo "Installing host picotool"
+      if [ ! -d "picotool-src" ]; then
+        git clone --depth=1 -b 2.0.0 https://github.com/raspberrypi/picotool.git picotool-src
+      fi
+      cmake -S picotool-src -B picotool-src/build \
+        -DPICO_SDK_PATH="$(pwd)/pico-sdk" \
+        -DPICOTOOL_NO_LIBUSB=1 \
+        -DPICOTOOL_FLAT_INSTALL=1 \
+        -DCMAKE_INSTALL_PREFIX="$PICO_PICOTOOL_INSTALL"
+      cmake --build picotool-src/build
+      cmake --install picotool-src/build
+    else
+      echo "host picotool installation found"
+    fi
+
+    export PICO_SDK_PATH="$(pwd)/pico-sdk"
+    export picotool_DIR="$PICO_PICOTOOL_INSTALL/picotool"
+    export PATH="$PICO_PICOTOOL_INSTALL/picotool:$PATH"
+    echo "PICO_SDK_PATH=$PICO_SDK_PATH"
+    echo "picotool_DIR=$picotool_DIR"
 fi
 #--------------------------------------------------------------------------------
 

@@ -104,6 +104,8 @@ else: # NOT LINUX
     flash_page_size = 4*1024
   if board.chip["family"]=="STM32L4":
     flash_page_size = 128*1024
+  if board.chip["family"]=="RP2040":
+    flash_page_size = 4*1024
   flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be a full page, so we're rounding up
   # F4 has different page sizes in different places
   total_flash = board.chip["flash"]*1024
@@ -244,6 +246,11 @@ elif board.chip["family"]=="ESP8266":
 elif board.chip["family"]=="ESP32" or board.chip["family"]=="ESP32_IDF4":
   board.chip["class"]="ESP32"
   exti_count = 40
+elif board.chip["family"]=="RP2040":
+  board.chip["class"]="RP2040"
+  linker_etext_var = "__flash_binary_end"
+  exti_count = 30
+  codeOut("void NVIC_SystemReset(void);")
 elif board.chip["family"]=="SAMD":
   board.chip["class"]="SAMD"
   codeOut('#include "targetlibs/samd/include/due_sam3x.init.h"')

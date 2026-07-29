@@ -820,14 +820,14 @@ docs:
 	$(Q)python scripts/build_docs.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 	@echo functions.html created
 
-$(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
+$(WRAPPERFILE): boards/$(BOARD).py scripts/build_jswrapper.py scripts/common.py $(WRAPPERSOURCES)
 	@echo ================================== Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
 	$(Q)$(PYTHON) scripts/build_jswrapper.py $(WRAPPERSOURCES) $(JSMODULESOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
 
 ifdef PININFOFILE
-$(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
+$(PININFOFILE).c $(PININFOFILE).h: boards/$(BOARD).py scripts/build_pininfo.py scripts/pinutils.py
 	@echo ================================== Generating pin info
 	$(Q)$(PYTHON) scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
@@ -895,6 +895,8 @@ else ifdef ESP32_IDF4
 include make/targets/ESP32_IDF4.make
 else ifdef ESP32
 include make/targets/ESP32.make
+else ifdef RP2040
+include make/targets/RP2040.make
 else ifdef ESP8266
 include make/targets/ESP8266.make
 else ifdef ESPR_EMBED

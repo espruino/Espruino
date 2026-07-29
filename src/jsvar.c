@@ -25,6 +25,17 @@
 #if defined(ESPR_JIT) && defined(LINUX)
 #include <sys/mman.h>
 #endif
+static ALWAYS_INLINE bool jsvFastNamePrefixEqual(const char *a, const char *b) {
+  unsigned char a0 = (unsigned char)a[0];
+  unsigned char a1 = (unsigned char)a[1];
+  unsigned char a2 = (unsigned char)a[2];
+  unsigned char a3 = (unsigned char)a[3];
+  unsigned char b0 = (unsigned char)b[0];
+  unsigned char b1 = (unsigned char)b[1];
+  unsigned char b2 = (unsigned char)b[2];
+  unsigned char b3 = (unsigned char)b[3];
+  return a0==b0 && a1==b1 && a2==b2 && a3==b3;
+}
 
 #ifdef DEBUG
   /** When freeing, clear the references (nextChild/etc) in the JsVar.
@@ -3057,7 +3068,8 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name) {
     while (childref) {
       // Don't Lock here, just use GetAddressOf - to try and speed up the finding
       JsVar *child = jsvGetAddressOf(childref);
-      if (*(int*)fastCheck==*(int*)child->varData.str && // speedy check of first 4 bytes
+      bool fastCmp = jsvFastNamePrefixEqual(fastCheck, child->varData.str);
+      if (fastCmp && // speedy check of first 4 bytes
           jsvIsStringEqual(child, name)) {
         // found it! unlock parent but leave child locked
         return jsvLockAgain(child);
@@ -3070,7 +3082,8 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name) {
       charsInName++;
     while (childref) {
       JsVar *child = jsvGetAddressOf(childref);
-      if (*(int*)fastCheck==*(int*)child->varData.str &&
+      bool fastCmp = jsvFastNamePrefixEqual(fastCheck, child->varData.str);
+      if (fastCmp &&
           !child->varData.ref.lastChild &&
           jsvGetCharactersInVar(child)==charsInName) { // no extra stringexts - so it really is that small
         // found it! unlock parent but leave child locked
