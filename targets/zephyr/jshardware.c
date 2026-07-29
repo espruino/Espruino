@@ -33,6 +33,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/rtc.h>
 #include <zephyr/drivers/flash.h>
+#include <zephyr/pm/device.h>
 #include <jesd216.h> // ext flash
 
 
@@ -77,12 +78,13 @@ k_tid_t main_thread_id;
 
 // Get the device binding for the console UART (usually "zephyr,console")
 const struct device *serial1_dev = DEVICE_DT_GET(DT_NODELABEL(uart20)); // was using DT_CHOSEN(zephyr_console)
-const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi22));
+const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi30));
 const struct device *flash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
 
 struct spi_config spi1_config = {
-        .frequency = 250000, // 250kHz //1000000U, // 1 MHz
+        .frequency = 4000000U, // 4 MHz - works - 8Mhz sends data too fast for PY32 to output it at the moment
+        //.frequency = 5333333U, // 5.3 MHz - magic number that seems to be allowed
         .operation = SPI_OP_MODE_MASTER |   // Master mode
                      SPI_WORD_SET(8) |      // 8-bit words
                      SPI_TRANSFER_MSB     // Send MSB first
@@ -131,16 +133,41 @@ const struct device *jshToZephyrPort(JsvPinInfoPort port) {
 }
 
 // ----------------------------------------------------------------------------
-unsigned short sxValues = 0;
-uint8_t pyButtonState = 0;
+#define PY32_OUT_SHIFT 4
+/// bottom 4 bits are buttons, higher bits are outputs
+unsigned short sxValues = (PY32_OUT_DEFAULTS << PY32_OUT_SHIFT);
 
+
+// Simple write to PY32 - we bit-bang this as setting up SPI for 1 byte takes too long and doesn't work in an IRQ
+void jshPY32Transfer(uint8_t *buf, int count) {
+  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // ensure we disconnect SPI!
+  jshPinSetValue(LCD_SPI_CS, 0);
+  const JshPinInfo *mosi = &pinInfo[LCD_SPI_MOSI];
+  const JshPinInfo *miso = &pinInfo[LCD_SPI_MISO];
+  const JshPinInfo *sck = &pinInfo[LCD_SPI_SCK];
+  const struct device *mosiport = jshToZephyrPort(mosi->port);
+  const struct device *misoport = jshToZephyrPort(miso->port);
+  const struct device *sckport = jshToZephyrPort(sck->port);
+  for (volatile int i=0;i<1000;i++); // delay (we can't use k_usleep as we could be in an IRQ here)
+  for (unsigned int i=0;i<count;i++) {
+    int data = buf[i], rxdata = 0;
+    int bit;
+    for (bit=7;bit>=0;bit--) {
+      gpio_pin_set_raw(mosiport, mosi->pin, (data>>bit)&1);
+      gpio_pin_set_raw(sckport, sck->pin, 1);
+      rxdata |= gpio_pin_get_raw(misoport, miso->pin) ? (1<<bit) : 0;
+      gpio_pin_set_raw(sckport, sck->pin, 0);
+    }
+    buf[i] = rxdata;
+  }
+  jshPinSetValue(LCD_SPI_CS, 1);
+}
 
 // Send state to PY32
-void jshUpdatePY32(bool setOutput) {
-  // FIXME: what if we're transferring data for the LCD?
+void jshPY32Update(bool setOutput) {
   uint8_t buf[3];
   if (setOutput) {
-    PY32OutputState pyOutputState = sxValues>>4; // current output values
+    PY32OutputState pyOutputState = sxValues>>PY32_OUT_SHIFT; // current output values
     buf[0] = PY32_CMD_SET_OUTPUT;
     buf[1] = pyOutputState&255;
     buf[2] = pyOutputState>>8;
@@ -149,12 +176,14 @@ void jshUpdatePY32(bool setOutput) {
     buf[1] = 0;
     buf[2] = 0;
   }
-  jshPinSetValue(LCD_SPI_CS, 0);
-  for (volatile int i=0;i<100000;i++); // delay (FIXME: we can't use k_usleep as we could be in an IRQ here)
-  jshSPISendMany(EV_SPI1, buf, buf, sizeof(buf), NULL);
-  jshPinSetValue(LCD_SPI_CS, 1);
-  pyButtonState = buf[0];
+  jshPY32Transfer(buf, sizeof(buf));
+  uint8_t pyButtonState = buf[0];
+  //jsiConsolePrintf("B %d %d %d\n", buf[0],buf[1],buf[2]);
+  #if PY32_OUT_SHIFT!=4
+  #error PY32_OUT_SHIFT=4
+  #endif
   sxValues = (sxValues&~15) | (pyButtonState&15);
+  if (pyButtonState & 16) jswrap_banglejs_touchHandler(0,0); // touch handler IRQ
 }
 
 void jshVirtualPinInitialise() {
@@ -168,7 +197,7 @@ void jshVirtualPinSetValue(Pin pin, bool state) {
     else sxValues &= ~(1<<p);
   }
   // set status flags for PY32
-  jshUpdatePY32(true);
+  jshPY32Update(true);
 }
 
 bool jshVirtualPinGetValue(Pin pin) {
@@ -183,22 +212,27 @@ JshPinState jshVirtualPinGetState(Pin pin) {
   return IS_PIN_A_LED(pin) ? JSHPINSTATE_GPIO_OUT : JSHPINSTATE_GPIO_IN;
 }
 
+/// called when we're sure the LCD SPI interface is idle!
+void jshVirtualPinIRQWorker() {
+  uint16_t lastState = sxValues;
+  jshPY32Update(false); // no set
+  uint16_t changed = lastState ^ sxValues;
+  /*if (changed & 16)
+    jsiConsolePrintf("Touch IRQ");*/ // FIXME we do this in jshPY32Update at the moment
+  if (changed & 15) {
+    for (int i=0;i<ESPR_EXTI_COUNT;i++)
+      if (((changed&1) && eventFlagsToPin[i]==BTN1_PININDEX) ||
+          ((changed&2) && eventFlagsToPin[i]==BTN2_PININDEX) ||
+          ((changed&4) && eventFlagsToPin[i]==BTN3_PININDEX) ||
+          ((changed&8) && eventFlagsToPin[i]==BTN4_PININDEX))
+        jshPushIOWatchEvent(EV_EXTI0+i);
+  }
+}
+
 void jshVirtualPinIRQHandler(bool state, IOEventFlags flags) {
   if (!state) {
     // IRQ low, so something ready
-    uint8_t lastState = pyButtonState;
-    jshUpdatePY32(false); // no set
-    uint8_t changed = lastState ^ pyButtonState;
-    /*if (changed & 16)
-      jsiConsolePrintf("Touch IRQ");*/
-    if (changed & 15) {
-      for (int i=0;i<ESPR_EXTI_COUNT;i++)
-        if (((changed&1) && eventFlagsToPin[i]==BTN1_PININDEX) ||
-            ((changed&2) && eventFlagsToPin[i]==BTN2_PININDEX) ||
-            ((changed&4) && eventFlagsToPin[i]==BTN3_PININDEX) ||
-            ((changed&8) && eventFlagsToPin[i]==BTN4_PININDEX))
-          jshPushIOWatchEvent(EV_EXTI0+i);
-    }
+    lcdMemLCD_callWhenIdle(jshVirtualPinIRQWorker);
   }
 }
 
@@ -217,7 +251,9 @@ void jshInit() {
   // 2. Enable the RX interrupt
   uart_irq_rx_enable(serial1_dev);
   // SPI 1
-  if (!device_is_ready(spi1_dev)) return;
+  if (!device_is_ready(spi1_dev)) {
+    jsWarn("spi30 not ready\n");
+  }
   // set up flow control/pins/etc
   jshInitDevices();
   // reset LCD/etc
@@ -247,7 +283,7 @@ void jshReset() {
   jshPinSetState(LCD_SPI_CS, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(LCD_SPI_IRQ, JSHPINSTATE_GPIO_IN_PULLUP);
   jshDelayMicroseconds(100); // wait for pins to settle
-  jshUpdatePY32(false); // update current status (and clear IRQ line)
+  jshPY32Update(false); // update current status (and clear IRQ line)
   IOEventFlags channel = jshPinWatch(LCD_SPI_IRQ, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, jshVirtualPinIRQHandler);
 }
@@ -492,36 +528,18 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 }
 
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
-  /*struct spi_buf tx_buf = { .buf = tx, .len = count  };
+  struct spi_buf tx_buf = { .buf = tx, .len = count  };
   struct spi_buf rx_buf = { .buf = rx, .len = count  };
   struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
   struct spi_buf_set rx_set = { .buffers = &rx_buf, .count = 1 };
   int err;
+  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_RESUME); // ensure we disconnect SPI!
   if (rx) err = spi_transceive(spi1_dev, &spi1_config, &tx_set, &rx_set);
   else err = spi_write(spi1_dev, &spi1_config, &tx_set);
   if (err < 0) {
       // Handle SPI bus runtime or hardware failure
       jsWarn("SPI err %d\n",err);
       return false;
-  }*/
-
- // FIXME: use hardware! above code isn't working at the moment
- const JshPinInfo *mosi = &pinInfo[LCD_SPI_MOSI];
- const JshPinInfo *miso = &pinInfo[LCD_SPI_MISO];
- const JshPinInfo *sck = &pinInfo[LCD_SPI_SCK];
- const struct device *mosiport = jshToZephyrPort(mosi->port);
- const struct device *misoport = jshToZephyrPort(miso->port);
- const struct device *sckport = jshToZephyrPort(sck->port);
- for (unsigned int i=0;i<count;i++) {
-    int data = tx[i], rxdata = 0;
-    int bit;
-    for (bit=7;bit>=0;bit--) {
-      gpio_pin_set_raw(mosiport, mosi->pin, (data>>bit)&1);
-      gpio_pin_set_raw(sckport, sck->pin, 1);
-      rxdata |= gpio_pin_get_raw(misoport, miso->pin) ? (1<<bit) : 0;
-      gpio_pin_set_raw(sckport, sck->pin, 0);
-    }
-    if (rx) rx[i] = rxdata;
   }
 
   // FIXME use spi_transceive_cb for async writes (and use CONFIG_SPI_ASYNC=y)

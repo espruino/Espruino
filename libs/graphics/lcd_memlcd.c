@@ -44,6 +44,7 @@ bool isBacklightOn; ///< is LCD backlight on? If so we need to pulse EXTCOMIN fa
 JsVar *lcdOverlayImage; ///< if set, an Image to use for overlays
 short lcdOverlayX,lcdOverlayY; ///< coordinates of the graphics instance
 volatile bool lcdIsBusy; ///< We're now allowing SPI send in the background - if we're sending, block execution until it finishes
+volatile lcdMemLCDCallbackFn lcdFinishedCallback; ///< if set, we call this back when we finished messing with the LCD
 #if LCD_WIDTH!=176
 bool fake176 = false; ///< We can set this up to fake a 176 pixel screen by offsetting it by 32 pixels
 #endif
@@ -360,6 +361,10 @@ void lcdMemLCD_flip_spi_callback() {
   jshPinSetValue(LCD_SPI_CS, LCD_CS_OFF);
 #endif
   lcdIsBusy = false;
+  if (lcdFinishedCallback) {
+    lcdFinishedCallback();
+    lcdFinishedCallback = NULL;
+  }
 }
 // Mirror X - use when doing overlays when screen is rotated 180
 static void _lcdMemLCD_setPixel_mirrored(JsGraphics *gfx, int x, int y, unsigned int col) {
@@ -595,3 +600,9 @@ void lcdMemLCD_setCallbacks(JsGraphics *gfx) {
   gfx->scroll = lcdMemLCD_scroll;
 }
 
+void lcdMemLCD_callWhenIdle(lcdMemLCDCallbackFn callback) {
+  if (lcdIsBusy)
+    lcdFinishedCallback = callback;
+  else
+    callback();
+}

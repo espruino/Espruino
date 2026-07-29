@@ -87,6 +87,7 @@ void EXTI2_3_IRQHandler(void)
 }
 void EXTI4_15_IRQHandler(void)
 {
+  HAL_EXTI_IRQHandler(&hexti_pa11);
   HAL_EXTI_IRQHandler(&hexti_pa15);
 }
 

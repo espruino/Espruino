@@ -45,6 +45,9 @@
 #include "nrf_saadc.h"
 #include "nrf5x_utils.h"
 #endif
+#ifdef ZEPHYR
+#include <zephyr/kernel.h>
+#endif
 
 #include "bluetooth.h" // for self-test
 #include "jsi2c.h" // accelerometer/etc
@@ -580,10 +583,10 @@ Can be used for housekeeping tasks that don't want to be run during the day.
 #ifdef BANGLEJS3
 #ifndef EMULATED
 JshI2CInfo i2cInternal;
-//FIXMEBJS3
-//#define ACCEL_I2C &i2cInternal
+//FIXME: Bangle.js 3 extra peripherals
+#define ACCEL_I2C &i2cInternal
 //#define MAG_I2C &i2cInternal
-//#define TOUCH_I2C &i2cInternal
+#define TOUCH_I2C &i2cInternal
 //#define PRESSURE_I2C &i2cInternal
 //#define HRM_I2C &i2cInternal
 //#define HEARTRATE 1
@@ -593,6 +596,7 @@ JshI2CInfo i2cInternal;
 #define DEFAULT_LCD_POWER_TIMEOUT 0 // don't turn LCD off
 #define DEFAULT_BACKLIGHT_TIMEOUT 3000
 #define DEFAULT_LOCK_TIMEOUT 5000
+#define TOUCH_DEVICE_RANGE 350
 
 #endif
 
@@ -732,13 +736,16 @@ JshI2CInfo i2cInternal;
 #ifndef WAKE_FROM_OFF_TIME
 #define WAKE_FROM_OFF_TIME 200
 #endif
+#ifndef TOUCH_DEVICE_RANGE
+#define TOUCH_DEVICE_RANGE 160
+#endif
 
 #ifdef TOUCH_DEVICE
 short touchX, touchY; ///< current touch event coordinates
 short lastTouchX, lastTouchY; ///< last touch event coordinates - updated when JSBT_DRAG is fired
 bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
 unsigned char touchType; ///< variable to differentiate press, long press, double press
-short touchMinX = 0, touchMinY = 0, touchMaxX = 160, touchMaxY = 160; ///< touchscreen calibration values (what we expect from hardware, then we map this to LCD_WIDTH/HEIGHT)
+short touchMinX = 0, touchMinY = 0, touchMaxX = TOUCH_DEVICE_RANGE, touchMaxY = TOUCH_DEVICE_RANGE; ///< touchscreen calibration values (what we expect from hardware, then we map this to LCD_WIDTH/HEIGHT)
 #endif
 
 #ifdef PRESSURE_DEVICE
@@ -836,6 +843,10 @@ float batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
 #ifdef NRF52_SERIES
 /// Nordic app timer to handle call of peripheralPollHandler
 APP_TIMER_DEF(m_peripheral_poll_timer_id);
+#endif
+#ifdef ZEPHYR
+void peripheralPollHandler(/*struct k_timer *timer*/);
+K_TIMER_DEFINE(m_peripheral_poll_timer, peripheralPollHandler, NULL);
 #endif
 
 /// Is I2C busy? if so we'll skip one reading in our interrupt so we don't overlap
@@ -1251,7 +1262,11 @@ void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval), NULL);
   #endif
 #endif
-// FIXMEBJS3
+#ifdef ZEPHYR
+  k_timeout_t pollPeriod = K_MSEC(pollInterval);
+  k_timer_stop(&m_peripheral_poll_timer);
+  k_timer_start(&m_peripheral_poll_timer, pollPeriod, pollPeriod);
+#endif
 }
 
 /* If we're busy and really don't want to be interrupted (eg clearing flash memory)
@@ -1553,9 +1568,16 @@ bool hasAccelData;
   // clear the IRQ flags
   jsi2cReadReg(ACCEL_I2C, ACCEL_ADDR, KX126_INT_REL, 1, buf);
 #endif
+#ifdef ACCEL_DEVICE_LSM6DSOTR
+  jsi2cReadReg(ACCEL_I2C, ACCEL_ADDR, 0x1E, 1, buf); // STATUS_REG
+  hasAccelData = (buf[0]&1) != 0; // XLDA (Accelerometer Data Available)
+  // FIXME: &2 => gyro data available
+#endif
   if (hasAccelData) {
 #ifdef ACCEL_DEVICE_KX126
     jsi2cReadReg(ACCEL_I2C, ACCEL_ADDR, KX126_XOUT_L, 6, buf);
+#elif ACCEL_DEVICE_LSM6DSOTR
+    jsi2cReadReg(ACCEL_I2C, ACCEL_ADDR, 0x28, 6, buf);
 #else
     jsi2cReadReg(ACCEL_I2C, ACCEL_ADDR, 6, 6, buf);
 #endif
@@ -2082,7 +2104,7 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
 }
 #endif
 #ifdef TOUCH_I2C
-void touchHandler(bool state, IOEventFlags flags) {
+void jswrap_banglejs_touchHandler(bool state, IOEventFlags flags) {
   if (state) return; // only interested in when low
   // Ok, now get touch info
   unsigned char buf[6];
@@ -2095,10 +2117,12 @@ void touchHandler(bool state, IOEventFlags flags) {
   // 4: Y hi
   // 5: Y lo (0..160)
 
-  int tx = buf[3]/* | ((buf[2] & 0x0F)<<8)*/; // top bits are never used on our touchscreen
-  int ty = buf[5]/* | ((buf[4] & 0x0F)<<8)*/;
+  int tx = buf[3] | ((buf[2] & 0x0F)<<8); // top bits are never used on our touchscreen
+  int ty = buf[5] | ((buf[4] & 0x0F)<<8);
+#ifdef BANGLEJS2
   if (tx>=250) tx=0; // on some devices, 251-255 gets reported for touches right at the top of the screen
   if (ty>=250) ty=0;
+#endif
   touchHandlerInternal(
     (tx-touchMinX) * LCD_WIDTH / (touchMaxX-touchMinX), // touchX
     (ty-touchMinY) * LCD_HEIGHT / (touchMaxY-touchMinY), // touchY
@@ -3845,11 +3869,13 @@ NO_INLINE void jswrap_banglejs_hwinit() {
   i2cInternal.clockStretch = false;
   jsi2cSetup(&i2cInternal);
 #endif // BANGLEJS_Q3/ACCEL_PIN_SDA
-#ifdef BANGLEJS_Q3
+#if TOUCH_DEVICE_CST816S
   // Touch init
   jshPinOutput(TOUCH_PIN_RST, 0);
   jshDelayMicroseconds(1000);
   jshPinOutput(TOUCH_PIN_RST, 1);
+#endif
+#ifdef BANGLEJS_Q3
   // Ensure peripherals are forced off (GPIO can be open drain)
   jswrap_banglejs_pwrHRM(false); // HRM off
   jswrap_banglejs_pwrGPS(false); // GPS off
@@ -3944,7 +3970,7 @@ NO_INLINE void jswrap_banglejs_init() {
 #ifndef EMULATED
   jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
   channel = jshPinWatch(TOUCH_PIN_IRQ, true, JSPW_NONE);
-  if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, jswrap_banglejs_touchHandler);
 #endif
 #endif
 
@@ -4243,6 +4269,22 @@ NO_INLINE void jswrap_banglejs_init() {
     jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G|KX126_CNTL1_TDTE); // CNTL1 - standby mode, low power, enable "data ready" interrupt, 4g, enable tap, disable tilt & pedometer (for now)
     jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G|KX126_CNTL1_TDTE|KX126_CNTL1_PC1); // CNTL1 - same as above but change from standby to operating mode
 #endif
+#ifdef ACCEL_DEVICE_LSM6DSOTR
+    // Software Reset (Bit 0 of CTRL3_C = 1)
+    // Clears any leftover configurations from previous boots
+    jswrap_banglejs_accelWr(0x12, 0x01);
+    // Enable Block Data Update (BDU = 1) & Auto-Increment (IF_INC = 1)
+    // BDU (Bit 6) prevents reading MSB and LSB from different sample updates.
+    // IF_INC (Bit 2) allows multi-byte I2C reads across consecutive registers.
+    jswrap_banglejs_accelWr(0x12, 0x44);
+    // Force Low-Power Mode (XL_HM_MODE = 1 in CTRL6_C)
+    jswrap_banglejs_accelWr(0x15, 0x10);
+    // Register: CTRL1_XL (0x10)
+    // ODR_XL[3:0] = 0001 (12.5 Hz)
+    // FS_XL[1:0]  = 10   (±4g)
+    // This powers on the accelerometer axis channels.
+    jswrap_banglejs_accelWr(0x10, 0x18);
+#endif
 
 #ifdef PRESSURE_DEVICE
 #ifdef PRESSURE_DEVICE_HP203_EN
@@ -4305,7 +4347,6 @@ NO_INLINE void jswrap_banglejs_init() {
   hrm_sensor_init();
 #endif
 
-#ifdef NRF52_SERIES
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens
   //  - the bootloader probably already set this up so the
@@ -4313,6 +4354,7 @@ NO_INLINE void jswrap_banglejs_init() {
   jshEnableWatchDog(5); // 5 second watchdog
   // This timer kicks the watchdog, and does some other stuff as well
   pollInterval = DEFAULT_ACCEL_POLL_INTERVAL;
+#ifdef NRF52_SERIES
   // requires APP_TIMER_OP_QUEUE_SIZE=5 in BOARD.py
   uint32_t err_code = app_timer_create(&m_peripheral_poll_timer_id,
                       APP_TIMER_MODE_REPEATED,
@@ -4335,6 +4377,11 @@ NO_INLINE void jswrap_banglejs_init() {
   jsble_check_error(err_code);
 #endif
 #endif // EMULATED
+#ifdef ZEPHYR
+  k_timeout_t pollPeriod = K_MSEC(pollInterval);
+  // Start timer: first delay = period, subsequent intervals = period
+  k_timer_start(&m_peripheral_poll_timer, pollPeriod, pollPeriod);
+#endif
 
 #ifdef BANGLEJS_Q3
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
@@ -4454,6 +4501,7 @@ void jswrap_banglejs_kill() {
   "generate" : "jswrap_banglejs_idle"
 }*/
 bool jswrap_banglejs_idle() {
+
   JsVar *bangle =jsvObjectGetChildIfExists(execInfo.root, "Bangle");
   /* Check if we have an accelerometer listener, and set JSBF_ACCEL_LISTENER
    * accordingly - so we don't get a wakeup if we have no listener. */
@@ -5699,6 +5747,11 @@ static void jswrap_banglejs_periph_off() {
 #endif
 #ifdef ACCEL_DEVICE_KX126
   jswrap_banglejs_accelWr(KX126_CNTL1,0); // CNTL1 Off (top bit)
+#endif
+#ifdef ACCEL_DEVICE_LSM6DSOTR
+  // Set ODR_XL bits [7:4] to 0000 in CTRL1_XL (0x10)
+  // This powers down the accelerometer (drops current draw to ~3 µA)
+  jswrap_banglejs_accelWr(0x10, 0x00);
 #endif
 #ifdef MAG_DEVICE_GMC303
   jswrap_banglejs_compassWr(0x31,0); // compass off

@@ -68,6 +68,7 @@ CC			= $(PREFIX)gcc
 AS			= $(PREFIX)as
 LD			= $(PREFIX)ld
 OBJCOPY		= $(PREFIX)objcopy
+OBJDUMP		= $(PREFIX)objdump
 # `$(shell pwd)` or `.`, both works
 TOP			= .
 BDIR		= $(TOP)/$(BUILD_DIR)
@@ -171,10 +172,24 @@ $(BDIR)/$(PROJECT).elf: $(OBJS) $(TOP)/$(LDSCRIPT)
 	@printf "  OBJCP HEX\t$@\n"
 	$(Q)$(OBJCOPY) -I elf32-littlearm -O ihex  $< $@
 
+# Listing
+%.lst: %.elf
+	@printf "  OBJCP LST\t$@\n"
+	$(Q)$(OBJDUMP) -x -S $< > $@ 
+
+lst: $(BDIR)/$(PROJECT).lst
+
 clean:
 	rm -rf $(BDIR)/*
 
-flash:
+flash: $(BDIR)/$(PROJECT).hex
 	sudo $(PYOCD_EXE) erase -t $(PYOCD_DEVICE) --chip --config $(TOP)/misc/pyocd.yaml
 	sudo $(PYOCD_EXE) load $(BDIR)/$(PROJECT).hex -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml
+
+reset:
+	sudo $(PYOCD_EXE) reset -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml
+
+gdb:
+	sudo $(PYOCD_EXE) gdbserver -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml & SERVER_PID=$$!; arm-none-eabi-gdb -x $(TOP)/misc/gdbinit;kill $$SERVER_PID
+
 

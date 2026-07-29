@@ -2,16 +2,15 @@
 #include "main.h"
 #include "lcd.h"
 
-/*
-TODO:
+/* TODO:
 
-
-
+Watchdog
 
 */
 
 static void APP_SystemClockConfig(void);
 static void APP_GPIO_Config(void);
+static void APP_LCD_GPIO_Config(void);
 
 // ----------------------------------------
 EXTI_HandleTypeDef hexti_pa0;
@@ -21,6 +20,7 @@ ADC_HandleTypeDef hadc;
 SPI_HandleTypeDef hspi1;
 DMA_HandleTypeDef hdma_spi1_rx;
 DMA_HandleTypeDef hdma_spi1_tx;
+RTC_HandleTypeDef hrtc;
 // ----------------------------------------
 
 #define LCD_ROW_BYTES 180 // 240 * 6 bit (in bytes)
@@ -33,15 +33,17 @@ PY32State state;
 
 void APP_ErrorHandler(void)
 {
-  while (1) { // flash torch on app error
+  int flash=11;
+  while (--flash) { // flash torch on app error
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
     HAL_Delay(50);
   }
+   while (1);
 }
 
 void Fatal_Error(const char *msg) {
   lcd_clear();
-  lcd_print("ERROR\r\n");
+  lcd_print("LCD ERROR\r\n");
   lcd_println((char*)msg);
   APP_ErrorHandler();
 }
@@ -117,16 +119,17 @@ void flip_from_spi() {
         c |= *(px++)<<8;
         c |= *(px++)<<16;
         c = ((c&172074)>>1) | ((c&11012736)>>6);
-        /* FAST:
+        #if 1 // FAST
         *GPIOA_ODR = ODR | (c&63); // LCD_COL(...)
         *GPIOA_BSRR = (1<<6); // LCD_HCK(1);
-        *GPIOA_ODR = ODR | (1<<6) | ((c>>12)&63); // LCD_COL(...)
+        *GPIOA_ODR = ODR | (1<<6) | (c>>12); // LCD_COL(...)
         *GPIOA_BRR = (1<<6); // LCD_HCK(0);
-        */
+        #else // SLOW
         LCD_COL(c); // already ANDs by 63
         LCD_HCK(1);
         LCD_COL(c>>12);
         LCD_HCK(0);
+        #endif
       }
       D();
       LCD_VCK(0);D();
@@ -143,10 +146,17 @@ void flip_from_spi() {
         c |= *(px++)<<8;
         c |= *(px++)<<16;
         c = (c&86037) | ((c&5506368)>>5);
+        #if 1 // FAST
+        *GPIOA_ODR = ODR | (c&63); // LCD_COL(...)
+        *GPIOA_BSRR = (1<<6); // LCD_HCK(1);
+        *GPIOA_ODR = ODR | (1<<6) | (c>>12); // LCD_COL(...)
+        *GPIOA_BRR = (1<<6); // LCD_HCK(0);
+        #else // SLOW
         LCD_COL(c); // already ANDs by 63
         LCD_HCK(1);
         LCD_COL(c>>12);
         LCD_HCK(0);
+        #endif
       }
       D();
       LCD_VCK(1);D();
@@ -160,7 +170,7 @@ void flip_from_spi() {
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 1);
         HAL_Delay(50);
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 0);
-        return 0;
+        return;
       }
       if (!state.displayInProgress) {
         LCD_ENB(0); // cancelled - exit.
@@ -194,6 +204,7 @@ uint32_t Read_ADC_PB0(void)
 
 void Write_IRQ(bool asserted) {
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, !asserted);
+  state.irqAsserted = asserted;
 }
 
 void BTN_Callback() {
@@ -202,6 +213,9 @@ void BTN_Callback() {
 
 void Update_Outputs() {
   PY32OutputState o = state.output;
+  /*lcd_print("O ");
+  lcd_print_hex(o);
+  lcd_println("");*/
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, (o&PY32_OUT_LCD_BL)?1:0);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, (o&PY32_OUT_TORCH_ON)?1:0);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 1/*(o&PY32_OUT_AUX_SWAP)?1:0*/);
@@ -272,7 +286,6 @@ void SPI1_NSS_Callback() {
       SPI1_HandlePacket(bytes_received);
 
     SPI1_Reset_Buffer();
-
     SET_BIT(SPI1->CR1, SPI_CR1_SSI); // disable SPI
   } else { // transaction start
     CLEAR_BIT(SPI1->CR1, SPI_CR1_SSI); // enable SPI
@@ -280,17 +293,28 @@ void SPI1_NSS_Callback() {
   }
 }
 
+void Set_State_Changed() {
+  if (!state.spiInProgress) {
+    HAL_SPI_DMAStop(&hspi1);
+    SPI1_Reset_Buffer();
+  }
+  // FIXME: What if we're currently busy? How do we flag a new state change?
+  Write_IRQ(true);
+}
+
 // Called when touchscreen state changes
 void Touch_IRQ_Callback() {
+  if (!state.initialised) return;
   bool irq_state = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11) != GPIO_PIN_SET; // inverted
 
   if (irq_state) {
     state.input |= PY32_IN_TOUCH_IRQ;
-    lcd_println("TOUCH ON");
+    //lcd_println("TOUCH ON");
   } else {
     state.input &= ~PY32_IN_TOUCH_IRQ;
-    lcd_println("TOUCH OFF");
+    //lcd_println("TOUCH OFF");
   }
+  Set_State_Changed();
   // FIXME: update input state
 }
 
@@ -329,22 +353,31 @@ void HAL_SPI_AbortCpltCallback(SPI_HandleTypeDef *hspi)
 int main(void)
 {
   HAL_Init();
+  /* LCD GPIO Config */
+  APP_LCD_GPIO_Config();
+  lcd_init();
+  lcd_println("LCD "LCD_VERSION"\r\n");
+
+  state.initialised = false;
+  state.output = PY32_OUT_DEFAULTS;
 
   /* System Clock Configuration */
   APP_SystemClockConfig();
+
 
   /* GPIO Initialization */
   APP_GPIO_Config();
   HAL_Delay(10);
 
-  lcd_init();
-  lcd_println("LCD "LCD_VERSION"\r\n\r\nBANGLE.JS 3 BOOTING...");
+  lcd_println("BANGLE.JS 3 BOOTING...");
 
   // FIXME - look out for SPI commands coming in. If no command,
   // enter recovery mode using SWD commands.
 
-  while (1)
-  {
+  state.initialised = true;
+
+  while (1) {
+    //HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
     if (state.buttonPressed) {
       HAL_Delay(2); // delay slightly to let the reading settle (should we do a while(Read_ADC_PB0)...?)
       uint32_t val = Read_ADC_PB0();
@@ -369,16 +402,13 @@ int main(void)
       if (state.buttonMask != nearest) { // button state changed - update IRQ flag
         // FIXME: what about a button pressed so quick it changes before we can poll?
         state.buttonMask = nearest;
-        if (!state.spiInProgress) {
-          HAL_SPI_DMAStop(&hspi1);
-          SPI1_Reset_Buffer();
-        }
-        Write_IRQ(true);
+        Set_State_Changed();
       }
     }
     if (state.displayInProgress) {
       flip_from_spi();
-    } else if (!state.spiInProgress && !state.buttonPressed) {
+    } else if (!state.spiInProgress && !state.buttonPressed && !state.irqAsserted) {
+      // don't suspend if IRQ is asserted since we'll be woken up very soon anyway
       HAL_SuspendTick();
       HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_SLEEPENTRY_WFI); // actually sleep
       HAL_ResumeTick();
@@ -386,20 +416,11 @@ int main(void)
   }
 }
 
-static void APP_GPIO_Config(void)
+static void APP_LCD_GPIO_Config(void)
 {
   GPIO_InitTypeDef  GPIO_InitStruct;
-  EXTI_ConfigTypeDef EXTI_ConfigStruct;
   // enable clocks
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOF_CLK_ENABLE();
-  __HAL_RCC_SYSCFG_CLK_ENABLE();
-  __HAL_RCC_ADC_CLK_ENABLE();
-  __HAL_RCC_DMA_CLK_ENABLE();
-  __HAL_RCC_SPI1_CLK_ENABLE();
-
 
   // LCD IOs
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -418,8 +439,35 @@ static void APP_GPIO_Config(void)
                         GPIO_PIN_10| // LCD ENB
                         GPIO_PIN_11; // LCD XRST
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-  GPIO_InitStruct.Pin = GPIO_PIN_5| // LCD FRP
-                        GPIO_PIN_6; // MOTO PWM
+}
+
+static void APP_GPIO_Config(void)
+{
+  GPIO_InitTypeDef  GPIO_InitStruct;
+  EXTI_ConfigTypeDef EXTI_ConfigStruct;
+
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_SYSCFG_CLK_ENABLE();
+  __HAL_RCC_ADC_CLK_ENABLE();
+  __HAL_RCC_DMA_CLK_ENABLE();
+  __HAL_RCC_SPI1_CLK_ENABLE();
+  __HAL_RCC_PWR_CLK_ENABLE();
+
+  // Enable Write Access to Backup/RTC Domain */
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_RTCAPB_CLK_ENABLE();
+  __HAL_RCC_RTC_ENABLE();
+
+  // Setup IOs
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Pin = GPIO_PIN_6; // MOTO PWM
+  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+  //GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP; // FIXME
+  GPIO_InitStruct.Pin = GPIO_PIN_5; // LCD FRP
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -436,8 +484,33 @@ static void APP_GPIO_Config(void)
                         GPIO_PIN_15; // wifi boot mode
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 1); // ensure IOSwap is 1 (UART by default)
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, 1); // FIXME: backlight on
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0); // reset touchscreen
+  HAL_Delay(1);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1); // un-reset touchscreen
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
   // call Update_Outputs() to set all to default?
+
+  /*lcd_print("BDCR ");lcd_print_hex(RCC->BDCR);
+  lcd_print("\r\nCSR ");lcd_print_hex(RCC->CSR);
+  lcd_print("\r\nCRL ");lcd_print_hex(RTC->CRL);
+  lcd_print("\r\nPRLL ");lcd_print_hex(RTC->PRLL);
+  lcd_print("\r\nPRLH ");lcd_print_hex(RTC->PRLH);
+  lcd_print("\r\nCR1 ");lcd_print_hex(PWR->CR1);
+  lcd_print("\r\nCR2 ");lcd_print_hex(PWR->CR2);
+  lcd_print("\r\n");*/
+
+  // Enable FRP square wave
+  hrtc.Instance = RTC;
+  hrtc.Init.AsynchPrediv   = RTC_AUTO_1_SECOND;   // Default prediv values for 32.768kHz LSE/LSI
+  // AsynchPrediv doesn't seem to have an effect on RTC_OUT
+  // RTC_OUTPUTSOURCE_CALIBCLOCK outputs 512hz square wave
+  // RTC_OUTPUTSOURCE_SECOND outpus 1 second pulse (not square wave)
+  hrtc.Init.OutPut         = RTC_OUTPUTSOURCE_CALIBCLOCK;          // Clear default alarm/tamper output routing
+  int e;
+
+  if ((e=HAL_RTC_Init(&hrtc)) != HAL_OK)
+    Fatal_Error("RTC");
+
 
   // Touch IRQ line
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -538,12 +611,9 @@ static void APP_GPIO_Config(void)
    // Force the internal SSI bit HIGH initially so the slave is deselected
    //SET_BIT(SPI1->CR1, SPI_CR1_SSI);
 
-  // Enable Slave Fast Speed Mode if Master SCK >= PCLK/4
-  //SET_BIT(SPI1->CR2, SPI_CR2_SLVFM); /// FIXME: not on F040?
+  // No need to enable Slave Fast Speed Mode (SPI_CR2_SLVFM) if Master SCK >= PCLK/4 on PY32F040
 
   // Enable Core Interrupts
-
-
   HAL_NVIC_SetPriority(SPI1_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(SPI1_IRQn);
 
@@ -554,7 +624,7 @@ static void APP_GPIO_Config(void)
   EXTI_ConfigStruct.GPIOSel = EXTI_GPIOA;
   HAL_EXTI_SetConfigLine(&hexti_pa15, &EXTI_ConfigStruct);
   HAL_EXTI_RegisterCallback(&hexti_pa15, HAL_EXTI_COMMON_CB_ID, SPI1_NSS_Callback);
-  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
   // Queue up the data response buffer
@@ -615,12 +685,12 @@ static void APP_SystemClockConfig(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE | RCC_OSCILLATORTYPE_HSI | RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_16MHz; // fixme
   RCC_OscInitStruct.HSIDiv = RCC_HSI_DIV1;
-
   RCC_OscInitStruct.HSEState = RCC_HSE_OFF;
   RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.LSEState = RCC_LSE_OFF;
@@ -637,7 +707,13 @@ static void APP_SystemClockConfig(void)
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) // 0ws for <24MHz
     Fatal_Error("RCC Clk Conf");
 
-  HAL_RCC_MCOConfig(RCC_MCO4, RCC_MCO1SOURCE_LSI, RCC_MCODIV_128); // FIXME is MCODIV_128 correct?
+  //HAL_RCC_MCOConfig(RCC_MCO4, RCC_MCO1SOURCE_LSI, RCC_MCODIV_128); // FIXME is MCODIV_128 correct?
+
+  /* Connect LSI to the RTC Peripheral */
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC;
+  PeriphClkInit.RTCClockSelection    = RCC_RTCCLKSOURCE_LSI;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+    Fatal_Error("RCC Periph Clk");
 }
 
 

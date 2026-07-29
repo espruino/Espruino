@@ -35,3 +35,6 @@ unsigned char *lcdMemLCD_getRowPtr(int row);
 void lcdMemLCD_setFake176(bool isFake);
 bool lcdMemLCD_getFake176();
 #endif
+
+typedef void (*lcdMemLCDCallbackFn)();
+void lcdMemLCD_callWhenIdle(lcdMemLCDCallbackFn callback);

@@ -35,8 +35,10 @@ xtensa-esp32-elf
 gcc-arm-none-eabi*
 arm-gnu-toolchain*
 *.c#
+*.o
 /function_keywords.js
 /functions.html
+/scripts/nrfutil*
 /targetlibs/emscripten/emsdk
 /targetlibs/nrf5x_11
 /targetlibs/nrf5x_12/examples
