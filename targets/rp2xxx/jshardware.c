@@ -1725,7 +1725,13 @@ void jshKickWatchDog() {
 }
 
 JsVarFloat jshReadTemperature() {
-  return NAN;
+  // Internal temperature sensor on ADC channel 4: 27C at 0.706V, -1.721mV/C
+  rpAdcEnsureInitialised();
+  adc_set_temp_sensor_enabled(true);
+  adc_select_input(4);
+  JsVarFloat voltage = (JsVarFloat)adc_read() * 3.3 / 4096.0;
+  adc_set_temp_sensor_enabled(false);
+  return 27.0 - (voltage - 0.706) / 0.001721;
 }
 
 JsVarFloat jshReadVRef() {
