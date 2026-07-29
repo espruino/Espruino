@@ -25,7 +25,8 @@ info = {
     ],
     "makefile": [
       "DEFINES+=-DRP2040=1",
-      "DEFINES+=-DUSE_FONT_6X8"
+      "DEFINES+=-DUSE_FONT_6X8",
+      "PICO_BOARD?=pico" # Pico SDK board header (boards/pico.h)
     ]
   }
 }

@@ -165,20 +165,6 @@ if [ "$PROVISION_RASPBERRYPI" = "1" ]; then
     fi
 fi
 #--------------------------------------------------------------------------------
-if [ "$PROVISION_RP2350" = "1" ]; then
-    echo "===== RP2350"
-    PICO_SDK_VERSION="2.1.1"
-    if [ ! -d "pico-sdk" ]; then
-        echo "Installing Pico SDK $PICO_SDK_VERSION to Espruino/pico-sdk"
-        git clone --depth=1 -b "$PICO_SDK_VERSION" https://github.com/raspberrypi/pico-sdk.git
-    else
-        echo "Pico SDK installation found"
-    fi
-    export PICO_SDK_PATH=$(pwd)/pico-sdk
-    echo "PICO_SDK_PATH=$PICO_SDK_PATH"
-    ARM=1
-fi
-#--------------------------------------------------------------------------------
 if [ "$PROVISION_NRF52" = "1" ]; then
     echo "===== NRF52"
     if ! type nrfutil 2> /dev/null > /dev/null; then
@@ -271,10 +257,11 @@ if [ "$PROVISION_SAMD" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
-if [ "$PROVISION_RP2040" = "1" ]; then
-    echo "===== RP2040"
+if [ "$PROVISION_RP2040" = "1" ] || [ "$PROVISION_RP2350" = "1" ]; then
+    echo "===== RP2XXX"
     ARM=1
-    PICO_PICOTOOL_INSTALL="$(pwd)/picotool-install"
+    RP2_SDK_VERSION="2.1.1"
+    RP2_PICOTOOL_INSTALL="$(pwd)/picotool-install"
 
     if cmake --version >/dev/null 2>&1; then
       echo "cmake installed"
@@ -290,29 +277,36 @@ if [ "$PROVISION_RP2040" = "1" ]; then
       sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y ninja-build
     fi
 
+    # RP2040 and RP2350 share this one checkout, so make sure it's the version we expect
     if [ ! -d "pico-sdk" ]; then
-      echo "Installing pico-sdk"
-      git clone --depth=1 -b 2.0.0 https://github.com/raspberrypi/pico-sdk.git
-      (cd pico-sdk && git submodule update --init)
+      echo "Installing pico-sdk $RP2_SDK_VERSION"
+      git clone --depth=1 -b "$RP2_SDK_VERSION" https://github.com/raspberrypi/pico-sdk.git
+      RP2_SDK_UPDATED=1
+    elif [ "$(git -C pico-sdk describe --tags --exact-match HEAD 2>/dev/null)" = "$RP2_SDK_VERSION" ]; then
+      echo "pico-sdk $RP2_SDK_VERSION found"
     else
-      echo "pico-sdk folder found"
+      echo "pico-sdk is not $RP2_SDK_VERSION - switching"
+      git -C pico-sdk fetch --depth=1 origin "refs/tags/$RP2_SDK_VERSION:refs/tags/$RP2_SDK_VERSION"
+      git -C pico-sdk checkout "$RP2_SDK_VERSION"
+      RP2_SDK_UPDATED=1
     fi
 
-    if [ ! -f "pico-sdk/external/pico_sdk_import.cmake" ]; then
-      echo "Initialising pico-sdk submodules"
-      (cd pico-sdk && git submodule update --init)
+    # TinyUSB is a submodule and the clone above is shallow, so fetch it explicitly
+    if [ "$RP2_SDK_UPDATED" = "1" ] || [ ! -f "pico-sdk/lib/tinyusb/src/tusb.h" ]; then
+      echo "Initialising pico-sdk TinyUSB submodule"
+      git -C pico-sdk submodule update --init --depth=1 lib/tinyusb
     fi
 
-    if [ ! -x "$PICO_PICOTOOL_INSTALL/picotool/picotool" ]; then
+    if [ ! -x "$RP2_PICOTOOL_INSTALL/picotool/picotool" ]; then
       echo "Installing host picotool"
       if [ ! -d "picotool-src" ]; then
-        git clone --depth=1 -b 2.0.0 https://github.com/raspberrypi/picotool.git picotool-src
+        git clone --depth=1 -b "$RP2_SDK_VERSION" https://github.com/raspberrypi/picotool.git picotool-src
       fi
       cmake -S picotool-src -B picotool-src/build \
         -DPICO_SDK_PATH="$(pwd)/pico-sdk" \
         -DPICOTOOL_NO_LIBUSB=1 \
         -DPICOTOOL_FLAT_INSTALL=1 \
-        -DCMAKE_INSTALL_PREFIX="$PICO_PICOTOOL_INSTALL"
+        -DCMAKE_INSTALL_PREFIX="$RP2_PICOTOOL_INSTALL"
       cmake --build picotool-src/build
       cmake --install picotool-src/build
     else
@@ -320,8 +314,8 @@ if [ "$PROVISION_RP2040" = "1" ]; then
     fi
 
     export PICO_SDK_PATH="$(pwd)/pico-sdk"
-    export picotool_DIR="$PICO_PICOTOOL_INSTALL/picotool"
-    export PATH="$PICO_PICOTOOL_INSTALL/picotool:$PATH"
+    export picotool_DIR="$RP2_PICOTOOL_INSTALL/picotool"
+    export PATH="$RP2_PICOTOOL_INSTALL/picotool:$PATH"
     echo "PICO_SDK_PATH=$PICO_SDK_PATH"
     echo "picotool_DIR=$picotool_DIR"
 fi
