@@ -2,16 +2,9 @@
 #include "main.h"
 #include "lcd.h"
 
-/*
-TODO:
-
-
-
-
-*/
-
 static void APP_SystemClockConfig(void);
 static void APP_GPIO_Config(void);
+static void APP_LCD_GPIO_Config(void);
 
 // ----------------------------------------
 EXTI_HandleTypeDef hexti_pa0;
@@ -21,6 +14,7 @@ ADC_HandleTypeDef hadc;
 SPI_HandleTypeDef hspi1;
 DMA_HandleTypeDef hdma_spi1_rx;
 DMA_HandleTypeDef hdma_spi1_tx;
+RTC_HandleTypeDef hrtc;
 // ----------------------------------------
 
 #define LCD_ROW_BYTES 180 // 240 * 6 bit (in bytes)
@@ -33,15 +27,17 @@ PY32State state;
 
 void APP_ErrorHandler(void)
 {
-  while (1) { // flash torch on app error
+  int flash=11;
+  while (--flash) { // flash torch on app error
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
     HAL_Delay(50);
   }
+   while (1);
 }
 
 void Fatal_Error(const char *msg) {
   lcd_clear();
-  lcd_print("ERROR\r\n");
+  lcd_print("LCD ERROR\r\n");
   lcd_println((char*)msg);
   APP_ErrorHandler();
 }
@@ -168,7 +164,7 @@ void flip_from_spi() {
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 1);
         HAL_Delay(50);
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 0);
-        return 0;
+        return;
       }
       if (!state.displayInProgress) {
         LCD_ENB(0); // cancelled - exit.
@@ -338,15 +334,20 @@ int main(void)
 {
   HAL_Init();
 
+  /* LCD GPIO Config */
+  APP_LCD_GPIO_Config();
+  lcd_init();
+  lcd_println("LCD "LCD_VERSION"\r\n");
+
   /* System Clock Configuration */
   APP_SystemClockConfig();
+
 
   /* GPIO Initialization */
   APP_GPIO_Config();
   HAL_Delay(10);
 
-  lcd_init();
-  lcd_println("LCD "LCD_VERSION"\r\n\r\nBANGLE.JS 3 BOOTING...");
+  lcd_println("BANGLE.JS 3 BOOTING...");
 
   // FIXME - look out for SPI commands coming in. If no command,
   // enter recovery mode using SWD commands.
@@ -394,20 +395,11 @@ int main(void)
   }
 }
 
-static void APP_GPIO_Config(void)
+static void APP_LCD_GPIO_Config(void)
 {
   GPIO_InitTypeDef  GPIO_InitStruct;
-  EXTI_ConfigTypeDef EXTI_ConfigStruct;
   // enable clocks
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOF_CLK_ENABLE();
-  __HAL_RCC_SYSCFG_CLK_ENABLE();
-  __HAL_RCC_ADC_CLK_ENABLE();
-  __HAL_RCC_DMA_CLK_ENABLE();
-  __HAL_RCC_SPI1_CLK_ENABLE();
-
 
   // LCD IOs
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -426,8 +418,35 @@ static void APP_GPIO_Config(void)
                         GPIO_PIN_10| // LCD ENB
                         GPIO_PIN_11; // LCD XRST
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-  GPIO_InitStruct.Pin = GPIO_PIN_5| // LCD FRP
-                        GPIO_PIN_6; // MOTO PWM
+}
+
+static void APP_GPIO_Config(void)
+{
+  GPIO_InitTypeDef  GPIO_InitStruct;
+  EXTI_ConfigTypeDef EXTI_ConfigStruct;
+
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_SYSCFG_CLK_ENABLE();
+  __HAL_RCC_ADC_CLK_ENABLE();
+  __HAL_RCC_DMA_CLK_ENABLE();
+  __HAL_RCC_SPI1_CLK_ENABLE();
+  __HAL_RCC_PWR_CLK_ENABLE();
+
+  // Enable Write Access to Backup/RTC Domain */
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_RTCAPB_CLK_ENABLE();
+  __HAL_RCC_RTC_ENABLE();
+
+  // Setup IOs
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Pin = GPIO_PIN_6; // MOTO PWM
+  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+  //GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP; // FIXME
+  GPIO_InitStruct.Pin = GPIO_PIN_5; // LCD FRP
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -444,8 +463,33 @@ static void APP_GPIO_Config(void)
                         GPIO_PIN_15; // wifi boot mode
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 1); // ensure IOSwap is 1 (UART by default)
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, 1); // FIXME: backlight on
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0); // reset touchscreen
+  HAL_Delay(1);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1); // reset touchscreen
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
   // call Update_Outputs() to set all to default?
+
+  /*lcd_print("BDCR ");lcd_print_hex(RCC->BDCR);
+  lcd_print("\r\nCSR ");lcd_print_hex(RCC->CSR);
+  lcd_print("\r\nCRL ");lcd_print_hex(RTC->CRL);
+  lcd_print("\r\nPRLL ");lcd_print_hex(RTC->PRLL);
+  lcd_print("\r\nPRLH ");lcd_print_hex(RTC->PRLH);
+  lcd_print("\r\nCR1 ");lcd_print_hex(PWR->CR1);
+  lcd_print("\r\nCR2 ");lcd_print_hex(PWR->CR2);
+  lcd_print("\r\n");*/
+
+  // Enable FRP square wave
+  hrtc.Instance = RTC;
+  hrtc.Init.AsynchPrediv   = RTC_AUTO_1_SECOND;   // Default prediv values for 32.768kHz LSE/LSI
+  // AsynchPrediv doesn't seem to have an effect on RTC_OUT
+  // RTC_OUTPUTSOURCE_CALIBCLOCK outputs 512hz square wave
+  // RTC_OUTPUTSOURCE_SECOND outpus 1 second pulse (not square wave)
+  hrtc.Init.OutPut         = RTC_OUTPUTSOURCE_CALIBCLOCK;          // Clear default alarm/tamper output routing
+  int e;
+
+  if ((e=HAL_RTC_Init(&hrtc)) != HAL_OK)
+    Fatal_Error("RTC");
+
 
   // Touch IRQ line
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -620,12 +664,12 @@ static void APP_SystemClockConfig(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE | RCC_OSCILLATORTYPE_HSI | RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_16MHz; // fixme
   RCC_OscInitStruct.HSIDiv = RCC_HSI_DIV1;
-
   RCC_OscInitStruct.HSEState = RCC_HSE_OFF;
   RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.LSEState = RCC_LSE_OFF;
@@ -642,7 +686,13 @@ static void APP_SystemClockConfig(void)
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) // 0ws for <24MHz
     Fatal_Error("RCC Clk Conf");
 
-  HAL_RCC_MCOConfig(RCC_MCO4, RCC_MCO1SOURCE_LSI, RCC_MCODIV_128); // FIXME is MCODIV_128 correct?
+  //HAL_RCC_MCOConfig(RCC_MCO4, RCC_MCO1SOURCE_LSI, RCC_MCODIV_128); // FIXME is MCODIV_128 correct?
+
+  /* Connect LSI to the RTC Peripheral */
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC;
+  PeriphClkInit.RTCClockSelection    = RCC_RTCCLKSOURCE_LSI;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+    Fatal_Error("RCC Periph Clk");
 }
 
 
