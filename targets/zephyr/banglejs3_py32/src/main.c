@@ -2,6 +2,12 @@
 #include "main.h"
 #include "lcd.h"
 
+/* TODO:
+
+Watchdog
+
+*/
+
 static void APP_SystemClockConfig(void);
 static void APP_GPIO_Config(void);
 static void APP_LCD_GPIO_Config(void);
@@ -198,6 +204,7 @@ uint32_t Read_ADC_PB0(void)
 
 void Write_IRQ(bool asserted) {
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, !asserted);
+  state.irqAsserted = asserted;
 }
 
 void BTN_Callback() {
@@ -276,7 +283,6 @@ void SPI1_NSS_Callback() {
       SPI1_HandlePacket(bytes_received);
 
     SPI1_Reset_Buffer();
-
     SET_BIT(SPI1->CR1, SPI_CR1_SSI); // disable SPI
   } else { // transaction start
     CLEAR_BIT(SPI1->CR1, SPI_CR1_SSI); // enable SPI
@@ -352,8 +358,8 @@ int main(void)
   // FIXME - look out for SPI commands coming in. If no command,
   // enter recovery mode using SWD commands.
 
-  while (1)
-  {
+  while (1) {
+    //HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
     if (state.buttonPressed) {
       HAL_Delay(2); // delay slightly to let the reading settle (should we do a while(Read_ADC_PB0)...?)
       uint32_t val = Read_ADC_PB0();
@@ -387,7 +393,8 @@ int main(void)
     }
     if (state.displayInProgress) {
       flip_from_spi();
-    } else if (!state.spiInProgress && !state.buttonPressed) {
+    } else if (!state.spiInProgress && !state.buttonPressed && !state.irqAsserted) {
+      // don't suspend if IRQ is asserted since we'll be woken up very soon anyway
       HAL_SuspendTick();
       HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_SLEEPENTRY_WFI); // actually sleep
       HAL_ResumeTick();
@@ -603,7 +610,7 @@ static void APP_GPIO_Config(void)
   EXTI_ConfigStruct.GPIOSel = EXTI_GPIOA;
   HAL_EXTI_SetConfigLine(&hexti_pa15, &EXTI_ConfigStruct);
   HAL_EXTI_RegisterCallback(&hexti_pa15, HAL_EXTI_COMMON_CB_ID, SPI1_NSS_Callback);
-  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
   // Queue up the data response buffer

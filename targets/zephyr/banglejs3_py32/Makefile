@@ -182,7 +182,14 @@ lst: $(BDIR)/$(PROJECT).lst
 clean:
 	rm -rf $(BDIR)/*
 
-flash:
+flash: $(BDIR)/$(PROJECT).hex
 	sudo $(PYOCD_EXE) erase -t $(PYOCD_DEVICE) --chip --config $(TOP)/misc/pyocd.yaml
 	sudo $(PYOCD_EXE) load $(BDIR)/$(PROJECT).hex -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml
+
+reset:
+	sudo $(PYOCD_EXE) reset -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml
+
+gdb:
+	sudo $(PYOCD_EXE) gdbserver -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml & SERVER_PID=$$!; arm-none-eabi-gdb -x $(TOP)/misc/gdbinit;kill $$SERVER_PID
+
 
