@@ -69,100 +69,30 @@ def get_pins():
   # RP2350A (as on Pico 2) has GPIO 0-29
   pins = pinutils.generate_pins(0, 29)
 
-  # UART0 pins
-  pinutils.findpin(pins, "PD0", True)["functions"]["USART1_TX"]=0;
-  pinutils.findpin(pins, "PD1", True)["functions"]["USART1_RX"]=0;
-  pinutils.findpin(pins, "PD12", True)["functions"]["USART1_TX"]=0;
-  pinutils.findpin(pins, "PD13", True)["functions"]["USART1_RX"]=0;
-  pinutils.findpin(pins, "PD16", True)["functions"]["USART1_TX"]=0;
-  pinutils.findpin(pins, "PD17", True)["functions"]["USART1_RX"]=0;
+  # GPIO->function crossbar. Applied in peripheral order so pinInfo output
+  # (functions sorted by usage, ties by insertion) stays stable.
+  def af(func, gpios):
+    for p in gpios:
+      pinutils.findpin(pins, "PD"+str(p), True)["functions"][func]=0;
 
-  # UART1 pins
-  pinutils.findpin(pins, "PD4", True)["functions"]["USART2_TX"]=0;
-  pinutils.findpin(pins, "PD5", True)["functions"]["USART2_RX"]=0;
-  pinutils.findpin(pins, "PD8", True)["functions"]["USART2_TX"]=0;
-  pinutils.findpin(pins, "PD9", True)["functions"]["USART2_RX"]=0;
-  pinutils.findpin(pins, "PD20", True)["functions"]["USART2_TX"]=0;
-  pinutils.findpin(pins, "PD21", True)["functions"]["USART2_RX"]=0;
-  pinutils.findpin(pins, "PD24", True)["functions"]["USART2_TX"]=0;
-  pinutils.findpin(pins, "PD25", True)["functions"]["USART2_RX"]=0;
+  # UART: hw uart0/1 -> USART1/2
+  af("USART1_TX", [0,12,16]);   af("USART1_RX", [1,13,17])
+  af("USART2_TX", [4,8,20,24]); af("USART2_RX", [5,9,21,25])
 
-  # SPI0 pins
-  pinutils.findpin(pins, "PD2", True)["functions"]["SPI1_SCK"]=0;
-  pinutils.findpin(pins, "PD3", True)["functions"]["SPI1_MOSI"]=0;
-  pinutils.findpin(pins, "PD0", True)["functions"]["SPI1_MISO"]=0;
-  pinutils.findpin(pins, "PD18", True)["functions"]["SPI1_SCK"]=0;
-  pinutils.findpin(pins, "PD19", True)["functions"]["SPI1_MOSI"]=0;
-  pinutils.findpin(pins, "PD16", True)["functions"]["SPI1_MISO"]=0;
-  pinutils.findpin(pins, "PD6", True)["functions"]["SPI1_SCK"]=0;
-  pinutils.findpin(pins, "PD7", True)["functions"]["SPI1_MOSI"]=0;
-  pinutils.findpin(pins, "PD4", True)["functions"]["SPI1_MISO"]=0;
+  # SPI: hw spi0/1 -> SPI1/2
+  af("SPI1_SCK", [2,18,6]); af("SPI1_MOSI", [3,19,7]); af("SPI1_MISO", [0,16,4])
+  af("SPI2_SCK", [10,14]);  af("SPI2_MOSI", [11,15]);  af("SPI2_MISO", [8,12])
 
-  # SPI1 pins
-  pinutils.findpin(pins, "PD10", True)["functions"]["SPI2_SCK"]=0;
-  pinutils.findpin(pins, "PD11", True)["functions"]["SPI2_MOSI"]=0;
-  pinutils.findpin(pins, "PD8", True)["functions"]["SPI2_MISO"]=0;
-  pinutils.findpin(pins, "PD14", True)["functions"]["SPI2_SCK"]=0;
-  pinutils.findpin(pins, "PD15", True)["functions"]["SPI2_MOSI"]=0;
-  pinutils.findpin(pins, "PD12", True)["functions"]["SPI2_MISO"]=0;
+  # I2C: hw i2c0/1 -> I2C1/2
+  af("I2C1_SDA", [0,4,8,12,16,20,24]); af("I2C1_SCL", [1,5,9,13,17,21,25])
+  af("I2C2_SDA", [2,6,10,14,18,22]);   af("I2C2_SCL", [3,7,11,15,19,23])
 
-  # I2C0 pins
-  pinutils.findpin(pins, "PD0", True)["functions"]["I2C1_SDA"]=0;
-  pinutils.findpin(pins, "PD1", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD4", True)["functions"]["I2C1_SDA"]=0;
-  pinutils.findpin(pins, "PD5", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD8", True)["functions"]["I2C1_SDA"]=0;
-  pinutils.findpin(pins, "PD9", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD12", True)["functions"]["I2C1_SDA"]=0;
-  pinutils.findpin(pins, "PD13", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD16", True)["functions"]["I2C1_SDA"]=0;
-  pinutils.findpin(pins, "PD17", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD20", True)["functions"]["I2C1_SDA"]=0;
-  pinutils.findpin(pins, "PD21", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD24", True)["functions"]["I2C1_SDA"]=0;
-  pinutils.findpin(pins, "PD25", True)["functions"]["I2C1_SCL"]=0;
+  # ADC: GP26-29 -> ch0-3
+  af("ADC1_IN0", [26]); af("ADC1_IN1", [27]); af("ADC1_IN2", [28]); af("ADC1_IN3", [29])
 
-  # I2C1 pins
-  pinutils.findpin(pins, "PD2", True)["functions"]["I2C2_SDA"]=0;
-  pinutils.findpin(pins, "PD3", True)["functions"]["I2C2_SCL"]=0;
-  pinutils.findpin(pins, "PD6", True)["functions"]["I2C2_SDA"]=0;
-  pinutils.findpin(pins, "PD7", True)["functions"]["I2C2_SCL"]=0;
-  pinutils.findpin(pins, "PD10", True)["functions"]["I2C2_SDA"]=0;
-  pinutils.findpin(pins, "PD11", True)["functions"]["I2C2_SCL"]=0;
-  pinutils.findpin(pins, "PD14", True)["functions"]["I2C2_SDA"]=0;
-  pinutils.findpin(pins, "PD15", True)["functions"]["I2C2_SCL"]=0;
-  pinutils.findpin(pins, "PD18", True)["functions"]["I2C2_SDA"]=0;
-  pinutils.findpin(pins, "PD19", True)["functions"]["I2C2_SCL"]=0;
-  pinutils.findpin(pins, "PD22", True)["functions"]["I2C2_SDA"]=0;
-  pinutils.findpin(pins, "PD23", True)["functions"]["I2C2_SCL"]=0;
-
-  # ADC channels
-  pinutils.findpin(pins, "PD26", True)["functions"]["ADC1_IN0"]=0;
-  pinutils.findpin(pins, "PD27", True)["functions"]["ADC1_IN1"]=0;
-  pinutils.findpin(pins, "PD28", True)["functions"]["ADC1_IN2"]=0;
-  pinutils.findpin(pins, "PD29", True)["functions"]["ADC1_IN3"]=0;
-
-  # PWM channels (TIM1 maps to PWM slice 0, TIM2 to slice 1, etc.)
-  # PWM slice 0: GP0(A), GP1(B), GP8(A), GP9(B), GP16(A), GP17(B), GP24(A), GP25(B)
-  for p in [0,8,16,24]:
-    pinutils.findpin(pins, "PD"+str(p), True)["functions"]["TIM1_CH1"]=0;
-  for p in [1,9,17,25]:
-    pinutils.findpin(pins, "PD"+str(p), True)["functions"]["TIM1_CH2"]=0;
-  # PWM slice 1: GP2(A), GP3(B), GP10(A), GP11(B), GP18(A), GP19(B), GP26(A), GP27(B)
-  for p in [2,10,18,26]:
-    pinutils.findpin(pins, "PD"+str(p), True)["functions"]["TIM2_CH1"]=0;
-  for p in [3,11,19,27]:
-    pinutils.findpin(pins, "PD"+str(p), True)["functions"]["TIM2_CH2"]=0;
-  # PWM slice 2: GP4(A), GP5(B), GP12(A), GP13(B), GP20(A), GP21(B), GP28(A)
-  for p in [4,12,20,28]:
-    pinutils.findpin(pins, "PD"+str(p), True)["functions"]["TIM3_CH1"]=0;
-  for p in [5,13,21]:
-    pinutils.findpin(pins, "PD"+str(p), True)["functions"]["TIM3_CH2"]=0;
-  # PWM slice 3: GP6(A), GP7(B), GP14(A), GP15(B), GP22(A), GP23(B)
-  for p in [6,14,22]:
-    pinutils.findpin(pins, "PD"+str(p), True)["functions"]["TIM4_CH1"]=0;
-  for p in [7,15,23]:
-    pinutils.findpin(pins, "PD"+str(p), True)["functions"]["TIM4_CH2"]=0;
+  # PWM: SDK slice=(gpio>>1)&7, channel=gpio&1 -> TIM(slice+1)_CH(channel+1)
+  for g in range(30):
+    pinutils.findpin(pins, "PD"+str(g), True)["functions"]["TIM"+str(((g>>1)&7)+1)+"_CH"+str((g&1)+1)]=0;
 
   pinutils.findpin(pins, "PD25", True)["functions"]["LED1"]=0;
 
