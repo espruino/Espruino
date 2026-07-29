@@ -213,6 +213,9 @@ void BTN_Callback() {
 
 void Update_Outputs() {
   PY32OutputState o = state.output;
+  /*lcd_print("O ");
+  lcd_print_hex(o);
+  lcd_println("");*/
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, (o&PY32_OUT_LCD_BL)?1:0);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, (o&PY32_OUT_TORCH_ON)?1:0);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 1/*(o&PY32_OUT_AUX_SWAP)?1:0*/);
@@ -290,17 +293,28 @@ void SPI1_NSS_Callback() {
   }
 }
 
+void Set_State_Changed() {
+  if (!state.spiInProgress) {
+    HAL_SPI_DMAStop(&hspi1);
+    SPI1_Reset_Buffer();
+  }
+  // FIXME: What if we're currently busy? How do we flag a new state change?
+  Write_IRQ(true);
+}
+
 // Called when touchscreen state changes
 void Touch_IRQ_Callback() {
+  if (!state.initialised) return;
   bool irq_state = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11) != GPIO_PIN_SET; // inverted
 
   if (irq_state) {
     state.input |= PY32_IN_TOUCH_IRQ;
-    lcd_println("TOUCH ON");
+    //lcd_println("TOUCH ON");
   } else {
     state.input &= ~PY32_IN_TOUCH_IRQ;
-    lcd_println("TOUCH OFF");
+    //lcd_println("TOUCH OFF");
   }
+  Set_State_Changed();
   // FIXME: update input state
 }
 
@@ -339,11 +353,13 @@ void HAL_SPI_AbortCpltCallback(SPI_HandleTypeDef *hspi)
 int main(void)
 {
   HAL_Init();
-
   /* LCD GPIO Config */
   APP_LCD_GPIO_Config();
   lcd_init();
   lcd_println("LCD "LCD_VERSION"\r\n");
+
+  state.initialised = false;
+  state.output = PY32_OUT_DEFAULTS;
 
   /* System Clock Configuration */
   APP_SystemClockConfig();
@@ -357,6 +373,8 @@ int main(void)
 
   // FIXME - look out for SPI commands coming in. If no command,
   // enter recovery mode using SWD commands.
+
+  state.initialised = true;
 
   while (1) {
     //HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
@@ -384,11 +402,7 @@ int main(void)
       if (state.buttonMask != nearest) { // button state changed - update IRQ flag
         // FIXME: what about a button pressed so quick it changes before we can poll?
         state.buttonMask = nearest;
-        if (!state.spiInProgress) {
-          HAL_SPI_DMAStop(&hspi1);
-          SPI1_Reset_Buffer();
-        }
-        Write_IRQ(true);
+        Set_State_Changed();
       }
     }
     if (state.displayInProgress) {
@@ -472,7 +486,7 @@ static void APP_GPIO_Config(void)
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, 1); // FIXME: backlight on
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0); // reset touchscreen
   HAL_Delay(1);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1); // reset touchscreen
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1); // un-reset touchscreen
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
   // call Update_Outputs() to set all to default?
 

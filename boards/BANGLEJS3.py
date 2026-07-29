@@ -140,6 +140,22 @@ devices = { # 'V' pins are virtual
             'pin_charging' : 'C9', # active low
             'pin_voltage' : 'B14'
           },
+  'TOUCH' : {
+            'device' : 'CST816S', 'addr' : 0x15,
+            'pin_rst' : 'V14',
+          },
+  'ACCEL' : {
+            'device' : 'LSM6DSOTR', 'addr' : 106,
+            'pin_sda' : 'B5', 'pin_scl' : 'B4' # every other I2C device is on this too
+          },
+  'MAG' : { # Magnetometer/compass
+            'device' : 'MMC5603NJ',
+            'addr' : 48
+          },
+  'PRESSURE' : {
+            'device' : 'BME690', # v2.1 uses Goertek SPL06-001 - we handle both
+            'addr' : 118, # both versions use the same address
+          }
 };
 
 # left-right, or top-bottom order
@@ -153,8 +169,6 @@ def get_pins():
   pins = pinutils.generate_pins(0,4,"A") + pinutils.generate_pins(0,14,"B") + pinutils.generate_pins(0,10,"C") + pinutils.generate_pins(0,15,"V");
   # pinutils.findpin(pins, "PAxx", True)["functions"]["..."]=0;
   # ...
-
-
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;

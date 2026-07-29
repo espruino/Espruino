@@ -108,3 +108,6 @@ void jsbangle_exec_pending(uint8_t *data, int dataLen);
 void jsbangle_push_event(JsBangleEvent type, uint16_t value);
 
 void jswrap_banglejs_powerusage(JsVar *devices);
+
+// Called when we have an interrupt from the touchscreen
+void jswrap_banglejs_touchHandler(bool state, IOEventFlags flags);

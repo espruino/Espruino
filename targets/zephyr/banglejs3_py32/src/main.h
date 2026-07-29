@@ -4,6 +4,7 @@
 #include "const.h"
 
 typedef struct {
+  bool initialised;
   bool spiInProgress;
   bool displayInProgress;
   bool buttonPressed;

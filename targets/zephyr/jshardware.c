@@ -133,8 +133,10 @@ const struct device *jshToZephyrPort(JsvPinInfoPort port) {
 }
 
 // ----------------------------------------------------------------------------
-unsigned short sxValues = 0;
-uint8_t pyButtonState = 0;
+#define PY32_OUT_SHIFT 4
+/// bottom 4 bits are buttons, higher bits are outputs
+unsigned short sxValues = (PY32_OUT_DEFAULTS << PY32_OUT_SHIFT);
+
 
 // Simple write to PY32 - we bit-bang this as setting up SPI for 1 byte takes too long and doesn't work in an IRQ
 void jshPY32Transfer(uint8_t *buf, int count) {
@@ -163,10 +165,9 @@ void jshPY32Transfer(uint8_t *buf, int count) {
 
 // Send state to PY32
 void jshPY32Update(bool setOutput) {
-  // FIXME: what if we're transferring data for the LCD?
   uint8_t buf[3];
   if (setOutput) {
-    PY32OutputState pyOutputState = sxValues>>4; // current output values
+    PY32OutputState pyOutputState = sxValues>>PY32_OUT_SHIFT; // current output values
     buf[0] = PY32_CMD_SET_OUTPUT;
     buf[1] = pyOutputState&255;
     buf[2] = pyOutputState>>8;
@@ -176,9 +177,13 @@ void jshPY32Update(bool setOutput) {
     buf[2] = 0;
   }
   jshPY32Transfer(buf, sizeof(buf));
-  pyButtonState = buf[0];
+  uint8_t pyButtonState = buf[0];
   //jsiConsolePrintf("B %d %d %d\n", buf[0],buf[1],buf[2]);
+  #if PY32_OUT_SHIFT!=4
+  #error PY32_OUT_SHIFT=4
+  #endif
   sxValues = (sxValues&~15) | (pyButtonState&15);
+  if (pyButtonState & 16) jswrap_banglejs_touchHandler(0,0); // touch handler IRQ
 }
 
 void jshVirtualPinInitialise() {
@@ -207,22 +212,27 @@ JshPinState jshVirtualPinGetState(Pin pin) {
   return IS_PIN_A_LED(pin) ? JSHPINSTATE_GPIO_OUT : JSHPINSTATE_GPIO_IN;
 }
 
+/// called when we're sure the LCD SPI interface is idle!
+void jshVirtualPinIRQWorker() {
+  uint16_t lastState = sxValues;
+  jshPY32Update(false); // no set
+  uint16_t changed = lastState ^ sxValues;
+  /*if (changed & 16)
+    jsiConsolePrintf("Touch IRQ");*/ // FIXME we do this in jshPY32Update at the moment
+  if (changed & 15) {
+    for (int i=0;i<ESPR_EXTI_COUNT;i++)
+      if (((changed&1) && eventFlagsToPin[i]==BTN1_PININDEX) ||
+          ((changed&2) && eventFlagsToPin[i]==BTN2_PININDEX) ||
+          ((changed&4) && eventFlagsToPin[i]==BTN3_PININDEX) ||
+          ((changed&8) && eventFlagsToPin[i]==BTN4_PININDEX))
+        jshPushIOWatchEvent(EV_EXTI0+i);
+  }
+}
+
 void jshVirtualPinIRQHandler(bool state, IOEventFlags flags) {
   if (!state) {
     // IRQ low, so something ready
-    uint8_t lastState = pyButtonState;
-    jshPY32Update(false); // no set
-    uint8_t changed = lastState ^ pyButtonState;
-    /*if (changed & 16)
-      jsiConsolePrintf("Touch IRQ");*/
-    if (changed & 15) {
-      for (int i=0;i<ESPR_EXTI_COUNT;i++)
-        if (((changed&1) && eventFlagsToPin[i]==BTN1_PININDEX) ||
-            ((changed&2) && eventFlagsToPin[i]==BTN2_PININDEX) ||
-            ((changed&4) && eventFlagsToPin[i]==BTN3_PININDEX) ||
-            ((changed&8) && eventFlagsToPin[i]==BTN4_PININDEX))
-          jshPushIOWatchEvent(EV_EXTI0+i);
-    }
+    lcdMemLCD_callWhenIdle(jshVirtualPinIRQWorker);
   }
 }
 
