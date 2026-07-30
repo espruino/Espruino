@@ -61,6 +61,17 @@ int jswrap_date_getFullYear(JsVar *parent);
 #ifndef ESPR_NO_DAYLIGHT_SAVING
 int jswrap_date_getIsDST(JsVar *parent);
 #endif
+#ifndef SAVE_ON_FLASH
+int jswrap_date_getUTCHours(JsVar *parent);
+int jswrap_date_getUTCMinutes(JsVar *parent);
+int jswrap_date_getUTCSeconds(JsVar *parent);
+int jswrap_date_getUTCMilliseconds(JsVar *parent);
+int jswrap_date_getUTCDay(JsVar *parent);
+int jswrap_date_getUTCDate(JsVar *parent);
+int jswrap_date_getUTCMonth(JsVar *parent);
+int jswrap_date_getUTCFullYear(JsVar *parent);
+#endif
+
 
 JsVarFloat jswrap_date_setHours(JsVar *parent, int hoursValue, JsVar *minutesValue, JsVar *secondsValue, JsVar *millisecondsValue);
 JsVarFloat jswrap_date_setMinutes(JsVar *parent, int minutesValue, JsVar *secondsValue, JsVar *millisecondsValue);
