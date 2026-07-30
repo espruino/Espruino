@@ -1,7 +1,16 @@
 #include <string.h>
 
+#include "platform_config.h"
 #include "pico/unique_id.h"
 #include "tusb.h"
+
+// Overridable from the board's build.makefile - see make/family/RP2XXX.make
+#ifndef USBD_MANUFACTURER_STRING
+#define USBD_MANUFACTURER_STRING "Raspberry Pi"
+#endif
+#ifndef USBD_PRODUCT_STRING
+#define USBD_PRODUCT_STRING PC_BOARD_CHIP
+#endif
 
 #define USBD_VID 0x2E8A
 #define USBD_PID 0x000A
@@ -42,8 +51,8 @@ static const uint8_t usbd_desc_cfg[USBD_DESC_LEN] = {
 static char usbd_serial_str[PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2 + 1];
 
 static const char *const usbd_desc_str[] = {
-  [USBD_STR_MANUF] = "Raspberry Pi",
-  [USBD_STR_PRODUCT] = "Pico",
+  [USBD_STR_MANUF] = USBD_MANUFACTURER_STRING,
+  [USBD_STR_PRODUCT] = USBD_PRODUCT_STRING,
   [USBD_STR_SERIAL] = usbd_serial_str,
   [USBD_STR_CDC] = "Board CDC",
 };
@@ -59,7 +68,7 @@ uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
 
 uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
   (void)langid;
-  static uint16_t desc_str[20];
+  static uint16_t desc_str[32];
 
   if (!usbd_serial_str[0]) {
     pico_get_unique_board_id_string(usbd_serial_str, sizeof(usbd_serial_str));

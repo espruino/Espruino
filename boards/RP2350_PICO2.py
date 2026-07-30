@@ -37,6 +37,7 @@ info = {
      'DEFINES+=-DPIN_NAMES_DIRECT=1',  # Pins use direct GPIO numbering
      # ESPR_PACKED_SYMPTR can't be used - code runs from XIP flash at 0x10000000, beyond its 20 bit pointer range
      'PICO_BOARD?=pico2', # Pico SDK board header (boards/pico2.h)
+     'USB_PRODUCT?=Pico 2'
    ]
  }
 };

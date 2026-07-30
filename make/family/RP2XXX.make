@@ -4,7 +4,8 @@
 # and INCLUDE, then hand compiling, linking, crt0/boot2 and the linker script to
 # the Pico SDK. The chip comes from the board's chip.part (CHIP) and selects the
 # few per-chip bits below; the board's build.makefile supplies PICO_BOARD (the
-# Pico SDK board header to use).
+# Pico SDK board header to use). USB_MANUFACTURER/USB_PRODUCT override the USB
+# descriptor strings - they're passed separately from DEFINES as they contain spaces.
 
 ifndef PICO_BOARD
 $(error PICO_BOARD is not set - add "PICO_BOARD?=<sdk board>" to the board's build.makefile)
@@ -66,6 +67,12 @@ $(RP2_CMAKEFILE): FORCE
 	@echo ")" >> $(RP2_CMAKEFILE)
 	@echo "target_compile_options($(RP2_TARGET) PRIVATE $(DEFINES))" >> $(RP2_CMAKEFILE)
 	@echo "target_compile_definitions($(RP2_TARGET) PRIVATE PICO_FLASH_ASSUME_CORE1_SAFE=1)" >> $(RP2_CMAKEFILE)
+ifdef USB_MANUFACTURER
+	@echo 'target_compile_definitions($(RP2_TARGET) PRIVATE "USBD_MANUFACTURER_STRING=\"$(USB_MANUFACTURER)\"")' >> $(RP2_CMAKEFILE)
+endif
+ifdef USB_PRODUCT
+	@echo 'target_compile_definitions($(RP2_TARGET) PRIVATE "USBD_PRODUCT_STRING=\"$(USB_PRODUCT)\"")' >> $(RP2_CMAKEFILE)
+endif
 	@echo "target_compile_options($(RP2_TARGET) PRIVATE -Wno-format -Wno-unused-function)" >> $(RP2_CMAKEFILE)
 	@echo "target_link_libraries($(RP2_TARGET) $(RP2_SDK_LIBS))" >> $(RP2_CMAKEFILE)
 	@echo "pico_enable_stdio_usb($(RP2_TARGET) 0)" >> $(RP2_CMAKEFILE)

@@ -25,7 +25,8 @@ info = {
     ],
     "makefile": [
       "DEFINES+=-DUSE_FONT_6X8",
-      "PICO_BOARD?=pico" # Pico SDK board header (boards/pico.h)
+      "PICO_BOARD?=pico", # Pico SDK board header (boards/pico.h)
+      "USB_PRODUCT?=Pico"
     ]
   }
 }
