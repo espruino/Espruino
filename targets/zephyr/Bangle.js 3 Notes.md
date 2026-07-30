@@ -145,9 +145,20 @@ PF9    - NC
 
 ## TODO
 
+* Use external Flash memory
+* 6 bit dithering (when enabled this puts dots in black)
 * Gyro
 * Pressure sensor
-* BME680 gas sensing
+* BME690 gas sensing
 * LCD update speed (12fps currently, not async)
 * Touchscreen 'tap' handlers
 * ... much more
+
+## Testing
+
+* Are accelerometer/gyro axes correct? (check on in-device PCB)
+
+```
+// 4 bpp test
+for (i=0;i<4;i++) g.setColor(i/4,i/4,i/4).fillRect(i*60,0,(i+1)*60,239);
+```

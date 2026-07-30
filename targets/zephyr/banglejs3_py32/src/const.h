@@ -35,7 +35,7 @@ typedef enum {
   PY32_OUT_HRM_AUX = 2048,
   // PY32_OUT_IR_ON = ?,
   // IR SCAN?
-  PY32_OUT_DEFAULTS = PY32_OUT_TOUCH_RST/* eg. no reset */
+  PY32_OUT_DEFAULTS = PY32_OUT_TOUCH_RST/* eg. no reset */|PY32_OUT_AUX_SWAP/* UART on */
 } PY32OutputState;
 
 

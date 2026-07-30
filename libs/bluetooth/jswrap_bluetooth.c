@@ -3963,7 +3963,7 @@ type NRFSecurityStatus = {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "getSecurityStatus",
-    "#if" : "defined(NRF52_SERIES) || defined(ESP32)",
+    "#if" : "defined(NRF52_SERIES) || defined(ESP32) || defined(ZEPHYR)",
     "generate" : "jswrap_ble_getSecurityStatus",
     "return" : ["JsVar", "An object" ],
     "return_object" : "NRFSecurityStatus"

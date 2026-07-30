@@ -88,8 +88,9 @@ static ALWAYS_INLINE unsigned int lcdMemLCD_convert16toLCD(unsigned int c, int x
       ((c&0x00800)?2:0) |
       ((c&0x00020)?4:0);*/
 #else // 6 bit
-  c =   (c&0b01111011110011110) + BAYER2[y&1][x&1]; // apply bayer 2x2 dither
-  c |= ((c&0b10000100000100000)*3) >> 2; // saturate top 2 bits of each of the 3 channels at once
+  c = ((c & 0x001F) << 11) | (c & 0x07E0) | ((c & 0xF800) >> 11); // FIXME: swap R and B here (not ideal)
+  //c =   (c&0b01111011110011110) + BAYER2[y&1][x&1]; // apply bayer 2x2 dither
+  //c |= ((c&0b10000100000100000)*3) >> 2; // saturate top 2 bits of each of the 3 channels at once
   return // convert 16 bpp down to 6bpp
       ((c&0xC000)>>10) |
       ((c&0x0600)>>7) |
@@ -384,7 +385,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
   // on this we can only start on even lines, and only send 8 at a time
   y1 = y1 & ~1;
   y2 = (y2+1) & ~1;
-  y2 = y1 + ((7+y2-y1)&~7) - 1; // pad out to 8px
+  y2 = y1 + ((15+y2-y1)&~15) - 1; // pad out to 16px (see LCD_ROWS_BUFFERED in controller)
 #endif
   int l = 1+y2-y1;
 

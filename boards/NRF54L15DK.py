@@ -48,7 +48,7 @@ chip = {
   'adc' : 0,
   'dac' : 0,
   'saved_code' : {
-    #'address' : 1024*1024, 
+    #'address' : 1024*1024,
     'page_size' : 4096,
     #'pages' : 128,
     'flash_available' : 1024,
@@ -62,9 +62,9 @@ devices = {
   'BTN2' : { 'pin' : 'B9', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.09
   'BTN3' : { 'pin' : 'B8', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.08
   'BTN4' : { 'pin' : 'A4', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software P1.04
-  'LED1' : { 'pin' : 'C9' }, 
+  'LED1' : { 'pin' : 'C9' },
   'LED2' : { 'pin' : 'B10' },
-  'LED3' : { 'pin' : 'C7' }, 
+  'LED3' : { 'pin' : 'C7' },
   'LED4' : { 'pin' : 'B14' },
   'SPIFLASH' : {
             'size' : 4096*2048, # 8MB
@@ -89,9 +89,17 @@ board["_css"] = """
 
 def get_pins():
   # GPIO 0/1/2
-  pins = pinutils.generate_pins(0,4,"A") + pinutils.generate_pins(0,14,"B") + pinutils.generate_pins(0,10,"C"); 
+  pins = pinutils.generate_pins(0,4,"A") + pinutils.generate_pins(0,14,"B") + pinutils.generate_pins(0,10,"C");
   # pinutils.findpin(pins, "PAxx", True)["functions"]["XL1"]=0;
   # ...
+  pinutils.findpin(pins, "PB4", True)["functions"]["ADC1_IN0"]=0;
+  pinutils.findpin(pins, "PB5", True)["functions"]["ADC1_IN1"]=0;
+  pinutils.findpin(pins, "PB6", True)["functions"]["ADC1_IN2"]=0;
+  pinutils.findpin(pins, "PB7", True)["functions"]["ADC1_IN3"]=0;
+  pinutils.findpin(pins, "PB11", True)["functions"]["ADC1_IN4"]=0;
+  pinutils.findpin(pins, "PB12", True)["functions"]["ADC1_IN5"]=0;
+  pinutils.findpin(pins, "PB13", True)["functions"]["ADC1_IN6"]=0;
+  pinutils.findpin(pins, "PB14", True)["functions"]["ADC1_IN7"]=0;
   # Make buttons and LEDs negated
   pinutils.findpin(pins, "PB13", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PB9", True)["functions"]["NEGATED"]=0;

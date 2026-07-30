@@ -33,6 +33,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/rtc.h>
 #include <zephyr/drivers/flash.h>
+#include <zephyr/drivers/adc.h>
 #include <zephyr/pm/device.h>
 #include <jesd216.h> // ext flash
 
@@ -436,8 +437,56 @@ void jshSetSystemTime(JsSysTime time) {
 // ----------------------------------------------------------------------------
 
 JsVarFloat jshPinAnalog(Pin pin) {
-  JsVarFloat value = 0;
-  return value;
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
+  const JshPinInfo *p = &pinInfo[pin];
+  int err;
+  uint16_t sample_buffer;
+
+  const int ADC_CHANNEL_ID = 0;
+  const int ADC_REF_INTERNAL_MV = 600; // mv
+  const int ADC_GAIN = ADC_GAIN_1_4;
+  const int ADC_RESOLUTION = 12;
+
+  /* Get the raw ADC device node */
+  const struct device *adc_dev = DEVICE_DT_GET(DT_NODELABEL(adc));
+
+  if (!device_is_ready(adc_dev)) {
+      jsiConsolePrintf("ADC device %s is not ready", adc_dev->name);
+      return 0;
+  }
+
+  /* 1. Manually configure the ADC channel */
+  struct adc_channel_cfg channel_cfg = {
+      .gain             = ADC_GAIN,
+      .reference        = ADC_REF_INTERNAL,
+      .acquisition_time = ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 3), // or ADC_ACQ_TIME_DEFAULT,
+      .channel_id       = ADC_CHANNEL_ID,
+      .input_positive   = p->analog & JSH_MASK_ANALOG_CH,
+  };
+
+  err = adc_channel_setup(adc_dev, &channel_cfg);
+  if (err < 0) {
+      jsiConsolePrintf("Failed to setup ADC channel (%d)", err);
+      return 0;
+  }
+
+  /* 2. Manually define the read sequence */
+  struct adc_sequence sequence = {
+      .channels    = BIT(ADC_CHANNEL_ID),
+      .buffer      = &sample_buffer,
+      .buffer_size = sizeof(sample_buffer),
+      .resolution  = ADC_RESOLUTION,
+  };
+
+  /* 3. Perform the read operation */
+  err = adc_read(adc_dev, &sequence);
+  if (err < 0) {
+    jsiConsolePrintf("ADC read failed (%d)", err);
+    return 0;
+  }
+  int32_t val_uv = (int32_t)sample_buffer;
+  err = adc_raw_to_microvolts(ADC_REF_INTERNAL_MV, ADC_GAIN, ADC_RESOLUTION, &val_uv);
+  return val_uv/1000000.0f;
 }
 
 int jshPinAnalogFast(Pin pin) {
@@ -652,7 +701,7 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   const struct device *flash = jshFlashGetDevice(&addr);
   if (!flash) return;
   int err = flash_read(flash, addr, buf, len);
-  if (err) jsWarn("flash_read err %d",err);
+  if (err) jsWarn("flash_read err %d at 0x%08x",err, addr);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   const struct device *flash = jshFlashGetDevice(&addr);

@@ -49,7 +49,7 @@ ble_uuid_t bleUUIDFilter;
 uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
 
 volatile uint16_t m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID;    /**< Handle of the current connection. */
-volatile uint16_t m_central_conn_handles[1]; /**< Handle of central mode connection */
+volatile uint16_t m_central_conn_handles[1] = { BLE_GATT_HANDLE_INVALID }; /**< Handle of central mode connection */
 
 static struct bt_conn *current_conn[1];
 static struct bt_conn *auth_conn;
@@ -505,7 +505,19 @@ void jsble_update_security() {
 
 /// Return an object showing the security status of the given connection
 JsVar *jsble_get_security_status(uint16_t conn_handle) {
-  return 0;
+  JsVar *result = jsvNewWithFlags(JSV_OBJECT);
+  if (!result) return 0;
+  if (conn_handle == BLE_GATT_HANDLE_INVALID ||
+    conn_handle == m_peripheral_conn_handle) {
+    // is this NRF.getSecurityStatus?
+    bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
+    jsvObjectSetBoolChild(result, "advertising", isAdvertising);
+  }
+  if (conn_handle == BLE_GATT_HANDLE_INVALID) {
+    jsvObjectSetBoolChild(result, "connected", false);
+    return result;
+  }
+  return result;
 }
 
 /// Set the transmit power of the current (and future) connections

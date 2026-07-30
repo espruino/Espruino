@@ -23,9 +23,10 @@ DMA_HandleTypeDef hdma_spi1_tx;
 RTC_HandleTypeDef hrtc;
 // ----------------------------------------
 
+#define LCD_ROWS_BUFFERED 16
 #define LCD_ROW_BYTES 180 // 240 * 6 bit (in bytes)
 #define LCD_ROW_STRIDE (LCD_ROW_BYTES+1) // 240 * 6 bit (in bytes)
-#define SPI_BUFFER_LEN (LCD_ROW_STRIDE*16) // enough for display - 16 lines (with first byte as command byte)
+#define SPI_BUFFER_LEN (LCD_ROW_STRIDE*(LCD_ROWS_BUFFERED*2)) // enough for display - 2x sets of lines (with first byte as command byte)
 uint8_t spiBuffer[SPI_BUFFER_LEN];
 volatile bool spiWriteSecondHalf;
 
@@ -50,7 +51,7 @@ void Fatal_Error(const char *msg) {
 
 
 static void D() { /*for (volatile int i=0;i<0;i++);*/ }
-static void DX() { for (volatile int i=0;i<10;i++); }
+static void DX() { for (volatile int i=0;i<100;i++); }
 
 void flip_from_spi() {
   bool spiSecondHalf = false;
@@ -64,38 +65,42 @@ void flip_from_spi() {
   LCD_VCK(0);DX();
   LCD_VST(1);DX();
   LCD_VCK(1);DX();
-  LCD_VST(0);D();
-  LCD_VCK(0);D();
-  LCD_VCK(1);D();
+  LCD_VST(0);DX();
+  LCD_VCK(0);DX();
+  LCD_VCK(1);DX();
 
-    for (int blk=0;blk<30;blk++) { // each block is one half of the SPI buffer
+  for (int blk=0;blk<(240/LCD_ROWS_BUFFERED);blk++) { // each block is one half of the SPI buffer
     uint8_t *buf = spiSecondHalf ? &spiBuffer[SPI_BUFFER_LEN>>1] : spiBuffer;
-
     // handle partial updates by skipping lines
     if (blk==0) {
       int yoffset = buf[0]&127;
       while (yoffset > 0) {
-        LCD_VCK(0);DX();
-        LCD_VCK(1);DX();
-        LCD_VCK(0);DX();
-        LCD_VCK(1);DX();
+        // 2us delay - the timing of these is actually quite important as
+        // too much delay means our buffer overruns before we get to transmit
+        LCD_VCK(0);for (volatile int i=0;i<10;i++);
+        LCD_VCK(1);for (volatile int i=0;i<10;i++);
+        LCD_VCK(0);for (volatile int i=0;i<10;i++);
+        LCD_VCK(1);for (volatile int i=0;i<10;i++);
         yoffset--;
       }
     }
 
+#define LCD_FAST 1
+#define NO_REORDER __asm__ __volatile__("" ::: "memory")
+
     LCD_ENB(1);DX(); // start writing to the display now
 
-    for (int y=0;y<8;y++) {
+    for (int y=0;y<LCD_ROWS_BUFFERED;y++) {
       uint8_t *linePtr = &buf[1+y*LCD_ROW_STRIDE]; // 6bpp * 240px / 8bits (+1 command byte)
       uint8_t *px;
       uint32_t ODR;
       /*
         We have to do a line of pixels MSB, then LSB
           R1R2G1G2B1B2
-        But our pixels come in
+        But our pixels come in order:
           RlRhGlGhBlBhRlRhGlGhBlBh...
 
-        So, MSB:
+        So, we have to shuffle pixels around:
 
           RlRhGlGhBlBhRlRhGlGhBlBh...
         & 0 1 0 1 0 1 0 0 0 0 0 0
@@ -104,27 +109,43 @@ void flip_from_spi() {
         MSB: (C&42>>1) | ((c&2688)>>6)
         LSB: C&21 | ((c&1344)>>5)
 
-        *but* this is for 12 bits = 2 pixels, which aligns badly. We could do 24 bits
+        *but* this is for 12 bits = 2 pixels, which aligns badly. We could do 24 bits:
+
+        MSB: (C&172074>>1) | ((c&11012736)>>6)
+        LSB: C&86037 | ((c&5506368)>>5)
+
+        LCD_FAST uses direct register writes to improve transit speed. When doing this, we
+        run the risk of clocking too fast, so we spread out our byte reads for the next 4 bytes
+        between each set (of clock/ODR/etc)
       */
       LCD_HST(1);D();
       LCD_HCK(1);D();
       LCD_HST(0);D();
-      LCD_HCK(0);D(); // MSB
+      // MSB
       px = linePtr;
       ODR = *GPIOA_ODR & 0xFFFFFF80; // AND out colour + HCK, HCK=0
+      uint32_t d; // input pixel data
+#if LCD_FAST
+      d = *(px++); // (fast only) Cortex M0+ doesn't do unaligned access
+      d |= *(px++)<<8; // Cortex M0+ doesn't do unaligned access
+      d |= *(px++)<<16; // Cortex M0+ doesn't do unaligned access
+#endif
       for (int x=0;x<240;x+=4) {
-        //uint32_t n = (x>>4);
-        //uint32_t c = n|(n<<6)|(n<<12)|(n<<18);
+        #if LCD_FAST // FAST
+        uint32_t c = ((d&172074)>>1) | ((d&11012736)>>6);
+        *GPIOA_ODR = ODR | (c&63); NO_REORDER; // LCD_COL(...)
+        c>>=12;
+        d = *(px++); // Cortex M0+ doesn't do unaligned access
+        *GPIOA_BSRR = (1<<6); NO_REORDER; // LCD_HCK(1);
+        d |= *(px++)<<8; // Cortex M0+ doesn't do unaligned access
+        *GPIOA_ODR = ODR | (1<<6) | c; NO_REORDER; // LCD_COL(...)
+        d |= *(px++)<<16; // Cortex M0+ doesn't do unaligned access
+        *GPIOA_BRR = (1<<6); NO_REORDER; // LCD_HCK(0);
+        #else // SLOW
         uint32_t c = *(px++); // Cortex M0+ doesn't do unaligned access
-        c |= *(px++)<<8;
+        c |= *(px++)<<8; // Cortex M0+ doesn't do unaligned access
         c |= *(px++)<<16;
         c = ((c&172074)>>1) | ((c&11012736)>>6);
-        #if 1 // FAST
-        *GPIOA_ODR = ODR | (c&63); // LCD_COL(...)
-        *GPIOA_BSRR = (1<<6); // LCD_HCK(1);
-        *GPIOA_ODR = ODR | (1<<6) | (c>>12); // LCD_COL(...)
-        *GPIOA_BRR = (1<<6); // LCD_HCK(0);
-        #else // SLOW
         LCD_COL(c); // already ANDs by 63
         LCD_HCK(1);
         LCD_COL(c>>12);
@@ -136,22 +157,30 @@ void flip_from_spi() {
       LCD_HST(1);D();
       LCD_HCK(1);D();
       LCD_HST(0);D();
-      LCD_HCK(0);D(); // LSB
+      // LSB
       px = linePtr;
       ODR = *GPIOA_ODR & 0xFFFFFF80; // AND out colour + HCK, HCK=0
+#if LCD_FAST
+      d = *(px++); // (fast only) Cortex M0+ doesn't do unaligned access
+      d |= *(px++)<<8; // Cortex M0+ doesn't do unaligned access
+      d |= *(px++)<<16; // Cortex M0+ doesn't do unaligned access
+#endif
       for (int x=0;x<240;x+=4) {
-        //uint32_t n = (x>>4);
-        //uint32_t c = n|(n<<6)|(n<<12)|(n<<18);
+        #if LCD_FAST // FAST
+        uint32_t c = (d&86037) | ((d&5506368)>>5);
+        *GPIOA_ODR = ODR | (c&63); NO_REORDER; // LCD_COL(...)
+        c>>=12;
+        d = *(px++); // Cortex M0+ doesn't do unaligned access
+        *GPIOA_BSRR = (1<<6); NO_REORDER; // LCD_HCK(1);
+        d |= *(px++)<<8; // Cortex M0+ doesn't do unaligned access
+        *GPIOA_ODR = ODR | (1<<6) | c; NO_REORDER; // LCD_COL(...)
+        d |= *(px++)<<16; // Cortex M0+ doesn't do unaligned access
+        *GPIOA_BRR = (1<<6); NO_REORDER; // LCD_HCK(0);
+        #else // SLOW
         uint32_t c = *(px++); // Cortex M0+ doesn't do unaligned access
-        c |= *(px++)<<8;
+        c |= *(px++)<<8; // Cortex M0+ doesn't do unaligned access
         c |= *(px++)<<16;
         c = (c&86037) | ((c&5506368)>>5);
-        #if 1 // FAST
-        *GPIOA_ODR = ODR | (c&63); // LCD_COL(...)
-        *GPIOA_BSRR = (1<<6); // LCD_HCK(1);
-        *GPIOA_ODR = ODR | (1<<6) | (c>>12); // LCD_COL(...)
-        *GPIOA_BRR = (1<<6); // LCD_HCK(0);
-        #else // SLOW
         LCD_COL(c); // already ANDs by 63
         LCD_HCK(1);
         LCD_COL(c>>12);
@@ -164,7 +193,7 @@ void flip_from_spi() {
     // we've finished this block... wait until next block has finished writing
     spiSecondHalf = !spiSecondHalf;
     int timeout = 1000000;
-    while (spiSecondHalf == spiWriteSecondHalf) { // FIXME: timeout?
+    while (spiSecondHalf == spiWriteSecondHalf) {
       if (--timeout <= 0) {
         LCD_ENB(0);
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 1);
@@ -172,7 +201,8 @@ void flip_from_spi() {
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 0);
         return;
       }
-      if (!state.displayInProgress) {
+      if (!state.displayInProgress && spiSecondHalf == spiWriteSecondHalf) {
+        // FIXME: this logic may not be correct - we may exit here if SPI finished transferring the last buffer but we haven't processed it yet
         LCD_ENB(0); // cancelled - exit.
         return;
       }
@@ -482,13 +512,10 @@ static void APP_GPIO_Config(void)
                         GPIO_PIN_13| // RGB en
                         GPIO_PIN_14| // speaker en
                         GPIO_PIN_15; // wifi boot mode
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 1); // ensure IOSwap is 1 (UART by default)
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, 1); // FIXME: backlight on
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0); // reset touchscreen
   HAL_Delay(1);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1); // un-reset touchscreen
+  Update_Outputs(); // set all to default (including touchscreen reset off)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-  // call Update_Outputs() to set all to default?
 
   /*lcd_print("BDCR ");lcd_print_hex(RCC->BDCR);
   lcd_print("\r\nCSR ");lcd_print_hex(RCC->CSR);

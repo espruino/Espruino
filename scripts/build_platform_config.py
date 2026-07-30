@@ -257,7 +257,7 @@ elif board.chip["family"]=="SAMD":
 elif board.chip["family"]=="EMBED":
   board.chip["class"]="EMBED"
 elif board.chip["family"]=="ZEPHYR":
-  board.chip["class"]="ZEPHYR"  
+  board.chip["class"]="ZEPHYR"
 else:
   die('Unknown chip family '+board.chip["family"])
 
@@ -311,7 +311,7 @@ else:
     codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
   if board.chip["family"]=="ESP8266":
     codeOut("#define FLASH_START                     "+hex(0x0))
-  elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
+  elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51" or board.chip["family"]=="ZEPHYR":
     codeOut("#define FLASH_START                     "+hex(0x0))
   elif board.chip["family"]=="RP2XXX":
     codeOut("#define FLASH_START                     "+hex(0x10000000)) # flash is memory-mapped (XIP) here on both

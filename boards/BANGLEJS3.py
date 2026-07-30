@@ -25,13 +25,13 @@ V5 = PY32_OUT_TORCH_ON
 V6 = PY32_OUT_RGB_ON
 V7 = PY32_OUT_SPEAKER_ON
 V8 = PY32_OUT_VIBRATE_ON
-V9 = PY32_OUT_CHARGE_EN 
+V9 = PY32_OUT_CHARGE_EN
 V10 = PY32_OUT_WIFI_ON
-V11 = PY32_OUT_WIFI_BOOTLOADER 
-V12 = PY32_OUT_AUX_SWAP 
+V11 = PY32_OUT_WIFI_BOOTLOADER
+V12 = PY32_OUT_AUX_SWAP
 V13 = PY32_OUT_AUX_POWER
 V14 = PY32_OUT_TOUCH_RST
-V15 = PY32_OUT_HRM_AUX 
+V15 = PY32_OUT_HRM_AUX
 
 FIXME: separate virtual outputs for torch R/G/B?
 '''
@@ -102,12 +102,11 @@ chip = {
   'adc' : 0,
   'dac' : 0,
   'saved_code' : {
-    #'address' : 1024*1024,
     'page_size' : 4096,
     'flash_available' : 1024,
     # internal flash - debug only
-    'pages' : 32,
-    'address' : ((245 - 88) * 4096),
+    'pages' : 64,
+    'address' : (357-64)*4096, # (357->384 seem protected?)
     # external flash
 
     #'address' : 0x60000000, # put this in external spiflash (see below)
@@ -119,7 +118,7 @@ devices = { # 'V' pins are virtual
   'BTN1' : { 'pin' : 'V0' },
   'BTN2' : { 'pin' : 'V1' },
   'BTN3' : { 'pin' : 'V2' },
-  'BTN4' : { 'pin' : 'V3' },  
+  'BTN4' : { 'pin' : 'V3' },
   'LED1' : { 'pin' : 'V5' },
   'SPIFLASH' : {
     'size' : 64*1024*1024, # 64MB
@@ -168,7 +167,14 @@ def get_pins():
   # GPIO 0/1/2 + virtual pins which come from the PY32 (acting as IO expander)
   pins = pinutils.generate_pins(0,4,"A") + pinutils.generate_pins(0,14,"B") + pinutils.generate_pins(0,10,"C") + pinutils.generate_pins(0,15,"V");
   # pinutils.findpin(pins, "PAxx", True)["functions"]["..."]=0;
-  # ...
+  pinutils.findpin(pins, "PB4", True)["functions"]["ADC1_IN0"]=0;
+  pinutils.findpin(pins, "PB5", True)["functions"]["ADC1_IN1"]=0;
+  pinutils.findpin(pins, "PB6", True)["functions"]["ADC1_IN2"]=0;
+  pinutils.findpin(pins, "PB7", True)["functions"]["ADC1_IN3"]=0;
+  pinutils.findpin(pins, "PB11", True)["functions"]["ADC1_IN4"]=0;
+  pinutils.findpin(pins, "PB12", True)["functions"]["ADC1_IN5"]=0;
+  pinutils.findpin(pins, "PB13", True)["functions"]["ADC1_IN6"]=0;
+  pinutils.findpin(pins, "PB14", True)["functions"]["ADC1_IN7"]=0;
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;
