@@ -3,6 +3,7 @@
 #include "jshardware.h"
 #include "jsvar.h"
 #include "jswrapper.h"
+#include "rp2_utils.h"
 
 int main(void) {
 

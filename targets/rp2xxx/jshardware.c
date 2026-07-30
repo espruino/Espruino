@@ -20,6 +20,7 @@
 #include "jsdevices.h"
 #include "jsinteractive.h"
 #include "jstimer.h"
+#include "rp2_utils.h"
 
 #include "pico/bootrom.h"
 #include "pico/flash.h"
