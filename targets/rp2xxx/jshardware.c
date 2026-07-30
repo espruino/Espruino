@@ -1751,10 +1751,11 @@ void jshKickWatchDog() {
 }
 
 JsVarFloat jshReadTemperature() {
-  // Internal temperature sensor on ADC channel 4: 27C at 0.706V, -1.721mV/C
+  // Internal temperature sensor: 27C at 0.706V, -1.721mV/C. Channel is the last
+  // ADC input, which is 4 on RP2040/RP2350A but 8 on RP2350B.
   rpAdcEnsureInitialised();
   adc_set_temp_sensor_enabled(true);
-  adc_select_input(4);
+  adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
   JsVarFloat voltage = (JsVarFloat)adc_read() * 3.3 / 4096.0;
   adc_set_temp_sensor_enabled(false);
   return 27.0 - (voltage - 0.706) / 0.001721;
