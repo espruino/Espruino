@@ -63,7 +63,6 @@ static bool rpFirstIdle = true;
 static bool rpUsbInitialised = false;
 static bool rpUsbConnected = false;
 static bool rpWatchdogEnabled = false;
-static bool rpWatchdogTickStarted = false;
 static uint32_t rpWatchdogTimeoutMs = 0;
 static int64_t rpSystemTimeOffsetUs = 0;
 static bool rpEarlyLogInitialised = false;
@@ -884,10 +883,7 @@ void jshInit() {
   // The watchdog tick must be a 1 MHz clock for delay_ms to mean milliseconds.
   // runtime_init_clocks() already does this on both chips; re-assert from
   // clk_ref in case a board build opts out of the SDK clock init.
-  if (!rpWatchdogTickStarted) {
-    watchdog_start_tick(clock_get_hz(clk_ref) / MHZ);
-    rpWatchdogTickStarted = true;
-  }
+  watchdog_start_tick(clock_get_hz(clk_ref) / MHZ);
   rpWatchdogEnabled = false;
   rpWatchdogTimeoutMs = 0;
   rpEarlyLogInit();
