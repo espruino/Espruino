@@ -596,7 +596,7 @@ JshI2CInfo i2cInternal;
 #define DEFAULT_BACKLIGHT_TIMEOUT 3000
 #define DEFAULT_LOCK_TIMEOUT 5000
 #define TOUCH_DEVICE_RANGE 350
-
+#define TOUCH_SOFTWARE_GESTURES
 #endif
 
 #ifdef BANGLEJS_Q3
@@ -745,6 +745,9 @@ short lastTouchX, lastTouchY; ///< last touch event coordinates - updated when J
 bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
 unsigned char touchType; ///< variable to differentiate press, long press, double press
 short touchMinX = 0, touchMinY = 0, touchMaxX = TOUCH_DEVICE_RANGE, touchMaxY = TOUCH_DEVICE_RANGE; ///< touchscreen calibration values (what we expect from hardware, then we map this to LCD_WIDTH/HEIGHT)
+#ifdef TOUCH_SOFTWARE_GESTURES
+short touchDragX, touchDragY, touchDragD; ///< how much have we dragged while the touchscreen is pressed
+#endif
 #endif
 
 #ifdef PRESSURE_DEVICE
@@ -2061,11 +2064,37 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
   int dx = tx-touchX;
   int dy = ty-touchY;
 
+#ifdef TOUCH_SOFTWARE_GESTURES
+  /* the Bangle.js 3's touchscreen doesn't automatically recognise
+  gestures, so we have to do them ourselves */
+  int d = int_sqrt32(dx*dx + dy*dy);
+  if (pts) { // pressed now
+    if (touchPts) { // if it was pressed before
+      touchDragD += d;
+      touchDragX += dx;
+      touchDragY += dy;
+    }
+  } else { // not pressed now
+    if (touchPts) { // if it was pressed before
+      if (touchDragY > 80 && abs(touchDragX) < 40) gesture = 1; // down
+      if (touchDragY < -80 && abs(touchDragX) < 40) gesture = 2; // up
+      if (touchDragX < -80 && abs(touchDragY) < 40) gesture = 3; // left
+      if (touchDragX > 80 && abs(touchDragY) < 40) gesture = 4; // right
+      if (touchDragD < 40 && abs(touchDragX) < 20 && abs(touchDragY) < 20) gesture = 5; // single tap
+      // FIXME: Bangle.js 3 double-tap and long tap
+    }
+    touchDragD = 0;
+    touchDragX = 0;
+    touchDragY = 0;
+  }
+#endif
+
   touchX = tx;
   touchY = ty;
   touchPts = pts;
   JsBangleTasks lastBangleTasks = bangleTasks;
   static int lastGesture = 0;
+  const int LCD_MIDX = LCD_WIDTH/2;
   if (gesture!=lastGesture) {
     switch (gesture) { // gesture
     case 0:break; // no gesture
@@ -2086,17 +2115,17 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
       bangleTasks |= JSBT_SWIPE;
       break;
     case 5: // single click
-      if (touchX<80) bangleTasks |= JSBT_TOUCH_LEFT;
+      if (touchX<LCD_MIDX) bangleTasks |= JSBT_TOUCH_LEFT;
       else bangleTasks |= JSBT_TOUCH_RIGHT;
       touchType = 0;
       break;
     case 0x0B:     // double touch
-      if (touchX<80) bangleTasks |= JSBT_TOUCH_LEFT;
+      if (touchX<LCD_MIDX) bangleTasks |= JSBT_TOUCH_LEFT;
       else bangleTasks |= JSBT_TOUCH_RIGHT;
       touchType = 1;
       break;
     case 0x0C:     // long touch
-      if (touchX<80) bangleTasks |= JSBT_TOUCH_LEFT;
+      if (touchX<LCD_MIDX) bangleTasks |= JSBT_TOUCH_LEFT;
       else bangleTasks |= JSBT_TOUCH_RIGHT;
       touchType = 2;
       break;
@@ -4903,7 +4932,6 @@ bool jswrap_banglejs_idle() {
     jsvUnLock(promiseBeep);
     promiseBeep = 0;
   }
-
   return false;
 }
 
@@ -5100,7 +5128,7 @@ JsVar *_jswrap_banglejs_i2cRd(JshI2CInfo *i2c, int i2cAddr, JsVarInt reg, JsVarI
       ["reg","int",""],
       ["data","int",""]
     ],
-    "ifdef" : "BANGLEJS_Q3"
+    "#if" : "defined(BANGLEJS_Q3) || defined(BANGLEJS3)"
 }
 Writes a register on the touch controller
 */
@@ -5120,7 +5148,7 @@ void jswrap_banglejs_touchWr(JsVarInt reg, JsVarInt data) {
       ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
-    "ifdef" : "BANGLEJS_Q3",
+    "#if" : "defined(BANGLEJS_Q3) || defined(BANGLEJS3)",
     "typescript" : [
       "touchRd(reg: number, cnt?: 0): number;",
       "touchRd(reg: number, cnt: number): number[];"
@@ -5153,7 +5181,7 @@ JsVar *jswrap_banglejs_touchRd(JsVarInt reg, JsVarInt cnt) {
       ["reg","int","Register number to write"],
       ["data","int","An integer value to write to the register"]
     ],
-    "ifdef" : "BANGLEJS_Q3"
+    "ifdef" : "BANGLEJS"
 }
 Writes a register on the accelerometer
 */
@@ -5204,7 +5232,7 @@ JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
       ["reg","int",""],
       ["data","int",""]
     ],
-    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
+    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(BANGLEJS3) || defined(DICKENS)"
 }
 Writes a register on the barometer IC
 */
@@ -5224,7 +5252,7 @@ void jswrap_banglejs_barometerWr(JsVarInt reg, JsVarInt data) {
       ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
-    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)",
+    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3)  || defined(BANGLEJS3) || defined(DICKENS)",
     "typescript" : [
       "barometerRd(reg: number, cnt?: 0): number;",
       "barometerRd(reg: number, cnt: number): number[];"
