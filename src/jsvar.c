@@ -3027,6 +3027,15 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
   return name;
 }
 
+/// Compare the first 4 bytes of two strings
+static ALWAYS_INLINE bool jsvFastPrefixEqual(const char *a, const char *b) {
+#ifdef ESPR_NO_UNALIGNED_READS
+  if (sizeof(JsVar)&3) // JsVars aren't 32 bit aligned, so we can't do a word compare
+    return a[0]==b[0] && a[1]==b[1] && a[2]==b[2] && a[3]==b[3];
+#endif
+  return *(const int*)a == *(const int*)b;
+}
+
 JsVar *jsvFindChildFromString(JsVar *parent, const char *name) {
   /* Pull out first 4 bytes, and ensure that everything
    * is 0 padded so that we can do a nice speedy check. */
@@ -3057,7 +3066,7 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name) {
     while (childref) {
       // Don't Lock here, just use GetAddressOf - to try and speed up the finding
       JsVar *child = jsvGetAddressOf(childref);
-      if (*(int*)fastCheck==*(int*)child->varData.str && // speedy check of first 4 bytes
+      if (jsvFastPrefixEqual(fastCheck, child->varData.str) && // speedy check of first 4 bytes
           jsvIsStringEqual(child, name)) {
         // found it! unlock parent but leave child locked
         return jsvLockAgain(child);
@@ -3070,7 +3079,7 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name) {
       charsInName++;
     while (childref) {
       JsVar *child = jsvGetAddressOf(childref);
-      if (*(int*)fastCheck==*(int*)child->varData.str &&
+      if (jsvFastPrefixEqual(fastCheck, child->varData.str) &&
           !child->varData.ref.lastChild &&
           jsvGetCharactersInVar(child)==charsInName) { // no extra stringexts - so it really is that small
         // found it! unlock parent but leave child locked

@@ -28,6 +28,9 @@ node_modules
 /app
 /esp-idf
 /esp-idf-4
+/pico-sdk
+/picotool-install
+/picotool-src
 xtensa-esp32-elf
 gcc-arm-none-eabi*
 arm-gnu-toolchain*
