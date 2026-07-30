@@ -957,7 +957,8 @@ void jshIdle() {
     if (jsiGetConsoleDevice() != EV_LIMBO && !jsiIsConsoleDeviceForced()) {
       if (usbConnected) {
         jsiSetConsoleDevice(EV_USBSERIAL, false);
-      } else if (jsiGetConsoleDevice() == EV_USBSERIAL && !rpUsbVbusPresent()) {
+      } else if (jsiGetConsoleDevice() == EV_USBSERIAL && !rpUsbVbusPresent() &&
+                 rpUartInitialised[0]) {
         jsiSetConsoleDevice(EV_SERIAL1, false);
         jshTransmitClearDevice(EV_USBSERIAL);
       }
@@ -972,7 +973,8 @@ void jshIdle() {
   if (jsiGetConsoleDevice() != EV_LIMBO &&
       !jsiIsConsoleDeviceForced() &&
       jsiGetConsoleDevice() == EV_USBSERIAL &&
-      !rpUsbVbusPresent()) {
+      !rpUsbVbusPresent() &&
+      rpUartInitialised[0]) {
     rpUsbConnected = false;
     jsiSetConsoleDevice(EV_SERIAL1, false);
     jshTransmitClearDevice(EV_USBSERIAL);
@@ -1033,7 +1035,8 @@ void jshIdle() {
 #ifdef USB
     if (!rpUsbVbusPresent() &&
         !jsiIsConsoleDeviceForced() &&
-        jsiGetConsoleDevice() == EV_USBSERIAL) {
+        jsiGetConsoleDevice() == EV_USBSERIAL &&
+        rpUartInitialised[0]) {
       jsiSetConsoleDevice(EV_SERIAL1, false);
       jshTransmitClearDevice(EV_USBSERIAL);
     }
@@ -1375,7 +1378,11 @@ void jshUSARTKick(IOEventFlags device) {
   }
 #endif
   int idx = rpUartIndexFromDevice(device);
-  if (idx < 0 || !rpUartInitialised[idx]) return;
+  if (idx < 0 || !rpUartInitialised[idx]) {
+    // discard as nothing can drain and jshTransmit blocks on a full buffer
+    while (jshGetCharToTransmit(device) >= 0);
+    return;
+  }
   uart_inst_t *inst = rpUartFromIndex(idx);
   if (!inst) return;
   int c = jshGetCharToTransmit(device);
