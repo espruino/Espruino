@@ -189,9 +189,9 @@ def scan_pin_file(pins, filename, nameoffset, functionoffset, altfunctionoffset)
   f = open(os.path.dirname(os.path.realpath(__file__))+'/../boards/pins/'+filename)
   lines = f.readlines()
   f.close()
-  headings = lines[0].split(",")
+  headings = [x.strip() for x in lines[0].split(",")]
   for line in lines:
-    pindata = line.split(",")
+    pindata = [x.strip() for x in line.split(",")]
     pinname = pindata[nameoffset].strip()
 
     extrafunction = ""
