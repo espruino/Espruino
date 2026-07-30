@@ -1715,7 +1715,12 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 }
 
 void jshEnableWatchDog(JsVarFloat timeout) {
-  const uint32_t rpWatchdogMaxMs = 8388;
+#if PICO_RP2040
+  // the RP2040 watchdog decrements twice per tick, halving the usable range
+  const uint32_t rpWatchdogMaxMs = WATCHDOG_LOAD_BITS / 2000;
+#else
+  const uint32_t rpWatchdogMaxMs = WATCHDOG_LOAD_BITS / 1000;
+#endif
   uint32_t timeoutMs;
   if (!isfinite(timeout) || timeout <= 0) {
     timeoutMs = 1;
