@@ -33,7 +33,7 @@ i2c.readReg(106,0x1E,1)&1; // has data?
 i2c.readReg(106,0x28,6);
 ```
 
-* Address 21 = Touch Panel
+* Address 21 = CST816S Touch Panel
 * Address 48 = MMC5603NJ Magnetometer
 * Address 106 = LSM6DSOTR Accel/Gyro
 * Address 118 = BME690 Pressure/etc
@@ -143,10 +143,21 @@ PF6    - Vibration EN                              => V8
 PF9    - NC
 ```
 
+## Working
+
+* Simple bluetooth comms
+* Apps run from internal flash
+* Graphics (albeit slightly glitchy)
+* Buttons
+* Accelerometer
+* Magnetometer
+* Touchscreen press + swipe gestures.
+
 ## TODO
 
+* Touchscreen sometimes misses lift events (touch IRQ has been missed by PY32)
 * Use external Flash memory
-* 6 bit dithering (when enabled this puts dots in black)
+* Graphics incomplete partial updates
 * Gyro
 * Pressure sensor
 * BME690 gas sensing
@@ -161,4 +172,6 @@ PF9    - NC
 ```
 // 4 bpp test
 for (i=0;i<4;i++) g.setColor(i/4,i/4,i/4).fillRect(i*60,0,(i+1)*60,239);
+// full dither test
+for (i=0;i<32;i++) g.setColor(i/32,i/32,i/32).fillRect(i*7,0,(i+1)*7,239);
 ```

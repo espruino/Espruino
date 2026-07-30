@@ -34,8 +34,8 @@ var drawTimeout, draw = () => {
 }, scrollToShow = () => {
   var getScrollAmt = () => { // get amount needed to scroll the item into view
     var y = idxToY(s.selected);
-    if (y<80 && (s.scroll>menuScrollMin)) return Math.min(20, 80-y)>>2;
-    if (y>160 && (s.scroll<menuScrollMax)) return Math.max(-20, 160-y)>>2;
+    if (y<80 && (s.scroll>menuScrollMin)) return Math.min(40, 80-y)>>2;
+    if (y>160 && (s.scroll<menuScrollMax)) return Math.max(-40, 160-y)>>2;
     return 0;
   };
   if (getScrollAmt()) {
