@@ -881,10 +881,11 @@ void jshInit() {
   gpio_disable_pulls(PICO_VBUS_PIN);
 #endif
 #endif
-  // Pico SDK expects the watchdog tick to be started so delay_ms values map
-  // onto a 1 MHz watchdog clock. RP2040 does not appear to do this for us.
+  // The watchdog tick must be a 1 MHz clock for delay_ms to mean milliseconds.
+  // runtime_init_clocks() already does this on both chips; re-assert from
+  // clk_ref in case a board build opts out of the SDK clock init.
   if (!rpWatchdogTickStarted) {
-    watchdog_start_tick(XOSC_HZ / MHZ);
+    watchdog_start_tick(clock_get_hz(clk_ref) / MHZ);
     rpWatchdogTickStarted = true;
   }
   rpWatchdogEnabled = false;
