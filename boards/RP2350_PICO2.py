@@ -25,7 +25,7 @@ info = {
  'default_console_rx'       : "D1",
  'default_console_baudrate' : "115200",
  'variables'                : 16000,  # ~220KB of 512KB SRAM (14B/JsVar under the 16383 threshold), ~285KB left for heap
- 'binary_name'              : 'espruino_%v_rp2350.uf2',
+ 'binary_name'              : 'espruino_%v_rp2350_pico2.uf2',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
