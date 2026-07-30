@@ -65,13 +65,14 @@ char *jsGfxGetPtr(int line) {
 #endif
 
 // bayer dithering pattern
-#define BAYER_RGBSHIFT(b) (b<<13) | (b<<8) | (b<<2)
 #if LCD_BPP!=6 // 3/4 bit
+#define BAYER_RGBSHIFT(b) (b<<13) | (b<<8) | (b<<2)
 const unsigned short BAYER2[2][2] = {
     { BAYER_RGBSHIFT(1), BAYER_RGBSHIFT(5) },
     { BAYER_RGBSHIFT(7), BAYER_RGBSHIFT(3) }
 };
 #else // 6 bit
+#define BAYER_RGBSHIFT(b) (b<<12) | (b<<7) | (b<<1)
 const unsigned short BAYER2[2][2] = {
     { BAYER_RGBSHIFT(0), BAYER_RGBSHIFT(2) },
     { BAYER_RGBSHIFT(3), BAYER_RGBSHIFT(1) }
@@ -88,13 +89,13 @@ static ALWAYS_INLINE unsigned int lcdMemLCD_convert16toLCD(unsigned int c, int x
       ((c&0x00800)?2:0) |
       ((c&0x00020)?4:0);*/
 #else // 6 bit
-  c = ((c & 0x001F) << 11) | (c & 0x07E0) | ((c & 0xF800) >> 11); // FIXME: swap R and B here (not ideal)
-  //c =   (c&0b01111011110011110) + BAYER2[y&1][x&1]; // apply bayer 2x2 dither
-  //c |= ((c&0b10000100000100000)*3) >> 2; // saturate top 2 bits of each of the 3 channels at once
-  return // convert 16 bpp down to 6bpp
-      ((c&0xC000)>>10) |
+  c =   (c&0b01111011110011110) + BAYER2[y&1][x&1]; // apply bayer 2x2 dither
+  c |= ((c&0b10000100000100000)*3) >> 2; // saturate top 2 bits of each of the 3 channels at once
+  return (((c&0b1100011000011000)*0x8081)>>14)&63; // code below replaced by magic multiply bitshift which avoids branches
+  /*return // convert 16 bpp down to 6bpp
+      ((c&0xC000)>>14) |
       ((c&0x0600)>>7) |
-      ((c&0x0018)>>3);
+      ((c&0x0018)<<1);*/
 #endif
 }
 
