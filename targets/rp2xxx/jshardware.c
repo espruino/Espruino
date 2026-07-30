@@ -22,6 +22,9 @@
 #include "jstimer.h"
 #include "rp2_utils.h"
 
+// Below here FLASH_PAGE_SIZE is the SDK's 256, not platform_config.h's 4096.
+#undef FLASH_PAGE_SIZE
+
 #include "pico/bootrom.h"
 #include "pico/flash.h"
 #include "pico/rand.h"
@@ -46,10 +49,6 @@
 #ifdef USB
 #include "tusb.h"
 #endif
-
-#define RP2_FLASH_SECTOR_SIZE FLASH_SECTOR_SIZE
-#define RP2_FLASH_PROGRAM_SIZE FLASH_PAGE_SIZE
-#define RP2_XIP_BASE 0x10000000u
 
 // Early boot logging is only intended for bring-up and explicit diagnostics.
 // Release builds stay quiet by default, and debug builds only log when the
@@ -1581,8 +1580,8 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
   if (!rpFlashAddrValid(addr, 1)) return false;
-  if (startAddr) *startAddr = addr - (addr % RP2_FLASH_SECTOR_SIZE);
-  if (pageSize) *pageSize = RP2_FLASH_SECTOR_SIZE;
+  if (startAddr) *startAddr = addr - (addr % FLASH_SECTOR_SIZE);
+  if (pageSize) *pageSize = FLASH_SECTOR_SIZE;
   return true;
 }
 
@@ -1598,15 +1597,15 @@ JsVar *jshFlashGetFree() {
 // Flash erase is only valid inside the reserved saved-code bank. Page addresses
 // are normalised to FLASH_SECTOR_SIZE before calling flash_safe_execute.
 void jshFlashErasePage(uint32_t addr) {
-  uint32_t pageAddr = addr - (addr % RP2_FLASH_SECTOR_SIZE);
-  if (!rpFlashAddrInSavedCode(pageAddr, RP2_FLASH_SECTOR_SIZE)) {
+  uint32_t pageAddr = addr - (addr % FLASH_SECTOR_SIZE);
+  if (!rpFlashAddrInSavedCode(pageAddr, FLASH_SECTOR_SIZE)) {
     jsExceptionHere(JSET_ERROR, "jshFlashErasePage: address 0x%08x outside saved flash", addr);
     return;
   }
 
   RpFlashEraseOp op = {
     .offset = rpFlashOffset(pageAddr),
-    .count = RP2_FLASH_SECTOR_SIZE,
+    .count = FLASH_SECTOR_SIZE,
   };
   rpFlashSafeExecute(rpFlashEraseUnsafe, &op, "jshFlashErasePage");
 }
@@ -1617,7 +1616,7 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
     memset(buf, 0xFF, len);
     return;
   }
-  memcpy(buf, (const void *)(RP2_XIP_BASE + rpFlashOffset(addr)), len);
+  memcpy(buf, (const void *)(FLASH_START + rpFlashOffset(addr)), len);
 }
 
 // Flash programs in FLASH_PAGE_SIZE units. Partial writes therefore read the
@@ -1631,25 +1630,25 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   }
 
   uint8_t *src = (uint8_t *)buf;
-  uint8_t pageBuf[RP2_FLASH_PROGRAM_SIZE];
+  uint8_t pageBuf[FLASH_PAGE_SIZE];
   while (len) {
-    uint32_t pageAddr = addr - (addr % RP2_FLASH_PROGRAM_SIZE);
+    uint32_t pageAddr = addr - (addr % FLASH_PAGE_SIZE);
     uint32_t pageOffset = addr - pageAddr;
-    uint32_t writeLen = RP2_FLASH_PROGRAM_SIZE - pageOffset;
+    uint32_t writeLen = FLASH_PAGE_SIZE - pageOffset;
     if (writeLen > len) writeLen = len;
 
-    memcpy(pageBuf, (const void *)(RP2_XIP_BASE + rpFlashOffset(pageAddr)), RP2_FLASH_PROGRAM_SIZE);
+    memcpy(pageBuf, (const void *)(FLASH_START + rpFlashOffset(pageAddr)), FLASH_PAGE_SIZE);
     memcpy(pageBuf + pageOffset, src, writeLen);
 
     RpFlashProgramOp op = {
       .offset = rpFlashOffset(pageAddr),
-      .count = RP2_FLASH_PROGRAM_SIZE,
+      .count = FLASH_PAGE_SIZE,
       .data = pageBuf,
     };
     if (!rpFlashSafeExecute(rpFlashProgramUnsafe, &op, "jshFlashWrite"))
       return;
 
-    if (memcmp((const void *)(RP2_XIP_BASE + rpFlashOffset(pageAddr)), pageBuf, RP2_FLASH_PROGRAM_SIZE) != 0) {
+    if (memcmp((const void *)(FLASH_START + rpFlashOffset(pageAddr)), pageBuf, FLASH_PAGE_SIZE) != 0) {
       jsExceptionHere(JSET_INTERNALERROR, "jshFlashWrite: verification failed at 0x%08x", pageAddr);
       return;
     }
@@ -1663,7 +1662,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 size_t jshFlashGetMemMapAddress(size_t ptr) {
   uint32_t addr = (uint32_t)ptr;
   if (rpFlashAddrValid(addr, 1))
-    return RP2_XIP_BASE + rpFlashOffset(addr);
+    return FLASH_START + rpFlashOffset(addr);
   return ptr;
 }
 
