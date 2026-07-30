@@ -145,10 +145,9 @@ PF9    - NC
 
 ## TODO
 
-* peripheralPollHandler
-* Accelerometer
-* Magnetometer
 * Gyro
+* Pressure sensor
+* BME680 gas sensing
 * LCD update speed (12fps currently, not async)
 * Touchscreen 'tap' handlers
 * ... much more

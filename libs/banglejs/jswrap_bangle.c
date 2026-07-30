@@ -40,7 +40,6 @@
 #ifdef NRF52_SERIES
 #include "app_timer.h"
 #include "nrf_gpio.h"
-#include "nrf_delay.h"
 #include "nrf_soc.h"
 #include "nrf_saadc.h"
 #include "nrf5x_utils.h"
@@ -585,7 +584,7 @@ Can be used for housekeeping tasks that don't want to be run during the day.
 JshI2CInfo i2cInternal;
 //FIXME: Bangle.js 3 extra peripherals
 #define ACCEL_I2C &i2cInternal
-//#define MAG_I2C &i2cInternal
+#define MAG_I2C &i2cInternal
 #define TOUCH_I2C &i2cInternal
 //#define PRESSURE_I2C &i2cInternal
 //#define HRM_I2C &i2cInternal
@@ -1289,7 +1288,7 @@ void peripheralPollHandler() {
   if (bangleFlags & JSBF_BTN_LOW_RESISTANCE_FIX) {
     jshPinSetValue(BTN1_PININDEX, !BTN1_ONSTATE);
     jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_OUT);
-    nrf_delay_us(10);
+    jshDelayMicroseconds(10);
     jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
     static bool lastBtn1Value = 0;
     bool btn1Value = jshPinGetValue(BTN1_PININDEX);
@@ -1425,7 +1424,6 @@ void peripheralPollHandler() {
 #endif
 #ifdef MAG_DEVICE_UNKNOWN_0C
     if (MAG_DEVICE_UNKNOWN_0C_EN) {
-      buf[0]=0x4E;
       jsi2cReadReg(MAG_I2C, MAG_0C_ADDR, 0x4E, 7, buf);
       if (!(buf[0]&16)) { // then we have data that wasn't read before
         // &2 seems always set
@@ -1461,6 +1459,24 @@ void peripheralPollHandler() {
         /* Write 0x01 to register 0x08, set TM_M bit high - kick off new reading */
         jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x08/*MMC36X0_REG_CTRL0*/, 0x01/*MMC36X0_CMD_TM_M*/);
       }
+    }
+#endif
+#ifdef MAG_DEVICE_MMC5603NJ
+    jsi2cReadReg(MAG_I2C, MAG_ADDR, 0x18/*REG_STATUS*/, 1, buf);
+    if (buf[0]&0x40) { // measurement completed
+      jsi2cReadReg(MAG_I2C, MAG_ADDR, 0/*REG_DATA_X0*/, 6, buf);
+      uint16_t data_temp[3];
+      data_temp[0] = buf[0] | (buf[1]<<8);
+      data_temp[1] = buf[2] | (buf[3]<<8);
+      data_temp[2] = buf[4] | (buf[5]<<8);
+      // Convert offset-binary LSB (centered at 32768) to microteslas
+      // Formula: (Raw - 32768) / 10.24 LSB/uT
+      mag.x = ((data_temp[0] - 32768) * 100) >> 10; // divide by 10.24
+      mag.y = ((data_temp[1] - 32768) * 100) >> 10; // divide by 10.24
+      mag.z = ((data_temp[2] - 32768) * 100) >> 10; // divide by 10.24
+      // Trigger a magnetic measurement, Preserve Auto SR bit (0x20) while sending Take_Meas_M (0x01)
+      jsi2cWriteReg(MAG_I2C, MAG_ADDR, 0x1B/*REG_CTRL_0*/, 0x21/*CMD_AUTO_SR_EN | CMD_TAKE_MEAS_M*/);
+      newReading = true;
     }
 #endif
     if (newReading) {
@@ -3402,10 +3418,26 @@ bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId) {
         jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x08/*MMC36X0_REG_CTRL0*/, 0x08/*MMC36X0_CMD_SET*/);
         /* Set highest accuracy mode, Write register 0x09, Set BW<1:0> = 0x00, 0x01, 0x02, or 0x03 */
       	jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x09/*MMC36X0_REG_CTRL1*/, 0/*MMC36X0_CMD_100HZ*/ );
-        /* Enable sensor when from pown down mode to normal mode, Write 0x01 to register 0x08, set TM_M bit high to kick off a reading */
+        /* Enable sensor when from power down mode to normal mode, Write 0x01 to register 0x08, set TM_M bit high to kick off a reading */
         jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x08/*MMC36X0_REG_CTRL0*/, 1/*MMC36X0_CMD_TM_M*/);
-        nrf_delay_ms(10);
+        jshDelayMicroseconds(10000);
       }
+#endif
+#ifdef MAG_DEVICE_MMC5603NJ
+      // Send an initial SET pulse to magnetize the sensor core
+      jsi2cWriteReg(MAG_I2C, MAG_ADDR, 0x1B/*REG_CTRL_0*/, 0x08/*CMD_SET*/);
+      jshDelayMicroseconds(1000); // Brief delay for SET pulse execution
+
+      // Enable Auto SET/RESET mode in Control Register 0
+      // This allows the sensor to handle internal hysteresis reset automatically.
+      jsi2cWriteReg(MAG_I2C, MAG_ADDR, 0x1B/*REG_CTRL_0*/, 0x20/*CMD_AUTO_SR_EN*/);
+
+      // Set Bandwidth / Resolution to 16-bit (6.6ms measurement time)
+      // BW bits [1:0] in CTRL_1 = 00 -> 16-bit mode
+      jsi2cWriteReg(MAG_I2C, MAG_ADDR, 0x1C/*REG_CTRL_1*/, 0x00);
+
+      // Trigger a magnetic measurement, Preserve Auto SR bit (0x20) while sending Take_Meas_M (0x01)
+      jsi2cWriteReg(MAG_I2C, MAG_ADDR, 0x1B/*REG_CTRL_0*/, 0x21/*CMD_AUTO_SR_EN | CMD_TAKE_MEAS_M*/);
 #endif
     }
   } else { // !isOn -> turn off
@@ -5866,7 +5898,7 @@ void jswrap_banglejs_softOff() {
     // wait for button to be pressed for at least WAKE_FROM_OFF_TIME (200ms usually)
     int timeout = WAKE_FROM_OFF_TIME;
     while (_jswrap_banglejs_shouldWake() && timeout--)
-      nrf_delay_ms(1);
+      jshDelayMicroseconds(1000);
     // if button not pressed, keep sleeping
   } while (!_jswrap_banglejs_shouldWake());
   // restart
