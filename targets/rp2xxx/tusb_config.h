@@ -1,5 +1,5 @@
-#ifndef ESPRUINO_RP2040_TUSB_CONFIG_H
-#define ESPRUINO_RP2040_TUSB_CONFIG_H
+#ifndef ESPRUINO_RP2_TUSB_CONFIG_H
+#define ESPRUINO_RP2_TUSB_CONFIG_H
 
 #ifdef __cplusplus
 extern "C" {

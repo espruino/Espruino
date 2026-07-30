@@ -20,7 +20,7 @@ int main(void) {
   jsiInit(!buttonState); // pressing button on boot skips autoload from flash
   rp2EarlyLog("RP2 boot: jsiInit ok\r\n");
 
-  // Start RP2040 USB after interpreter init so regular idle/task servicing is
+  // Start RP2 USB after interpreter init so regular idle/task servicing is
   // immediately available during enumeration.
   rp2UsbInitNow();
 
