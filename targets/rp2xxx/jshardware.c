@@ -52,7 +52,7 @@
 
 // Early boot logging is only intended for bring-up and explicit diagnostics.
 // Release builds stay quiet by default, and debug builds only log when the
-// dedicated RP2040_DEBUG_EARLY_BOOT define is enabled.
+// dedicated RP2_DEBUG_EARLY_BOOT define is enabled.
 #if !defined(RELEASE) && defined(RP2_DEBUG_EARLY_BOOT)
 #define RP2_EARLY_LOG_ENABLED 1
 #else
@@ -79,13 +79,13 @@ static unsigned char rpSpiMode[2] = { SPIF_SPI_MODE_0, SPIF_SPI_MODE_0 };
 static bool rpSpiMsb[2] = { true, true };
 
 // The Espruino util timer is a single shared scheduler used for short,
-// accurate follow-on actions such as digitalPulse sequencing. RP2040 backs it
+// accurate follow-on actions such as digitalPulse sequencing. RP2 backs it
 // with one claimed hardware alarm.
 static int rpUtilTimerAlarmNum = -1;
 
 static JshPinState rpPinState[JSH_PIN_COUNT];
 // Some Espruino timer/waveform code asks the target which analog-output
-// backend a pin is currently using. RP2040 caches a small synthetic PWM token
+// backend a pin is currently using. RP2 caches a small synthetic PWM token
 // here because its PWM routing is chosen from GPIO numbers, not board pinInfo.
 static JshPinFunction rpPinFunction[JSH_PIN_COUNT];
 static Pin rpWatchPins[ESPR_EXTI_COUNT];
@@ -94,7 +94,7 @@ static volatile bool rpWatchLastState[ESPR_EXTI_COUNT];
 static Pin rpUartPinRx[2] = { PIN_UNDEFINED, PIN_UNDEFINED };
 static Pin rpUartPinTx[2] = { PIN_UNDEFINED, PIN_UNDEFINED };
 
-// A short post-setup ignore window filters RP2040 loopback bring-up artifacts
+// A short post-setup ignore window filters RP2 loopback bring-up artifacts
 // before normal UART RX bytes are forwarded into Espruino.
 static uint64_t rpUartIgnoreNullUntilUs[2] = { 0, 0 };
 
@@ -125,7 +125,7 @@ typedef struct {
 } RpFlashProgramOp;
 
 // VBUS presence is a physical USB-cable signal, not the same thing as an open
-// CDC session. RP2040 uses it to distinguish "host closed WebIDE" from "USB
+// CDC session. RP2 uses it to distinguish "host closed WebIDE" from "USB
 // cable genuinely went away" when deciding whether console fallback is allowed.
 static bool rpPinIsValid(Pin pin);
 
@@ -141,7 +141,7 @@ static bool rpUsbVbusPresent(void) {
 #endif
 }
 
-// RP2040 PWM routing is selected directly from GPIO numbers rather than from
+// RP2 PWM routing is selected directly from GPIO numbers rather than from
 // board pinInfo timer entries, so the utility-timer analog path keeps a small
 // target-local token that can be decoded back to a pin by jshSetOutputValue.
 static JshPinFunction rpPwmFunctionFromPin(Pin pin) {
@@ -181,7 +181,7 @@ static void rpUtilTimerAlarmCallback(uint alarm_num) {
   jstUtilTimerInterruptHandler();
 }
 
-// Claim the hardware alarm lazily so RP2040 only consumes the resource once a
+// Claim the hardware alarm lazily so RP2 only consumes the resource once a
 // feature such as digitalPulse actually needs util-timer scheduling.
 static void rpUtilTimerEnsureClaimed(void) {
   if (rpUtilTimerAlarmNum >= 0) return;
@@ -207,7 +207,7 @@ static void rpAdcEnsureInitialised(void) {
   rpAdcInitialised = true;
 }
 
-// RP2040 PWM uses a shared source clock with per-slice divisors. These helpers
+// RP2 PWM uses a shared source clock with per-slice divisors. These helpers
 // keep the rounding logic in one place so jshPinAnalogOutput can choose a
 // sensible hardware PWM setup before falling back to software PWM.
 static uint32_t rpPwmGetSliceHz(uint32_t offset, uint32_t div16) {
@@ -228,7 +228,7 @@ static uint32_t rpPwmGetSliceHzCeil(uint32_t div16) {
 }
 
 // Fulfil jshPinAnalogOutput's hardware-PWM path by selecting a divider/wrap
-// pair that keeps the requested frequency within RP2040 slice limits.
+// pair that keeps the requested frequency within RP2 slice limits.
 static bool rpPwmConfigure(uint slice, JsVarFloat freq) {
   const uint32_t top_max = 65534;
   uint32_t source_hz = clock_get_hz(clk_sys);
@@ -451,8 +451,8 @@ static void rpSpiResetAll(void) {
 // USART, I2C, and SPI setup helpers
 // -----------------------------------------------------------------------------
 
-// Fulfil jshUSARTSetup using RP2040 hardware UARTs and Espruino-selected pins.
-// The RP2040 backend stays aligned with the shared Espruino serial model:
+// Fulfil jshUSARTSetup using RP2 hardware UARTs and Espruino-selected pins.
+// The RP2 backend stays aligned with the shared Espruino serial model:
 // setup/configuration is target-local, RX feeds jshPushIOCharEvent(s), and TX
 // drains Espruino's transmit queue via jshGetCharToTransmit.
 static bool rpUartEnsureInitialised(IOEventFlags device, JshUSARTInfo *inf) {
@@ -532,7 +532,7 @@ static bool rpUartEnsureInitialised(IOEventFlags device, JshUSARTInfo *inf) {
 }
 
 // Fulfil jshI2CSetup by selecting the requested Espruino device, resolving
-// default pins from board metadata if needed, and then binding them to RP2040
+// default pins from board metadata if needed, and then binding them to RP2
 // hardware I2C.
 static bool rpI2cEnsureInitialised(IOEventFlags device, JshI2CInfo *inf) {
   int idx = rpI2cIndexFromDevice(device);
@@ -586,7 +586,7 @@ static bool rpI2cGetReady(IOEventFlags device, i2c_inst_t **inst) {
   return *inst != NULL;
 }
 
-// Fulfil jshSPISetup using RP2040 hardware SPI. Pin defaults come from the
+// Fulfil jshSPISetup using RP2 hardware SPI. Pin defaults come from the
 // board definition, while transfer-format state is cached for later jshSPISend*
 // calls because the Espruino SPI contract can change format after setup.
 static bool rpSpiEnsureInitialised(IOEventFlags device, JshSPIInfo *inf) {
@@ -695,7 +695,7 @@ static void rpWatchResetAll(void) {
   restore_interrupts(irqState);
 }
 
-// RP2040 exposes one shared GPIO IRQ on each core. Watched pins are tracked in
+// RP2 exposes one shared GPIO IRQ on each core. Watched pins are tracked in
 // software and translated into Espruino EV_EXTI slots here before the normal
 // deferred event path takes over.
 static void CALLED_FROM_INTERRUPT rpWatchBank0Irq(void) {
@@ -759,7 +759,7 @@ static void rpPinApplyState(Pin pin, JshPinState state) {
   }
 }
 
-// Espruino's flash helpers use logical flash addresses, while RP2040 code reads
+// Espruino's flash helpers use logical flash addresses, while RP2 code reads
 // from XIP and writes by raw flash offset. These helpers keep the range checks
 // and translations in one place.
 static bool rpFlashAddrValid(uint32_t addr, uint32_t len) {
@@ -854,7 +854,7 @@ void rp2EarlyLogf(const char *fmt, ...) {
 void rp2UsbInitNow(void) {
 #ifdef USB
   if (!rpUsbInitialised) {
-    rp2EarlyLog("RP2040 usb: init start\r\n");
+    rp2EarlyLog("RP2 usb: init start\r\n");
     tusb_init();
     tud_connect();
     rpUsbInitialised = true;
@@ -938,7 +938,7 @@ void jshReset() {
   rpSpiResetAll();
 }
 
-// jshIdle is the RP2040 target's main service point for USB CDC traffic,
+// jshIdle is the RP2 target's main service point for USB CDC traffic,
 // runtime console policy, and the one-time startup handoff into the normal
 // Espruino console model.
 void jshIdle() {
@@ -950,7 +950,7 @@ void jshIdle() {
     rpUsbConnected = usbConnected;
 
     // Follow the shared Espruino console model when USB connection state
-    // changes, with one RP2040-specific rule: when an unforced console loses
+    // changes, with one RP2-specific rule: when an unforced console loses
     // USB because VBUS is physically absent, fall back explicitly to Serial1
     // while keeping USB as the stable startup default. Do not fall back just
     // because the host closed the CDC session while the cable remains present.
@@ -1003,7 +1003,7 @@ void jshIdle() {
                             UART_UARTDR_PE_BITS | UART_UARTDR_OE_BITS);
       bool inStartupIgnoreWindow = time_us_64() < rpUartIgnoreNullUntilUs[i];
 
-      // RP2040 can report a false RX entry while TX/RX pins are being handed
+      // RP2 can report a false RX entry while TX/RX pins are being handed
       // over to the UART peripheral on a physical loopback. During that short
       // post-setup window, discard both flagged entries and stray NUL bytes.
       if (inStartupIgnoreWindow && (err || ch == 0)) continue;
@@ -1028,7 +1028,7 @@ void jshIdle() {
 
   if (rpFirstIdle) {
     // Follow the shared Espruino startup path first, then apply the one
-    // RP2040-specific cold-boot rule: if USB is physically absent and the
+    // RP2-specific cold-boot rule: if USB is physically absent and the
     // unforced console still landed on USB, move it to Serial1 explicitly.
     jsiOneSecondAfterStartup();
 
@@ -1061,7 +1061,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
       timeUntilWake = maxSleep;
   }
 
-  // RP2040 UART RX is currently serviced by polling in jshIdle rather than by
+  // RP2 UART RX is currently serviced by polling in jshIdle rather than by
   // an IRQ-driven wake path. If any UART is active we therefore keep sleep in
   // short slices so incoming Serial1/Serial2 data can be noticed promptly.
   if (rpUartInitialised[0] || rpUartInitialised[1]) {
@@ -1214,7 +1214,7 @@ int jshPinAnalogFast(Pin pin) {
 }
 
 // Fulfil jshPinAnalogOutput using hardware PWM when the requested frequency can
-// be represented by an RP2040 slice. Software PWM remains available when the
+// be represented by an RP2 slice. Software PWM remains available when the
 // caller allows it or explicitly forces it.
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
   if (!rpPinIsValid(pin)) return JSH_NOTHING;
@@ -1265,13 +1265,13 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 }
 
 bool jshCanWatch(Pin pin) {
-  // Current RP2040 policy is intentionally permissive. If later target-specific
+  // Current RP2 policy is intentionally permissive. If later target-specific
   // pin conflicts appear, this is the place to exclude them.
   return rpPinIsValid(pin);
 }
 
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
-  // RP2040 currently uses one IRQ-backed watch path for all watch modes.
+  // RP2 currently uses one IRQ-backed watch path for all watch modes.
   // `flags` is reserved for later refinement if Espruino watch-speed/accuracy
   // distinctions need target-specific handling here.
   NOT_USED(flags);
@@ -1393,7 +1393,7 @@ void jshUSARTKick(IOEventFlags device) {
 }
 
 // SPI setup and transfer calls are thin contract adapters over the cached
-// RP2040 hardware-SPI state prepared by rpSpiEnsureInitialised().
+// RP2 hardware-SPI state prepared by rpSpiEnsureInitialised().
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   if (!inf) return;
   rpSpiEnsureInitialised(device, inf);
@@ -1474,7 +1474,7 @@ void jshSPIWait(IOEventFlags device) {
   spi_get_hw(inst)->icr = SPI_SSPICR_RORIC_BITS;
 }
 
-// jshSPISendMany fulfils Espruino's buffered SPI transfer contract. The RP2040
+// jshSPISendMany fulfils Espruino's buffered SPI transfer contract. The RP2
 // backend keeps the implementation synchronous for now and completes the
 // callback immediately after the transfer.
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
@@ -1539,7 +1539,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   rpI2cEnsureInitialised(device, inf);
 }
 
-// RP2040 has no public JS-level I2C unsetup API, but the target still
+// RP2 has no public JS-level I2C unsetup API, but the target still
 // implements the formal jshardware hook so reset paths and any internal users
 // can cleanly deinitialise a specific hardware I2C block.
 void jshI2CUnSetup(IOEventFlags device) {
@@ -1584,7 +1584,7 @@ bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
   return true;
 }
 
-// RP2040_PICO uses one explicit saved-code reservation. Exposing exactly that
+// Every RP2 board reserves one explicit saved-code bank. Exposing exactly that
 // range through jshFlashGetFree keeps Storage/save() bounded away from firmware.
 JsVar *jshFlashGetFree() {
   JsVar *jsFreeFlash = jsvNewEmptyArray();
@@ -1594,7 +1594,7 @@ JsVar *jshFlashGetFree() {
 }
 
 // Flash erase is only valid inside the reserved saved-code bank. Page addresses
-// are normalised to RP2040 4 KB erase sectors before calling flash_safe_execute.
+// are normalised to FLASH_SECTOR_SIZE before calling flash_safe_execute.
 void jshFlashErasePage(uint32_t addr) {
   uint32_t pageAddr = addr - (addr % RP2_FLASH_SECTOR_SIZE);
   if (!rpFlashAddrInSavedCode(pageAddr, RP2_FLASH_SECTOR_SIZE)) {
@@ -1618,7 +1618,7 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   memcpy(buf, (const void *)(RP2_XIP_BASE + rpFlashOffset(addr)), len);
 }
 
-// RP2040 flash programs in 256-byte pages. Partial writes therefore read the
+// Flash programs in FLASH_PAGE_SIZE units. Partial writes therefore read the
 // existing XIP page into RAM, patch only the changed bytes, and then program
 // the full page back before verifying the result.
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
@@ -1669,7 +1669,7 @@ size_t jshFlashGetMemMapAddress(size_t ptr) {
 // Remaining platform hooks and partial implementations
 // -----------------------------------------------------------------------------
 
-// The util timer contract uses Espruino time units. RP2040 schedules each next
+// The util timer contract uses Espruino time units. RP2 schedules each next
 // expiry with a one-shot hardware alarm and lets the shared util-timer core
 // decide when to reschedule or stop.
 void jshUtilTimerStart(JsSysTime period) {
@@ -1689,15 +1689,15 @@ void jshUtilTimerDisable() {
     hardware_alarm_cancel((uint)rpUtilTimerAlarmNum);
 }
 
-// Report the active RP2040 hardware-PWM token for utility-timer analog output.
-// RP2040 has no DAC and no board pinInfo timer entries to query here.
+// Report the active RP2 hardware-PWM token for utility-timer analog output.
+// RP2 has no DAC and no board pinInfo timer entries to query here.
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
   if (!rpPinIsValid(pin)) return JSH_NOTHING;
   return rpPinFunction[pin];
 }
 
 // Utility-timer waveform output ultimately feeds a 16-bit duty value back into
-// the already-configured RP2040 PWM slice/channel selected for this pin.
+// the already-configured RP2 PWM slice/channel selected for this pin.
 void jshSetOutputValue(JshPinFunction func, int value) {
   Pin pin = rpPinFromPwmFunction(func);
   if (!rpPinIsValid(pin)) return;
@@ -1769,7 +1769,7 @@ unsigned int jshGetRandomNumber() {
 
 unsigned int jshSetSystemClock(JsVar *options) {
   NOT_USED(options);
-  // RP2040 clock control is deliberately deferred for now. Returning 0 matches
+  // RP2 clock control is deliberately deferred for now. Returning 0 matches
   // the core Espruino contract for an unsupported E.setClock implementation.
   return 0;
 }
