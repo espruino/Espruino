@@ -718,6 +718,8 @@ endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF AB
 
 all: 	 proj
 # =========================================================================
+PININFOFILE=$(GENDIR)/jspininfo
+
 ifneq ($(FAMILY),)
 include make/family/$(FAMILY).make
 endif
@@ -728,7 +730,6 @@ ifdef USB
 DEFINES += -DUSB
 endif
 
-PININFOFILE=$(GENDIR)/jspininfo
 SOURCES += $(PININFOFILE).c
 WRAPPERSOURCES += $(ESPRUINO_WRAPPERSOURCES)
 SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
@@ -895,8 +896,8 @@ else ifdef ESP32_IDF4
 include make/targets/ESP32_IDF4.make
 else ifdef ESP32
 include make/targets/ESP32.make
-else ifdef RP2_FAMILY
-include make/common/RP2XXX.make
+else ifeq ($(FAMILY),RP2XXX)
+# build rules come from make/family/RP2XXX.make (delegated to the Pico SDK)
 else ifdef ESP8266
 include make/targets/ESP8266.make
 else ifdef ESPR_EMBED

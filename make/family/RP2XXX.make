@@ -1,22 +1,40 @@
-# Shared build for the Raspberry Pi RP2xxx families.
+# Shared build for the Raspberry Pi RP2xxx family (RP2040, RP2350).
 #
 # This is a delegated build: we generate a CMakeLists.txt from Espruino's SOURCES
 # and INCLUDE, then hand compiling, linking, crt0/boot2 and the linker script to
-# the Pico SDK. Families set RP2_FAMILY before this is included; the board's
-# build.makefile supplies PICO_BOARD (the Pico SDK board header to use).
+# the Pico SDK. The chip comes from the board's chip.part (CHIP) and selects the
+# few per-chip bits below; the board's build.makefile supplies PICO_BOARD (the
+# Pico SDK board header to use).
 
-ifndef RP2_FAMILY
-$(error RP2_FAMILY is not set)
-endif
 ifndef PICO_BOARD
 $(error PICO_BOARD is not set - add "PICO_BOARD?=<sdk board>" to the board's build.makefile)
 endif
 
-RP2_CMAKE_DIR := $(BINDIR)/$(RP2_FAMILY)
+# ---------------------------------------------------------------- per chip ---
+ifeq ($(CHIP),RP2040)
+RP2040 = 1
+RP2_CHIP = rp2040
+else ifeq ($(CHIP),RP2350)
+RP2350 = 1
+RP2_CHIP = rp2350
+else
+$(error Unknown RP2XXX chip "$(CHIP)" - expected RP2040 or RP2350)
+endif
+
+# ------------------------------------------------------------ common build ---
+DEFINES += -D$(CHIP)=1 -DARM -DESPR_DEFINES_ON_COMMANDLINE
+INCLUDE += -I$(ROOT)/targets/rp2xxx
+INCLUDE += -I$(ROOT)/targetlibs/arm
+
+SOURCES += targets/rp2xxx/main.c \
+targets/rp2xxx/jshardware.c \
+targets/rp2xxx/usb_descriptors.c
+
+RP2_CMAKE_DIR := $(BINDIR)/$(RP2_CHIP)
 RP2_CMAKE_BUILD_DIR := $(RP2_CMAKE_DIR)/build
 RP2_CMAKEFILE := $(RP2_CMAKE_DIR)/CMakeLists.txt
 RP2_BUILD_STAMP := $(RP2_CMAKE_BUILD_DIR)/.build_stamp
-RP2_TARGET := espruino_$(RP2_FAMILY)
+RP2_TARGET := espruino_$(RP2_CHIP)
 
 RP2_SDK_LIBS ?= pico_stdlib pico_unique_id pico_rand hardware_adc hardware_i2c \
 hardware_pwm hardware_spi pico_flash tinyusb_device tinyusb_board tinyusb_additions

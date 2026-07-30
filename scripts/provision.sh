@@ -44,8 +44,7 @@ if [ "$BOARDNAME" = "ALL" ]; then
   PROVISION_STM32F1=1
   PROVISION_STM32F4=1
   PROVISION_STM32L4=1
-  PROVISION_RP2040=1
-  PROVISION_RP2350=1
+  PROVISION_RP2XXX=1
   PROVISION_RASPBERRYPI=1
   PROVISION_EMSCRIPTEN=1
   PROVISION_EMSCRIPTEN2=1
@@ -257,7 +256,7 @@ if [ "$PROVISION_SAMD" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
-if [ "$PROVISION_RP2040" = "1" ] || [ "$PROVISION_RP2350" = "1" ]; then
+if [ "$PROVISION_RP2XXX" = "1" ]; then
     echo "===== RP2XXX"
     ARM=1
     RP2_SDK_VERSION="2.1.1"

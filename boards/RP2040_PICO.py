@@ -24,7 +24,6 @@ info = {
       "GRAPHICS"
     ],
     "makefile": [
-      "DEFINES+=-DRP2040=1",
       "DEFINES+=-DUSE_FONT_6X8",
       "PICO_BOARD?=pico" # Pico SDK board header (boards/pico.h)
     ]
@@ -33,7 +32,7 @@ info = {
 
 chip = {
   "part": "RP2040",
-  "family": "RP2040",
+  "family": "RP2XXX",
   "package": "QFN56",
   "ram": 264,
   "flash": 2048,

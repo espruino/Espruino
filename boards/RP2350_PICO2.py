@@ -42,8 +42,8 @@ info = {
 };
 
 chip = {
-  'part'    : "RP2350A",
-  'family'  : "RP2350",
+  'part'    : "RP2350",
+  'family'  : "RP2XXX",
   'package' : "QFN60",
   'ram'   : 520,
   'flash' : 4096,  # 4MB external QSPI flash, memory-mapped (XIP) at 0x10000000
