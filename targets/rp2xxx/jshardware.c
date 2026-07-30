@@ -124,11 +124,11 @@ typedef struct {
   const uint8_t *data;
 } RpFlashProgramOp;
 
+static bool rpPinIsValid(Pin pin);
+
 // VBUS presence is a physical USB-cable signal, not the same thing as an open
 // CDC session. RP2 uses it to distinguish "host closed WebIDE" from "USB
 // cable genuinely went away" when deciding whether console fallback is allowed.
-static bool rpPinIsValid(Pin pin);
-
 static bool rpUsbVbusPresent(void) {
 #ifdef USB
 #ifdef PICO_VBUS_PIN
