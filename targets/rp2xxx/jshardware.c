@@ -710,11 +710,25 @@ static void CALLED_FROM_INTERRUPT rpWatchBank0Irq(void) {
   }
 }
 
+static bool rpPinGetOutLevel(Pin pin) {
+  uint gpio = rpPinToGpio(pin);
+  return BITFIELD_GET(jshPinOpendrain, pin)
+           ? !gpio_is_dir_out(gpio) // open-drain: floating is high
+           : gpio_get_out_level(gpio);
+}
+
 static void rpPinApplyState(Pin pin, JshPinState state) {
   if (!rpPinIsValid(pin)) return;
   uint gpio = rpPinToGpio(pin);
 
-  gpio_init(gpio);
+  // core re-applies the state on every write, so don't disturb the pad here
+  bool level = rpPinGetOutLevel(pin);
+  if (state & JSHPINSTATE_PIN_IS_ON) level = true;
+
+  if (gpio_get_function(gpio) != GPIO_FUNC_SIO) {
+    gpio_set_dir(gpio, GPIO_IN); // don't drive a stale latch
+    gpio_set_function(gpio, GPIO_FUNC_SIO);
+  }
   gpio_disable_pulls(gpio);
   BITFIELD_SET(jshPinOpendrain, pin, 0);
 
@@ -724,8 +738,8 @@ static void rpPinApplyState(Pin pin, JshPinState state) {
     case JSHPINSTATE_AF_OUT_OPENDRAIN: // driven by a peripheral, which does its own open-drain
     case JSHPINSTATE_USART_OUT:
     case JSHPINSTATE_DAC_OUT:
+      gpio_put(gpio, level); // level first, so enabling the driver doesn't glitch low
       gpio_set_dir(gpio, GPIO_OUT);
-      gpio_put(gpio, (state & JSHPINSTATE_PIN_IS_ON) ? 1 : 0);
       break;
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
@@ -733,8 +747,13 @@ static void rpPinApplyState(Pin pin, JshPinState state) {
       BITFIELD_SET(jshPinOpendrain, pin, 1);
       if ((state & JSHPINSTATE_MASK) == JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP)
         gpio_pull_up(gpio);
-      gpio_put(gpio, 0);
-      gpio_set_dir(gpio, (state & JSHPINSTATE_PIN_IS_ON) ? GPIO_IN : GPIO_OUT);
+      if (level) {
+        gpio_set_dir(gpio, GPIO_IN); // float before dropping the latch
+        gpio_put(gpio, 0);
+      } else {
+        gpio_put(gpio, 0);
+        gpio_set_dir(gpio, GPIO_OUT);
+      }
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP:
       gpio_set_dir(gpio, GPIO_IN);
@@ -1180,7 +1199,13 @@ void jshPinSetState(Pin pin, JshPinState state) {
 
 JshPinState jshPinGetState(Pin pin) {
   if (!rpPinIsValid(pin)) return JSHPINSTATE_UNDEFINED;
-  return rpPinState[pin];
+  JshPinState state = rpPinState[pin] & JSHPINSTATE_MASK;
+  if (JSHPINSTATE_IS_OUTPUT(state)) {
+    bool on = rpPinGetOutLevel(pin);
+    if (pinInfo[pin].port & JSH_PIN_NEGATED) on = !on;
+    if (on) state |= JSHPINSTATE_PIN_IS_ON;
+  }
+  return state;
 }
 
 // -----------------------------------------------------------------------------
