@@ -1777,6 +1777,38 @@ JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2
   return jsvLockAgain(parent);
 }
 
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setOffset",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_setOffset",
+  "params" : [
+    ["x","int","X offset"],
+    ["y","int","Y offset"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+[2v30+] Sets the offset for subsequent drawing operations. For example:
+
+```
+g.drawString("Hello", 50, 100); // Draws at 50,100
+g.setOffset(10, 20);
+g.drawString("Hello", 40, 80); // Also draws at 50,100
+```
+
+The offset will be reset to 0 if `g.reset()` is called, or if `g.setOffset()` is called again
+(subsequent calls to g.setOffset() are not additive).
+*/
+JsVar *jswrap_graphics_setOffset(JsVar *parent, int x, int y) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  gfx.data.offsetX = (short)x;
+  gfx.data.offsetY = (short)y;
+  graphicsSetVar(&gfx);
+  return jsvLockAgain(parent);
+}
+
 
 /*JSON{
   "type" : "method",

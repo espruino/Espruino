@@ -114,6 +114,7 @@ typedef struct {
   unsigned int fgColor, bgColor; ///< current foreground and background colors
   unsigned short fontSize; ///< See JSGRAPHICS_FONTSIZE_ constants
   short cursorX, cursorY; ///< current cursor positions
+  short offsetX, offsetY; ///< offset to apply to all coordinates
 #ifndef SAVE_ON_FLASH
   unsigned char fontAlignX : 2;
   unsigned char fontAlignY : 2;
