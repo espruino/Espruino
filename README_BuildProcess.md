@@ -188,6 +188,10 @@ These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 * `ESPR_NO_PRETOKENISE` - Don't include code to pretokenise functions marked with `"ram"` - code pretokenised in the IDE can still be executed
 * `ESPR_NO_PASSWORD` - Disable password protection on the console (E.setPassword/E.lockConsole)
 
+These are used for ESP32:
+
+* `ESP_STACK_SIZE=25000` - the stack size allocated for the Espruino task
+* `ESP_HEAP_SIZE=40000` - how much free heap to leave (ESP32 builds change the amount of variables depending on free RAM, but leave enough heap eg for HTTPS)
 
 ### chip
 

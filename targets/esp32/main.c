@@ -20,6 +20,10 @@
 #include "jswrap_wifi.h" // jswrap_wifi_restore
 #include "jswrapper.h"
 
+#ifndef ESP_HEAP_SIZE
+#define ESP_HEAP_SIZE 40000
+#endif
+
 
 #ifdef BLUETOOTH
 #include "libs/bluetooth/bluetooth.h"
@@ -90,7 +94,7 @@ static void espruinoTask(void *data) {
   jswHWInit();
 
 
-  heapVars = (esp_get_free_heap_size() - 40000) / sizeof(JsVar);  //calculate space for jsVars
+  heapVars = (esp_get_free_heap_size() - ESP_HEAP_SIZE) / sizeof(JsVar);  //calculate space for jsVars
 
   //Limit number of JsVars to maximum addressable. Can otherwise be
   //breached by builds with modules removed or boards using PSRAM.
