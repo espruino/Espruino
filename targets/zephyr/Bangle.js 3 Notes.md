@@ -152,17 +152,19 @@ PF9    - NC
 * Accelerometer
 * Magnetometer
 * Touchscreen press + swipe gestures.
+* Touchscreen 'tap' handlers
+* Using external Flash memory
 
 ## TODO
 
 * Touchscreen sometimes misses lift events (touch IRQ has been missed by PY32)
-* Use external Flash memory
 * Graphics incomplete partial updates
 * Gyro
 * Pressure sensor
 * BME690 gas sensing
 * LCD update speed (12fps currently, not async)
-* Touchscreen 'tap' handlers
+* WiFi
+* Use external flash in QSPI mode (and ensure it's set as 64mbyte)
 * ... much more
 
 ## Testing

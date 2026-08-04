@@ -105,12 +105,12 @@ chip = {
     'page_size' : 4096,
     'flash_available' : 1024,
     # internal flash - debug only
-    'pages' : 64,
-    'address' : (357-64)*4096, # (357->384 seem protected?)
-    # external flash
+    #'pages' : 64,
+    #'address' : (357-64)*4096, # (357->384 seem protected?)
 
-    #'address' : 0x60000000, # put this in external spiflash (see below)
-    #'pages' : 2048, # Entire 8MB of external flash
+    # external flash
+    'address' : 0x60000000, # put this in external spiflash (see below)
+    'pages' : 2048, # Entire 8MB of external flash
   },
 };
 

@@ -80,7 +80,7 @@ k_tid_t main_thread_id;
 // Get the device binding for the console UART (usually "zephyr,console")
 const struct device *serial1_dev = DEVICE_DT_GET(DT_NODELABEL(uart20)); // was using DT_CHOSEN(zephyr_console)
 const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi30));
-const struct device *flash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
+const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
 
 struct spi_config spi1_config = {
@@ -261,11 +261,11 @@ void jshInit() {
   jshReset();
 
   // Ext flash
-	/*if (!device_is_ready(extflash_dev)) {
-		printf("%s: device not ready\n", extflash_dev->name);
-		return;
-	}
-  uint8_t id[3];
+  if (!device_is_ready(extflash_dev)) {
+    jsiConsolePrintf("%s: device not ready\n", extflash_dev->name);
+    return;
+  }
+  /*uint8_t id[3];
 	int err = flash_read_jedec_id(extflash_dev, id);
 	if (err == 0) {
 		printf("jedec-id = [%02x %02x %02x];\n",
@@ -676,7 +676,7 @@ JsVar *jshFlashGetFree() {
   return jsFreeFlash;
 }
 const struct device *jshFlashGetDevice(uint32_t *addr) {
-  const struct device *flash = flash_dev;
+  const struct device *flash = intflash_dev;
   if (*addr >= SPIFLASH_BASE && *addr < (SPIFLASH_BASE+SPIFLASH_LENGTH)) {
     *addr -= SPIFLASH_BASE;
     flash = extflash_dev;
