@@ -30,6 +30,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jstimer.h"
+#include "jswrap_bluetooth.h"
 
 ble_uuid_t uart_service_uuid = {
   .type = BLE_UUID_TYPE_128,
@@ -138,10 +139,19 @@ int getIndexFromGatts_if(esp_gatt_if_t gatts_if){
   }
   return -1;
 }
+// Is anything connected?
 bool gatts_if_connected(){
   bool r = false;
   for(int i = 0; i < ble_service_cnt; i++){
     if(gatts_service[i].connected) r = true;
+  }
+  return r;
+}
+// Is any device connected to us? Ignore outgoing connections
+bool gatts_if_periph_connected(){
+  bool r = false;
+  for(int i = 0; i < ble_service_cnt; i++){
+    if(gatts_service[i].isPeripheral && gatts_service[i].connected) r = true;
   }
   return r;
 }
@@ -197,25 +207,28 @@ static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt
   int g = getIndexFromGatts_if(gatts_if);
   esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
   if(g >= 0){
-    JsVar *args[1];
     gatts_service[g].conn_id = param->connect.conn_id;
     memcpy(gatts_service[g].bda, param->connect.remote_bda, ESP_BD_ADDR_LEN);
     gatts_service[g].connected = true;
     gatts_service[g].mtu = 23; // default
+    // This is the only way it seems we can tell at this point if we're a peripheral or central.
+    // ..if we were trying to connect to something else and we did, then we're a central.
+    gatts_service[g].isPeripheral = !bleInTask(BLETASK_CONNECT);
+    if (gatts_service[g].isPeripheral) {
+      // If UART enabled, move to it
+      if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED)) {
+        jsiClearInputLine(false); // clear the input line on connect
+        jsiSetConsoleDevice(EV_BLUETOOTH, false);
+      }
 
-    ble_gap_addr_t ble_addr;
-    espbtaddr_TO_bleaddr(param->connect.remote_bda, 5/*force an unknown type so '' is reported*/, &ble_addr);
-
-    // If UART enabled, move to it
-    if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED)) {
-      jsiClearInputLine(false); // clear the input line on connect
-      jsiSetConsoleDevice(EV_BLUETOOTH, false);
+      ble_gap_addr_t ble_addr;
+      espbtaddr_TO_bleaddr(param->connect.remote_bda, 5/*force an unknown type so '' is reported*/, &ble_addr);
+      JsVar *args[1];
+      args[0] = bleAddrToStr(ble_addr);
+      m_peripheral_conn_handle = 0x01;
+      emitNRFEvent(BLE_CONNECT_EVENT,args,1); // TODO: it might be better to use the BLEP_CONNECTED handler
+      if(gatts_service[g].serviceFlag == BLE_SERVICE_NUS) uart_gatts_connected = true;
     }
-
-    args[0] = bleAddrToStr(ble_addr);
-    m_peripheral_conn_handle = 0x01;
-    emitNRFEvent(BLE_CONNECT_EVENT,args,1); // TODO: it might be better to use the BLEP_CONNECTED handler
-    if(gatts_service[g].serviceFlag == BLE_SERVICE_NUS) uart_gatts_connected = true;
   }
 }
 // Called when something disconnects from us
@@ -224,22 +237,24 @@ static void gatts_disconnect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
   int g = getIndexFromGatts_if(gatts_if);
   esp_err_t r;
   if(g >= 0){
-    JsVar *args[1];
     gatts_service[g].connected = false;
-    if(!gatts_if_connected()){
-      r = bluetooth_gap_startAdvertising(true);
+    if (gatts_service[g].isPeripheral) {
+      if(!gatts_if_periph_connected()){
+        r = bluetooth_gap_startAdvertising(true);
+      }
+      // if we were on bluetooth and we disconnected, clear the input line so we're fresh next time (#2219)
+      if (jsiGetConsoleDevice()==EV_BLUETOOTH) {
+        jsiClearInputLine(false);
+        if (!jsiIsConsoleDeviceForced())
+          jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
+      }
+      // TODO: Maybe use BLEP_DISCONNECTED handler rather than doing this here?
+      JsVar *args[1];
+      args[0] = jsvNewFromInteger(param->disconnect.reason);
+      m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID;
+      emitNRFEvent(BLE_DISCONNECT_EVENT,args,1);
+      if(gatts_service[g].serviceFlag == BLE_SERVICE_NUS) uart_gatts_connected = true;
     }
-    // if we were on bluetooth and we disconnected, clear the input line so we're fresh next time (#2219)
-    if (jsiGetConsoleDevice()==EV_BLUETOOTH) {
-      jsiClearInputLine(false);
-      if (!jsiIsConsoleDeviceForced())
-        jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
-    }
-    // TODO: Maybe use BLEP_DISCONNECTED handler rather than doing this here?
-    args[0] = jsvNewFromInteger(param->disconnect.reason);
-    m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID;
-    emitNRFEvent(BLE_DISCONNECT_EVENT,args,1);
-    if(gatts_service[g].serviceFlag == BLE_SERVICE_NUS) uart_gatts_connected = true;
   }
 }
 void gatts_reg_app(){

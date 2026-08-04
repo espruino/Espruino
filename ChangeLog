@@ -29,6 +29,7 @@
             Ensure that after defrag, flat strings stay 4-byte aligned (fix #2726)
             Add Date.getUTC* methods (on all but the most flash-constrained devices - adds 300b)
             Add Graphics.setOffset (to allow subsequent draw operations to be shifted) (fix #2111)
+            ESP32: Fix connected/disconnected events that were fired even for central bluetooth connections
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes
