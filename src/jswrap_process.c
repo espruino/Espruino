@@ -23,6 +23,10 @@
 #ifdef PUCKJS
 #include "jswrap_puck.h" // process.env
 #endif
+#ifdef ESP32
+#include <esp_system.h> // process.memory
+#include <esp_heap_caps.h> // process.memory
+#endif
 
 /*JSON{
   "type" : "class",
@@ -274,6 +278,10 @@ JsVar *jswrap_process_memory(JsVar *gc) {
     jsvObjectSetIntChild(obj, "flash_binary_end", (JsVarInt)(unsigned int)&LINKER_ETEXT_VAR);
     jsvObjectSetIntChild(obj, "flash_code_start", (JsVarInt)FLASH_SAVED_CODE_START);
     jsvObjectSetIntChild(obj, "flash_length", (JsVarInt)FLASH_TOTAL);
+#endif
+#ifdef ESP32
+    jsvObjectSetIntChild(tx, "free_heap", esp_get_free_heap_size());
+    jsvObjectSetIntChild(tx, "largest_block", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
 #endif
   }
   return obj;
