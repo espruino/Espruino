@@ -49,8 +49,9 @@ static esp_ble_scan_params_t ble_scan_params =   {
   .scan_type              = BLE_SCAN_TYPE_ACTIVE,
   .own_addr_type          = BLE_ADDR_TYPE_PUBLIC,
   .scan_filter_policy     = BLE_SCAN_FILTER_ALLOW_ALL,
-  .scan_interval          = 0x10, // default = 0x10 (10ms)
-  .scan_window            = 0x10  // default = 0x10 (10ms)
+  .scan_interval          = 0x00A0, // 0xA0 = 160 * 0.625ms = 100 ms
+  .scan_window            = 0x0050, // 0x50 = 80  * 0.625ms = 50 ms
+  .scan_duplicate         = BLE_SCAN_DUPLICATE_DISABLE // allow duplicates
 };
 
 static esp_ble_adv_data_t adv_data = {
@@ -147,10 +148,13 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 
 void bluetooth_gap_setScan(bool enable, bool activeScan){
   esp_err_t status;
-  ble_scan_params.scan_type = activeScan ? BLE_SCAN_TYPE_ACTIVE : BLE_SCAN_TYPE_PASSIVE;
-  status = esp_ble_gap_set_scan_params(&ble_scan_params);
-  if (status){ jsWarn("gap set scan error code = %x", status);return;}
-  if(enable == true){
+  if (enable){
+    // only set scan params when enabling!
+    ble_scan_params.scan_type = activeScan ? BLE_SCAN_TYPE_ACTIVE : BLE_SCAN_TYPE_PASSIVE;
+    status = esp_ble_gap_set_scan_params(&ble_scan_params);
+    if (status)
+      return jsWarn("gap set scan error code = %x", status);
+    // enable scan
     status = esp_ble_gap_start_scanning(0);
     if (status != ESP_OK) jsWarn("esp_ble_gap_start_scanning: rc=%d", status);
   } else {
