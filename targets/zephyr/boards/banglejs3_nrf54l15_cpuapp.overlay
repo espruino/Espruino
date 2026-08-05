@@ -68,7 +68,7 @@
 	};
  	zephyr,user {
 		/* Reference our external flash node */
-		ext-flash = &xt25x64;
+		ext-flash = &extflash;
 	};
 };
 
@@ -121,13 +121,13 @@ jedec-id = [0b 65 1a];
 */
 
 &sqspi {
-	xt25x64: xt25x64@0 {
-		// our part is the XTX XT25x64D
+	extflash: extflash@0 {
+		// our part is the XTX XT25W512BWSIGA
 		compatible = "mxicy,mx25r", "jedec,mspi-nor";
 		status = "okay";
 		reg = <0>;
 		jedec-id = [0b 65 1a];
-		quad-enable-requirements = "S1B6";
+		quad-enable-requirements = "S2B1v1";
 		/* Basic Flash Parameter Table (BFPT) 9-word / 36-byte array for 64Mbit NOR */
 		sfdp-bfp = [
 			e5 20 fb ff  ff ff ff 1f  44 eb 08 6b  08 3b 80 bb
@@ -135,7 +135,7 @@ jedec-id = [0b 65 1a];
 			10 d8 00 ff  4f c2 11 ff  82 e4 14 62  a8 cc 68 46
 			7a 75 7a 75  f7 c7 d5 5c  19 b6 4d ff  e8 50 f9 a5
 		];
-		size = <67108864>; /* 64 Mb / 8 MB - FIXME Bangle.js is 64MB */
+		size = <536870912>; /* 512 Mbit / 64 MB */
 		has-dpd;
 		t-enter-dpd = <10000>;
 		t-exit-dpd = <35000>;
@@ -144,8 +144,8 @@ jedec-id = [0b 65 1a];
 
 		mspi-max-frequency = <DT_FREQ_M(8)>; // 16+ doesn't work
 		//mspi-io-mode = "MSPI_IO_MODE_QUAD_1_4_4"; // works for reads, but not writes
-		//mspi-io-mode = "MSPI_IO_MODE_QUAD_1_1_4";
-		mspi-io-mode = "MSPI_IO_MODE_SINGLE"; // FIXME: only this works right now - quad would be much better
+		mspi-io-mode = "MSPI_IO_MODE_QUAD_1_1_4";
+		//mspi-io-mode = "MSPI_IO_MODE_SINGLE"; // fallback
 		mspi-data-rate = "MSPI_DATA_RATE_SINGLE";
 		mspi-hardware-ce-num = <1>;
 		mspi-cpp-mode = "MSPI_CPP_MODE_0";
