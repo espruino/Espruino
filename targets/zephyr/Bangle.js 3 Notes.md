@@ -74,6 +74,12 @@ P2.09    LiPo Charge detect
 P2.10    Torch RGB (neopixel)
 ```
 
+### Power usage debugging
+
+```JS
+for (i=0;i<=C10;i++) print(Pin(i), E.toJS(Pin(i).getInfo()))
+```
+
 
 ## PY32
 
@@ -143,6 +149,37 @@ PF6    - Vibration EN                              => V8
 PF9    - NC
 ```
 
+## WiFi
+
+Using ESP8684H4X
+
+Firmware is ESP32C2-AT from https://github.com/espressif/esp-at/releases
+
+```JS
+Serial2.on("data",print);
+V11.set(); // normal mode
+V10.set(); // on
+// 76800 baud: 'invalid header: 0xffffffff' if not flashed
+// if flashed, outputs at 115200
+V10.reset();
+```
+
+
+```JS
+// firmware update
+pinMode(C8,"input"); // don't force USART
+V11.reset(); // bootloader mode
+V10.set(); // on
+// then on PC with UART connection
+esptool --chip esp32c2 --port /dev/ttyUSB0 --baud 921600 \
+  write_flash -z --flash_mode dio --flash_freq 60m --flash_size 4MB \
+  0x0 ESP32-C2-4MB-AT-V4.1.1.0/factory/factory_ESP32C2-4MB.bin
+// finally
+V10.reset(); // off
+```
+
+
+
 ## Working
 
 * Simple bluetooth comms
@@ -153,25 +190,24 @@ PF9    - NC
 * Magnetometer
 * Touchscreen press + swipe gestures.
 * Touchscreen 'tap' handlers
-* Using external Flash memory
+* Using external Flash memory in QSPI mode (and 64mbyte)
 
 ## TODO
 
 * Touchscreen sometimes misses lift events (touch IRQ has been missed by PY32)
-* Graphics incomplete partial updates
+* Graphics incomplete partial updates (PY32 skips if SPI transfer ends at wrong time)
 * Gyro
 * Pressure sensor
 * BME690 gas sensing
 * LCD update speed (12fps currently, not async)
 * WiFi
-* Use external flash in QSPI mode (and ensure it's set as 64mbyte)
 * ... much more
 
 ## Testing
 
 * Are accelerometer/gyro axes correct? (check on in-device PCB)
 
-```
+```JS
 // 4 bpp test
 for (i=0;i<4;i++) g.setColor(i/4,i/4,i/4).fillRect(i*60,0,(i+1)*60,239);
 // full dither test

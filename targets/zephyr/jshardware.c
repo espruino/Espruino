@@ -24,9 +24,18 @@
 #include "bluetooth.h"
 #include <time.h>
 
+#ifdef BANGLEJS3
+#include "jswrap_bangle.h" // for jswrap_banglejs_touchHandler
+#include "lcd_memlcd.h" // for lcdMemLCD_callWhenIdle
+#include "graphics.h" // for error screen
+#endif
+
 #include "banglejs3_py32/src/const.h"
 
 #include <zephyr/kernel.h>
+#include <zephyr/arch/cpu.h>
+#include <zephyr/arch/arm/exception.h> /* Defines z_arch_esf_t for ARM Cortex-M */
+//#include <zephyr/logging/log.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/spi.h>
 #include <zephyr/device.h>
@@ -79,6 +88,7 @@ k_tid_t main_thread_id;
 
 // Get the device binding for the console UART (usually "zephyr,console")
 const struct device *serial1_dev = DEVICE_DT_GET(DT_NODELABEL(uart20)); // was using DT_CHOSEN(zephyr_console)
+const struct device *serial2_dev = DEVICE_DT_GET(DT_NODELABEL(uart21));
 const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi30));
 const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
@@ -99,20 +109,44 @@ struct spi_config spi1_config = {
 Pin eventFlagsToPin[ESPR_EXTI_COUNT];
 static struct gpio_callback eventData[ESPR_EXTI_COUNT]; // used for handling zephyr events
 // ----------------------------------------------------------------------------
+const struct device *jshToZephyrPort(JsvPinInfoPort port) {
+  switch (port&JSH_PORT_MASK) {
+    case JSH_PORTA: return DEVICE_DT_GET(DT_NODELABEL(gpio0));
+    case JSH_PORTB: return DEVICE_DT_GET(DT_NODELABEL(gpio1));
+    case JSH_PORTC: return DEVICE_DT_GET(DT_NODELABEL(gpio2));
+    default: assert(0); return 0;
+  }
+}
+IOEventFlags jshDeviceToEventFlags(const struct device *dev) {
+  if (dev==serial1_dev) return EV_SERIAL1;
+  if (dev==serial2_dev) return EV_SERIAL2;
+
+  assert(0);
+  return EV_NONE;
+}
+const struct device *jshEventFlagsToDevice(IOEventFlags dev) {
+  if (dev==EV_SERIAL1) return serial1_dev;
+  if (dev==EV_SERIAL2) return serial2_dev;
+  assert(0);
+  return NULL;
+}
+
+
 
 void serial_cb(const struct device *dev, void *user_data) {
+  IOEventFlags espruinoDev = jshDeviceToEventFlags(dev);
+  if (espruinoDev==EV_NONE) return;
   uint8_t c[32];
-  // TODO: check serial1_dev?
   if (!uart_irq_update(dev)) return;
 
   if (uart_irq_rx_ready(dev)) {
     int chars = 0;
     while ((chars = uart_fifo_read(dev, c, sizeof(c))) > 0) {
-      jshPushIOCharEvents(EV_SERIAL1, c, chars);
+      jshPushIOCharEvents(espruinoDev, c, chars);
     }
   }
   if (uart_irq_tx_ready(dev)) {
-    int ch = jshGetCharToTransmit(EV_SERIAL1);
+    int ch = jshGetCharToTransmit(espruinoDev);
     if (ch >= 0) {
       // Send the next byte
       c[0] = ch;
@@ -124,14 +158,7 @@ void serial_cb(const struct device *dev, void *user_data) {
   }
 }
 
-const struct device *jshToZephyrPort(JsvPinInfoPort port) {
-  switch (port&JSH_PORT_MASK) {
-    case JSH_PORTA: return DEVICE_DT_GET(DT_NODELABEL(gpio0));
-    case JSH_PORTB: return DEVICE_DT_GET(DT_NODELABEL(gpio1));
-    case JSH_PORTC: return DEVICE_DT_GET(DT_NODELABEL(gpio2));
-    default: assert(0); return 0;
-  }
-}
+
 
 // ----------------------------------------------------------------------------
 #define PY32_OUT_SHIFT 4
@@ -210,7 +237,7 @@ void jshVirtualPinSetState(Pin pin, JshPinState state) {
 }
 
 JshPinState jshVirtualPinGetState(Pin pin) {
-  return IS_PIN_A_LED(pin) ? JSHPINSTATE_GPIO_OUT : JSHPINSTATE_GPIO_IN;
+  return (IS_PIN_A_LED(pin) ? JSHPINSTATE_GPIO_OUT : JSHPINSTATE_GPIO_IN) | (jshVirtualPinGetValue(pin)?JSHPINSTATE_PIN_IS_ON:0);
 }
 
 /// called when we're sure the LCD SPI interface is idle!
@@ -239,6 +266,82 @@ void jshVirtualPinIRQHandler(bool state, IOEventFlags flags) {
 
 // ----------------------------------------------------------------------------
 
+/* Override Zephyr's weak fatal error handler with something to write to the LCD */
+void k_sys_fatal_error_handler(unsigned int reason, const struct arch_esf *esf) {
+    // name the error
+    char buf[20];
+  const char *reason_str = "UNKNOWN";
+  switch (reason) {
+  case K_ERR_CPU_EXCEPTION: reason_str = "CPU FAULT"; break;
+  case K_ERR_SPURIOUS_IRQ: reason_str = "SPURIOUS IRQ"; break;
+  case K_ERR_STACK_CHK_FAIL: reason_str = "STACK OVERFLOW"; break;
+  case K_ERR_KERNEL_PANIC: reason_str = "KERNEL PANIC"; break;
+  case K_ERR_KERNEL_OOPS: reason_str = "KERNEL OOPS"; break;
+  // K_ERR_ARCH_START = 16
+  case 0x12: reason_str = "MEM INST"; break;
+  case 0x19: reason_str = "BUS FAULT"; break;
+  case 0x1A: reason_str = "USAGE FAULT"; break;
+  default:
+      strcpy(buf, "UNKNOWN 0x");
+      itostr(reason, &buf[10], 16);
+      reason_str = buf;
+      break;
+  }
+
+  // crash screen
+  JsGraphics *gfx = &graphicsInternal;
+  graphicsStructResetState(gfx);
+  graphicsClear(gfx);
+  int y=60;
+  graphicsDrawString(gfx,60,y+=10,"Espruino "JS_VERSION);
+  graphicsDrawString(gfx,60,y+=10,ESPR_STRINGIFY(GIT_COMMIT));
+  graphicsDrawString(gfx,60,y+=20,reason_str);
+  /* Exception Stack Frame (PC and LR registers) */
+  if (esf != NULL) {
+    strcpy(buf, "0x");
+    itostr_extra(esf->basic.pc, &buf[2], false, 16);
+    graphicsDrawString(gfx,60,y+=20,"PC");
+    graphicsDrawString(gfx,80,y,buf);
+    itostr_extra(esf->basic.lr, &buf[2], false, 16);
+    graphicsDrawString(gfx,60,y+=10,"LR");
+    graphicsDrawString(gfx,80,y,buf);
+    itostr_extra(esf->basic.ip, &buf[2], false, 16);
+    graphicsDrawString(gfx,60,y+=10,"IP");
+    graphicsDrawString(gfx,80,y,buf);
+    itostr_extra(esf->basic.r0, &buf[2], false, 16);
+    graphicsDrawString(gfx,60,y+=10,"r0");
+    graphicsDrawString(gfx,80,y,buf);
+    itostr_extra(esf->basic.r1, &buf[2], false, 16);
+    graphicsDrawString(gfx,60,y+=10,"r1");
+    graphicsDrawString(gfx,80,y,buf);
+    itostr_extra(esf->basic.r2, &buf[2], false, 16);
+    graphicsDrawString(gfx,60,y+=10,"r2");
+    graphicsDrawString(gfx,80,y,buf);
+    itostr_extra(esf->basic.r3, &buf[2], false, 16);
+    graphicsDrawString(gfx,60,y+=10,"r3");
+    graphicsDrawString(gfx,80,y,buf);
+  }
+
+  //jshPinSetValue(LCD_BL, 1); // enable backlight
+  // Output to LCD (Direct SW Mode)
+  unsigned char *pixels = lcdMemLCD_getRowPtr(0)-1; // ignore row header
+  jshPY32Transfer(pixels, LCD_HEIGHT + ((LCD_WIDTH*LCD_HEIGHT*6) >> 3));
+
+  /* 4. Choose recovery path: Halt or Reset */
+  #if defined(CONFIG_REBOOT)
+      // Optionally wait 5 seconds so user can read screen, then reboot
+      k_busy_wait(5000000);
+      sys_reboot(SYS_REBOOT_COLD);
+  #else
+      // Or halt CPU execution indefinitely
+      for (;;) {
+          __NOP();
+      }
+  #endif
+}
+
+// ----------------------------------------------------------------------------
+
 void jshInit() {
   for (int i=0;i<ESPR_EXTI_COUNT;i++)
     eventFlagsToPin[i] = PIN_UNDEFINED;
@@ -246,11 +349,14 @@ void jshInit() {
   jshVirtualPinInitialise();
 #endif
   main_thread_id = k_current_get();
-  if (!device_is_ready(serial1_dev)) return;
-  // 1. Set the callback function
+  if (!device_is_ready(serial1_dev)) return jsWarn("serial1 not ready");
   uart_irq_callback_set(serial1_dev, serial_cb);
-  // 2. Enable the RX interrupt
   uart_irq_rx_enable(serial1_dev);
+
+  if (!device_is_ready(serial2_dev)) return jsWarn("serial2 not ready");
+  uart_irq_callback_set(serial2_dev, serial_cb);
+  uart_irq_rx_enable(serial2_dev);
+
   // SPI 1
   if (!device_is_ready(spi1_dev)) {
     jsWarn("spi30 not ready\n");
@@ -259,6 +365,10 @@ void jshInit() {
   jshInitDevices();
   // reset LCD/etc
   jshReset();
+  // disable Serial 2 initially
+  jshUSARTUnSetup(EV_SERIAL2);
+  // disable SPI1 (LCD) initially as we start it only when we want to update the LCD
+  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI
 
   // Ext flash
   if (!device_is_ready(extflash_dev)) {
@@ -368,16 +478,17 @@ JshPinState jshPinGetState(Pin pin) {
 #endif
   gpio_flags_t flags;
   gpio_pin_get_config(jshToZephyrPort(p->port), p->pin, &flags);
-  if (flags==GPIO_DISCONNECTED) return JSHPINSTATE_ADC_IN;
+  JshPinState on = jshPinGetValue(pin) ? JSHPINSTATE_PIN_IS_ON : 0;
+  if (flags==GPIO_DISCONNECTED) return on|JSHPINSTATE_ADC_IN;
   if (flags&GPIO_OUTPUT) {
-    if ((flags&(GPIO_OPEN_DRAIN|GPIO_PULL_UP)) == (GPIO_OPEN_DRAIN|GPIO_PULL_UP)) return JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP;
-    if (flags&GPIO_OPEN_DRAIN) return JSHPINSTATE_GPIO_OUT_OPENDRAIN;
-    return JSHPINSTATE_GPIO_OUT;
+    if ((flags&(GPIO_OPEN_DRAIN|GPIO_PULL_UP)) == (GPIO_OPEN_DRAIN|GPIO_PULL_UP)) return on|JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP;
+    if (flags&GPIO_OPEN_DRAIN) return on|JSHPINSTATE_GPIO_OUT_OPENDRAIN;
+    return on|JSHPINSTATE_GPIO_OUT;
   }
   if (flags&GPIO_INPUT) {
-    if (flags&GPIO_PULL_UP) return JSHPINSTATE_GPIO_IN_PULLUP;
-    if (flags&GPIO_PULL_DOWN) return JSHPINSTATE_GPIO_IN_PULLDOWN;
-    return JSHPINSTATE_GPIO_IN;
+    if (flags&GPIO_PULL_UP) return on|JSHPINSTATE_GPIO_IN_PULLUP;
+    if (flags&GPIO_PULL_DOWN) return on|JSHPINSTATE_GPIO_IN_PULLDOWN;
+    return on|JSHPINSTATE_GPIO_IN;
   }
   return JSHPINSTATE_UNDEFINED;
 }
@@ -525,7 +636,10 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
           const struct device *gpio_dev = jshToZephyrPort(p->port);
           gpio_init_callback(&eventData[i], jshPinWatchCallback, BIT(p->pin));
           gpio_add_callback(gpio_dev, &eventData[i]);
-          int ret = gpio_pin_interrupt_configure(gpio_dev, p->pin, GPIO_INT_EDGE_BOTH);
+          gpio_flags_t irqflags = GPIO_INT_EDGE_BOTH;
+          if (flags&JSPW_HIGH_SPEED) irqflags |= GPIO_INT_EDGE_BOTH;
+          else irqflags |= GPIO_INT_LEVEL_LOW|GPIO_INT_LEVEL_HIGH;
+          int ret = gpio_pin_interrupt_configure(gpio_dev, p->pin, irqflags);
           if (ret < 0) {
               jsiConsolePrintf("Failed to configure interrupt: %d\n", ret);
               return 0;
@@ -558,14 +672,25 @@ bool jshIsEventForPin(IOEventFlags eventFlags, Pin pin) {
 }
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  const struct device *dev = jshEventFlagsToDevice(device);
+  if (!dev) return;
+  pm_device_action_run(dev, PM_DEVICE_ACTION_RESUME);
+}
+
+void jshUSARTUnSetup(IOEventFlags device) {
+  const struct device *dev = jshEventFlagsToDevice(device);
+  if (!dev) return;
+  pm_device_action_run(dev, PM_DEVICE_ACTION_SUSPEND);
 }
 
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
-  if (device == EV_SERIAL1) {
+  if (device == EV_SERIAL1)
     uart_irq_tx_enable(serial1_dev); // kick IRQ for transmission
-  }
+  if (device == EV_SERIAL2)
+    uart_irq_tx_enable(serial2_dev); // kick IRQ for transmission
+
   if (device == EV_BLUETOOTH) {
     // FIXME: should ideally do this before packet TX
     void nus_transmit_string();
@@ -582,7 +707,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
   struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
   struct spi_buf_set rx_set = { .buffers = &rx_buf, .count = 1 };
   int err;
-  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_RESUME); // ensure we disconnect SPI!
+  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_RESUME); // restart SPI
   if (rx) err = spi_transceive(spi1_dev, &spi1_config, &tx_set, &rx_set);
   else err = spi_write(spi1_dev, &spi1_config, &tx_set);
   if (err < 0) {
@@ -590,6 +715,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
       jsWarn("SPI err %d\n",err);
       return false;
   }
+  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI when done
 
   // FIXME use spi_transceive_cb for async writes (and use CONFIG_SPI_ASYNC=y)
   if (callback) callback();
@@ -728,4 +854,30 @@ unsigned int jshSetSystemClock(JsVar *options) {
 /// Perform a proper hard-reboot of the device
 void jshReboot() {
   jsExceptionHere(JSET_ERROR, "Not implemented");
+}
+
+/* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
+void jsvGetProcessorPowerUsage(JsVar *devices) {
+  const struct device *devs;
+  size_t count = z_device_get_all_static(&devs);
+  for (size_t i = 0; i < count; i++) {
+    const struct device *dev = &devs[i];
+    enum pm_device_state state;
+
+    // Skip devices that don't support PM or fail state check
+    if (pm_device_state_get(dev, &state) != 0) {
+        continue;
+    }
+
+    // Print devices that are NOT suspended or off
+    if (state==PM_DEVICE_STATE_ACTIVE)
+      jsvObjectSetIntChild(devices,  dev->name, 1);
+    else {
+      const char *s = "?";
+      if (state == PM_DEVICE_STATE_SUSPENDED) s = "suspended";
+      if (state == PM_DEVICE_STATE_SUSPENDING) s = "suspending";
+      if (state == PM_DEVICE_STATE_OFF) s = "off";
+      jsvObjectSetStringChild(devices,  dev->name, s);
+    }
+  }
 }
