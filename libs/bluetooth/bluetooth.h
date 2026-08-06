@@ -31,7 +31,6 @@
 #include "ble.h"
 #define ESPR_MAX_ADVERTISEMENT_DATA  BLE_GAP_ADV_MAX_SIZE // on older SDKs we don't get extended advertising
 #endif
-#include "ble_advdata.h"
 
 /* Check for errors when in an IRQ, when we're pretty sure an error won't
  * cause a hard reset. Error is then reported outside of the IRQ without
@@ -56,15 +55,19 @@ typedef struct {
 #define BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE (3)
 #define BLE_GAP_ADV_MAX_SIZE (31)
 #define ESPR_MAX_ADVERTISEMENT_DATA  BLE_GAP_ADV_MAX_SIZE
+#define BLE_GAP_AD_TYPE_FLAGS 0x01
 #define BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE   0x02
 #define BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE         0x03
 #define BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE  0x06
 #define BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE        0x07
-#define BLE_GAP_AD_TYPE_SERVICE_DATA                        0x16
-#define BLE_GAP_AD_TYPE_SERVICE_DATA_128BIT_UUID            0x21
 #define BLE_GAP_AD_TYPE_SHORT_LOCAL_NAME                    0x08
 #define BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME                 0x09
+#define BLE_GAP_AD_TYPE_SERVICE_DATA                        0x16
+#define BLE_GAP_AD_TYPE_SERVICE_DATA_128BIT_UUID            0x21
+#define BLE_GAP_AD_TYPE_SOLICITED_SERVICE_UUIDS_16BIT       0x14
 #define BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA          0xFF
+#define BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE   0x05
+#define BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE   0x06
 #define BLE_UUID_TYPE_UNKNOWN (0)
 #define BLE_UUID_TYPE_BLE (1)
 #define BLE_UUID_TYPE_128 2
@@ -74,6 +77,7 @@ typedef struct {
 #define BLE_CCCD_VALUE_LEN 2
 #define BLE_GATT_HVX_NOTIFICATION 1 // flag in CCCD
 #define BLE_GATT_HVX_INDICATION 2 // flag in CCCD
+#define BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE                  0x1812
 #endif //!NRF5X (fudge NRF5X API for ESP32)
 
 #ifndef CENTRAL_LINK_COUNT /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
@@ -329,11 +333,6 @@ void jsble_set_tx_power(int8_t pwr);
 
 
 // ------------------------------------------------- lower-level utility fns
-
-#ifdef NRF5X
-/// Build advertising data struct to pass into @ref ble_advertising_init.
-void jsble_setup_advdata(ble_advdata_t *advdata);
-#endif
 
 #ifdef USE_NFC
 

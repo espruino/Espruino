@@ -25,6 +25,7 @@
 #include "jshardware.h"
 #include "jshardwareESP32.h"
 #include "bluetooth_utils.h"
+#include "jswrap_bluetooth.h"
 
 #define adv_config_flag      (1 << 0)
 #define scan_rsp_config_flag (1 << 1)
@@ -171,90 +172,6 @@ esp_err_t bluetooth_gap_startAdvertising(bool enable){
     return esp_ble_gap_stop_advertising();
 }
 
-int addAdvertisingData(uint8_t *advData,int pnt,int idx,JsVar *value){
-  int len = 0;
-  JSV_GET_AS_CHAR_ARRAY(dPtr,dLen,value);
-  if (!dPtr) return 0;
-  len = 4 + dLen;
-  advData[pnt++] = 3 + dLen;
-  advData[pnt++] = 22;
-  advData[pnt++] = idx & 255;
-  advData[pnt++] = idx >> 8;
-  for(int i = 0; i < dLen; i++){ advData[pnt++] = dPtr[i];}
-  return len;
-}
-
-int addAdvertisingDeviceName(uint8_t *advData,int pnt){
-  JsVar *deviceName;
-  deviceName = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_DEVICE_NAME);
-  if (!deviceName) { // if it's the first time this was called, try and create the name
-    bluetooth_initDeviceName();
-    deviceName = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_DEVICE_NAME);
-  }
-  if(deviceName) {
-    JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
-    if (!namePtr) return 0;
-    if(nameLen > 0) {
-      if((nameLen + pnt + 2) > BLE_GAP_ADV_MAX_SIZE) {
-        nameLen = BLE_GAP_ADV_MAX_SIZE - 2 - pnt;
-        advData[pnt] = nameLen + 1;
-        advData[pnt + 1] = 8; //  flag for "incomplete name"
-      } else{
-        advData[pnt] = nameLen + 1;
-        advData[pnt + 1] = 9; // flag for normal name
-      }
-      for (int i = 0; i < nameLen; i++)
-        advData[pnt + i + 2] = namePtr[i];
-    }
-    jsvUnLock(deviceName);
-    return nameLen + 2;
-  } else return 0;
-}
-
-int addAdvertisingUart(uint8_t *advData,int pnt){
-  // Nordic UART service UUID (+packet ID+len)
-  uint8_t uart_advice[18] = {0x11,0x07,0x9e,0xca,0xdc,0x24,0x0e,0xe5,0xa9,0xe0,0x93,0xf3,0xa3,0xb5,0x01,0x00,0x40,0x6e,};
-  for(int i = 0; i < 18; i++){ advData[pnt + i] = uart_advice[i];}
-  return 18;
-}
-
-JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
-  uint8_t encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
-  int i = 0;
-  if(jsvIsArray(data) || jsvIsArrayBuffer(data)){
-    return jsvLockAgain(data);
-  } else if(jsvIsObject(data) || jsvIsUndefined(data)){
-    encoded_advdata[i++] = 2;
-    encoded_advdata[i++] = 1;
-    encoded_advdata[i++] = 6;  //todo add support of showName == false
-    if (jsvIsObject(data)) {
-      JsvObjectIterator it;
-      jsvObjectIteratorNew(&it, data);
-      while(jsvObjectIteratorHasValue(&it)){
-        JsVar *value = jsvObjectIteratorGetValue(&it);
-        int idx = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
-        i = i + addAdvertisingData(&encoded_advdata,i,idx,value);
-        jsvUnLock(value);
-        jsvObjectIteratorNext(&it);
-      }
-      jsvObjectIteratorFree(&it);
-    }
-    //todo add support of manufacturerData
-    i = i + addAdvertisingDeviceName(&encoded_advdata,i);
-
-    // This doesn't work - UART service needs to be in the scan response like we do for nRF52 (there's no space in the main packet)
-    /*JsVar *uartVar = jsvObjectGetChildIfExists(options, "uart"); // this is not ideal - we should be checking BLE_NAME_NUS
-    if (!uartVar || jsvGetBool(uartVar)) // default is on if not set
-      i = i + addAdvertisingUart(&encoded_advdata,i);
-    jsvUnLock(uartVar);*/
-  } else {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, Array or undefined, got %t",data);
-    return 0;
-  }
-  if (i==0) return 0;
-  return jsvNewArrayBufferWithData(i,encoded_advdata);
-}
-
 uint32_t jsble_advertising_update_scanresponse(char *dPtr, unsigned int dLen) {
     jsiConsolePrintf("FIXME\n");
     return 0xDEAD;
@@ -266,50 +183,17 @@ esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray) {
   esp_err_t ret;
   JsVar *allocatedData = 0;
   if(!advArray) { // work out what data to use
-    // this is what jswrap_ble_setAdvertising/jswrap_ble_getAdvertisingData would have used anyway
-    allocatedData = bluetooth_gap_getAdvertisingData(NULL, NULL);
+    allocatedData = _jswrap_ble_getAdvertisingData(NULL, NULL, true/*for setAdvertising*/);
     advArray = allocatedData;
   }
-  if(!advArray) { // fallback
-    adv_data.service_uuid_len = gatts_get_service_cnt() * 16;
-    ret = esp_ble_gap_config_adv_data(&adv_data);
-  } else {
-    JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);
-    if (advPtr) ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
-    jsvUnLock(allocatedData);
-  }
+  JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);
+  if (advPtr) ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
+  else ret = ESP_ERR_NOT_FOUND;
+  jsvUnLock(allocatedData);
   if (ret) {
     jsWarn("bluetooth_gap_setAdvertising failed, error code = %x", ret);
   }
   return ret;
-}
-
-esp_err_t bluetooth_setDeviceName(JsVar *deviceName){
-  esp_err_t r;
-  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_DEVICE_NAME, deviceName);
-  JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
-  if (namePtr) r = esp_ble_gap_set_device_name((uint8_t *)namePtr);
-  return r;
-}
-
-void bluetooth_initDeviceName(){
-  char deviceName[32];
-#if defined(BLUETOOTH_NAME_PREFIX)
-  #error "BLUETOOTH_NAME_PREFIX is broken for ESP32 (passed badly into Makefile)"
-#endif
-  strcpy(deviceName,"Espruino");
-  size_t len = strlen(deviceName);
-  // append last 2 bytes of MAC address to name
-  deviceName[len++] = ' ';
-  uint8_t macnr[6];
-  esp_efuse_mac_get_default(macnr);
-  deviceName[len++] = itoch((macnr[4]>>4)&15);
-  deviceName[len++] = itoch(macnr[4]&15);
-  deviceName[len++] = itoch((macnr[5]>>4)&15);
-  deviceName[len++] = itoch(macnr[5]&15);
-  deviceName[len++] = 0;
-
-  jsvObjectSetStringChild(execInfo.hiddenRoot, BLE_DEVICE_NAME, deviceName);
 }
 
 void gap_init_security(){

@@ -216,7 +216,6 @@ $(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_mutex.c
 endif
 endif
 TARGETSOURCES += \
-$(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_state.c \
@@ -300,7 +299,6 @@ ifdef NRF5X_SDK_12
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c

@@ -372,6 +372,29 @@ uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
 }
 #endif
 
+/// Get the Bluetooth Device Name - name should be at least 32 bytes long
+size_t jsbleGetDeviceName(char *deviceName) {
+ uint32_t addr[2];
+ jswrap_ble_getAddress_binary(addr, true/*use current address*/);
+
+#if defined(BLUETOOTH_NAME_PREFIX)
+  strcpy(deviceName, BLUETOOTH_NAME_PREFIX);
+#else
+  strcpy(deviceName,"Espruino "PC_BOARD_ID);
+#endif
+  size_t len = strlen(deviceName);
+#if defined(BLUETOOTH_NAME_PREFIX)
+  // append last 2 bytes of MAC address to name
+  deviceName[len++] = ' ';
+  deviceName[len++] = itoch((addr[0]>>12)&15);
+  deviceName[len++] = itoch((addr[0]>>8)&15);
+  deviceName[len++] = itoch((addr[0]>>4)&15);
+  deviceName[len++] = itoch((addr[0])&15);
+#endif
+  deviceName[len] = 0; // null terminate just in case
+  return len;
+}
+
 /// Add a new bluetooth event to the queue with a buffer of data
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len) {
   assert(ptr);
@@ -610,3 +633,4 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
   }
   return true;
 }
+

@@ -29,7 +29,6 @@
 #include "app_error.h"
 #include "ble_hci.h"
 #include "ble_gap.h"
-#include "ble_advdata.h"
 #include "ble_conn_params.h"
 #include "peer_manager.h"
 #include "app_timer.h"

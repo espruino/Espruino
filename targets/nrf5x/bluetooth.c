@@ -45,7 +45,6 @@
 
 #include "nrf_log.h"
 #include "ble_hci.h"
-#include "ble_advdata.h"
 #include "ble_conn_params.h"
 #include "app_timer.h"
 #include "ble_nus.h"
@@ -2023,23 +2022,7 @@ static void gap_params_init() {
     ble_gap_conn_sec_mode_t sec_mode;
 
     char deviceName[BLE_GAP_DEVNAME_MAX_LEN];
-#if defined(BLUETOOTH_NAME_PREFIX)
-    strcpy(deviceName,BLUETOOTH_NAME_PREFIX);
-#else
-    strcpy(deviceName,"Espruino "PC_BOARD_ID);
-#endif
-
-    size_t len = strlen(deviceName);
-#if defined(BLUETOOTH_NAME_PREFIX)
-    // append last 2 bytes of MAC address to name
-    uint32_t addr =  NRF_FICR->DEVICEADDR[0];
-    deviceName[len++] = ' ';
-    deviceName[len++] = itoch((addr>>12)&15);
-    deviceName[len++] = itoch((addr>>8)&15);
-    deviceName[len++] = itoch((addr>>4)&15);
-    deviceName[len++] = itoch((addr)&15);
-    // not null terminated
-#endif
+    size_t len = jsbleGetDeviceName(deviceName);
 
     BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&sec_mode); // don't allow device name change via BLE
     err_code = sd_ble_gap_device_name_set(&sec_mode,
@@ -2704,15 +2687,6 @@ static void ble_stack_init() {
 // -----------------------------------------------------------------------------------
 // -------------------------------------------------------------------- OTHER
 
-
-/// Build advertising data struct to pass into @ref ble_advertising_init.
-void jsble_setup_advdata(ble_advdata_t *advdata) {
-  memset(advdata, 0, sizeof(*advdata));
-  advdata->name_type          = BLE_ADVDATA_FULL_NAME;
-  advdata->include_appearance = false;
-  advdata->flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-}
-
 #if NRF_SD_BLE_API_VERSION>5
 static ble_gap_adv_data_t m_ble_gap_adv_data;
 // SoftDevice >= 6.1.0 needs this as static buffers
@@ -2778,49 +2752,12 @@ uint32_t jsble_advertising_start() {
     return 0;
 #endif
 
-  ble_advdata_t scanrsp;
-
   JsVar *advDataVar = jswrap_ble_getCurrentAdvertisingData();
   JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advDataVar);
   // advPtr can be 0 here (esp when booting as we have no adv data)
 
-  // Set up scan response packet's contents
-  ble_uuid_t adv_uuids[ADVERTISE_MAX_UUIDS];
-  int adv_uuid_count = 0;
-  if (bleStatus & BLE_HID_INITED) {
-    adv_uuids[adv_uuid_count].uuid = BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE;
-    adv_uuids[adv_uuid_count].type = BLE_UUID_TYPE_BLE;
-    adv_uuid_count++;
-  }
-  if (bleStatus & BLE_NUS_INITED) {
-    adv_uuids[adv_uuid_count].uuid = BLE_UUID_NUS_SERVICE;
-    adv_uuids[adv_uuid_count].type = BLE_UUID_TYPE_VENDOR_BEGIN; ///< We just assume we're the first 128 bit UUID in the list!
-    adv_uuid_count++;
-  }
-  // add any user-defined services
-  JsVar *advServices = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SERVICE_ADVERTISE);
-  if (jsvIsArray(advServices)) {
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, advServices);
-    while (jsvObjectIteratorHasValue(&it)) {
-      ble_uuid_t ble_uuid;
-      if (adv_uuid_count < ADVERTISE_MAX_UUIDS &&
-          !bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetValue(&it))) {
-        adv_uuids[adv_uuid_count++] = ble_uuid;
-      }
-      jsvObjectIteratorNext(&it);
-    }
-    jsvObjectIteratorFree(&it);
-  }
-  jsvUnLock(advServices);
   // check for any options set up
   JsVar *advOptions = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS);
-  // update scan response packet
-  memset(&scanrsp, 0, sizeof(scanrsp));
-  scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
-  scanrsp.uuids_complete.p_uuids  = &adv_uuids[0];
-
-
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
   bool non_connectable = (bleStatus & BLE_IS_NOT_CONNECTABLE) || jsble_has_peripheral_connection(); // can't advertise connectable if we already have a connection
@@ -2881,17 +2818,8 @@ uint32_t jsble_advertising_start() {
   adv_params.interval = bleAdvertisingInterval;
 
   uint32_t err_code = 0;
-  uint8_t m_enc_scan_response_data[31]; // BLE_GAP_ADV_SET_DATA_SIZE_MAX
-  uint16_t m_enc_scan_response_data_len = sizeof(m_enc_scan_response_data);
-#if NRF_SD_BLE_API_VERSION<5
-  err_code = adv_data_encode(&scanrsp, m_enc_scan_response_data, &m_enc_scan_response_data_len);
-#else
-  err_code = ble_advdata_encode(&scanrsp, m_enc_scan_response_data, &m_enc_scan_response_data_len);
-#endif
-  if (jsble_check_error(err_code)) {
-    jsvUnLock(advDataVar);
-    return err_code;
-  }
+  uint8_t scan_response_data[ESPR_MAX_ADVERTISEMENT_DATA];
+  size_t scan_response_data_len = _jswrap_ble_getScanResponse(scan_response_data);
 
   //jsiConsolePrintf("adv_data_set %d %d\n", advPtr, advLen);
 #if NRF_SD_BLE_API_VERSION>5
@@ -2899,7 +2827,8 @@ uint32_t jsble_advertising_start() {
 #endif
   err_code = jsble_advertising_update(
     (uint8_t*)advPtr, advLen, // advPtr can be NULL here and it's no big deal
-    non_scannable ? NULL : m_enc_scan_response_data, non_scannable ? 0 : m_enc_scan_response_data_len,
+    non_scannable ? NULL : scan_response_data,
+    non_scannable ? 0 : scan_response_data_len,
     &adv_params
   );
   jsble_check_error(err_code);

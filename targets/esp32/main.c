@@ -112,9 +112,6 @@ static void espruinoTask(void *data) {
   vTaskDelay(200 / portTICK_PERIOD_MS);
   jsiInit(true); // Initialize the interactive subsystem
   if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_wifi_restore();
-#ifdef BLUETOOTH
-  bluetooth_initDeviceName();
-#endif
   while(1) {
     jsiLoop();   // Perform the primary loop processing
 #ifdef BLUETOOTH
