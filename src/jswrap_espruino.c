@@ -2774,7 +2774,8 @@ JsVar *jswrap_espruino_getPowerUsage() {
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, devices);
   while (jsvObjectIteratorHasValue(&it)) {
-    total += jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it));
+    JsVarFloat f = jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it));
+    if (isfinite(f)) total += f;
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
