@@ -920,15 +920,22 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
   else if (ydir<0) gfx->fillRect(gfx,x1,y2+1+ydir,x2,y2, gfx->data.bgColor);
 }
 
-static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {
+void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {
   // no need to modify coordinates as setPixel does that
+  int x = x1;
   while (*str) {
+    char ch = *(str++);
+    if (ch=='\n') {
+      y1 += 8;
+      x = x1;
+      continue;
+    }
 #ifdef USE_FONT_6X8
-    graphicsDrawChar6x8(gfx,x1,y1,*(str++),1,1,false);
-    x1 = (int)(x1 + 6);
+    graphicsDrawChar6x8(gfx,x,y1,ch,1,1,false);
+    x += 6;
 #else
-    graphicsDrawChar4x6(gfx,x1,y1,*(str++),1,1,false);
-    x1 = (int)(x1 + 4);
+    graphicsDrawChar4x6(gfx,x,y1,ch,1,1,false);
+    x += 4;
 #endif
   }
 }

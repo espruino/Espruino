@@ -232,6 +232,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); ///< each p
 /// Scroll the graphics device (in user coords). X>0 = to right, Y >0 = down
 void graphicsScroll(JsGraphics *gfx, int xdir, int ydir);
 
+void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str); ///< Low level simple string draw
 void graphicsSplash(JsGraphics *gfx); ///< splash screen
 
 void graphicsIdle(); ///< called when idling
