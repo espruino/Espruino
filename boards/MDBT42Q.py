@@ -47,7 +47,7 @@ info = {
      'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3290', # set RAM base to match MTU=53 + CENTRAL_LINK_COUNT=2
      'LDFLAGS += -nostartfiles', 'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main', # Save ~300b by not including CRT startup code
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"MDBT42Q"\'',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX="MDBT42Q"',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=23 -DNEOPIXEL_LRCK_PIN=13', # see https://github.com/espruino/Espruino/issues/2071
      'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
      'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol

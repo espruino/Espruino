@@ -50,11 +50,11 @@ info = {
      'DEFINES += -DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
      'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3290', # set RAM base to match MTU=53 + CENTRAL_LINK_COUNT=2
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Pixl.js"\'',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX="Pixl.js"',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_pixljs_getBattery',
-     'DEFINES+=-DNFC_DEFAULT_URL=\'"https://www.espruino.com/ide"\'',
+     'DEFINES+=-DNFC_DEFAULT_URL="https://www.espruino.com/ide"',
      'LDFLAGS += -nostartfiles', 'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main', # Save ~300b by not including CRT startup code
-     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
+     'DEFINES+=-DDUMP_IGNORE_VARIABLES="g\\0"',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=14 -DNEOPIXEL_LRCK_PIN=15', # see https://github.com/espruino/Espruino/issues/2071
      'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
      'DEFINES+=-DSAVE_ON_FLASH_MATH',

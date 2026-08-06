@@ -108,7 +108,7 @@ These contain:
 
 #### info.makefile definitions
 
-This is a partial list of definitions that can be added in a `BOARD.py` file's `info.build.makefile` array, eg: `'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\''`
+This is a partial list of definitions that can be added in a `BOARD.py` file's `info.build.makefile` array, eg: `'DEFINES+=-DBLUETOOTH_NAME_PREFIX="Puck.js"'`
 
 * `BLUETOOTH_NAME_PREFIX="..."` - NRF52 only: Make the Bluetooth LE device's name `BLUETOOTH_NAME_PREFIX` followed by the last 2 bytes of the MAC address.
 * `BLUETOOTH_ADVERTISING_INTERVAL=375` - set the default Bluetooth advertising interval (default 375)

@@ -41,17 +41,17 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
-     'DEFINES+=-DPUCKJS_LITE', 
+     'DEFINES+=-DPUCKJS_LITE',
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      # 'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # reset isn't being used, so let's just have an extra IO (needed for Puck.js V2)
      'DEFINES+=-DESPR_DCDC_ENABLE', # Ensure DCDC converter is enabled
      'DEFINES += -DNEOPIXEL_SCK_PIN=22 -DNEOPIXEL_LRCK_PIN=16', # SCK pin needs defining as something unused for neopixel (HW errata means they can't be disabled) see https://github.com/espruino/Espruino/issues/2071
      'DEFINES += -DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
-     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once     
+     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3290', # set RAM base to match MTU=53 + CENTRAL_LINK_COUNT=2
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\'',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX="Puck.js"',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_puck_getBattery',
-     'DEFINES+=-DNFC_DEFAULT_URL=\'"https://puck-js.com/go"\'',
+     'DEFINES+=-DNFC_DEFAULT_URL="https://puck-js.com/go"',
      'DEFINES+=-DAPP_TIMER_OP_QUEUE_SIZE=3', # Puck.js magnetometer poll
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',

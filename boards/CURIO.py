@@ -75,7 +75,7 @@ info = {
      'DEFINES+=-DUSE_FONT_6X8',
      'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG', # Using USB CDC directly (not via a USB-Serial converter on Serial1)
      'ESP32_FLASH_MAX=1572864',
-#     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'\"Curio\"\'', # string passing in IDF4 makefile is broken
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX="Curio"', # string passing in IDF4 makefile is broken
      'INCLUDE += -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/misc/jswrap_curio.c',
      'WRAPPERSOURCES += libs/joltjs/jswrap_qwiic.c',

@@ -44,7 +44,7 @@ info = {
      'DEFINES += -DNRF_USB=1 -DUSB', # USB only works if connected at startup
      'DEFINES+=-DESPR_REGOUT0_1_8V=1', # Force RAK5010 nRF52 voltage regulator to 1.8v, which stops glitches in modem serial comms
      'NRF_SDK15=1',
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"iTracker"\'',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX="iTracker"',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'JSMODULESOURCES += libs/js/AT.min.js',
@@ -94,7 +94,7 @@ devices = {
 #            'pin_sck' : 'D43', #  clk   P1.11
 #            'pin_mosi' : 'D3', #  d0    P0.03
 #            'pin_miso' : 'D47', #  d1    P1.15
-#            'pin_wp' : 'D46', #  d2    P1.14 
+#            'pin_wp' : 'D46', #  d2    P1.14
 #            'pin_rst' : 'D45', #  d3    P1.13
 #            'size' : 8192*1024, # 8MB
 #            'memmap_base' : 0x60000000 # map into the address space (in software)
@@ -143,7 +143,7 @@ board["_css"] = """
 }
 .bottompin {
   transform: none;
-  width : 120px; 
+  width : 120px;
 }
 """;
 

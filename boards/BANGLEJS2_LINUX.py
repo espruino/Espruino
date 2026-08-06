@@ -39,8 +39,8 @@ info = {
    'makefile' : [
      'LINUX=1',
      'DEFINES += -DESPR_HWVERSION=2 -DBANGLEJS -DBANGLEJS_Q3 -DEMULATED',
-     'DEFINES += -DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
-     'DEFINES += -DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
+     'DEFINES += -DBLUETOOTH_NAME_PREFIX="Bangle.js"',
+     'DEFINES += DDUMP_IGNORE_VARIABLES="g\\0"',
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
      'DEFINES += -DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DESPR_GRAPHICS_3BIT',
      'DEFINES += -DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash

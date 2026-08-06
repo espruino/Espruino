@@ -37,9 +37,9 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Thingy"\'',
-     'DEFINES+=-DNFC_DEFAULT_URL=\'"https://www.espruino.com/ide"\'',
-     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"Thingy\\0"\'',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX="Thingy"',
+     'DEFINES+=-DNFC_DEFAULT_URL="https://www.espruino.com/ide"',
+     'DEFINES+=-DDUMP_IGNORE_VARIABLES="Thingy\\0"',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'INCLUDE += -I$(ROOT)/libs/nordic_thingy',

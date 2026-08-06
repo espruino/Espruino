@@ -53,7 +53,7 @@ info = {
             "DEFINES += -DCONFIG_GPIO_AS_PINRESET",  # Allow the reset pin to work
             "DEFINES += -DNRF_USB=1 -DUSB",
             "DEFINES += -DNEOPIXEL_SCK_PIN=33 -DNEOPIXEL_LRCK_PIN=34",  # nRF52840 needs LRCK pin defined for neopixel
-            "DEFINES += -DBLUETOOTH_NAME_PREFIX='\"XIAOBLE\"'",
+            'DEFINES += -DBLUETOOTH_NAME_PREFIX="XIAOBLE"',
             "DEFINES += -DSPIFLASH_READ2X",  # Read SPI flash at 2x speed using MISO and MOSI for IO
             "DEFINES += -DESPR_UNICODE_SUPPORT=1",
             "DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131",  # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes

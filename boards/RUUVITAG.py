@@ -41,7 +41,7 @@ info = {
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"RuuviTag"\'',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX="RuuviTag"',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/ruuvi_open_private.pem',
      'DFU_SETTINGS=--debug-mode --hw-version 52 --sd-req 0x8C,0x91'
    ]
@@ -122,5 +122,5 @@ def get_pins():
   pinutils.findpin(pins, "PD17", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PD19", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PD13", True)["functions"]["NEGATED"]=0;
-  
+
   return pins
