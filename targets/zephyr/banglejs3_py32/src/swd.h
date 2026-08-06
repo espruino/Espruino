@@ -8,11 +8,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * LCD driver firmware for Bangle.js 3 - MSP boilerplate
+ * Small SWD driver for Bangle.js 3
  * ----------------------------------------------------------------------------
  */
 
-#include "py32f07x_hal.h"
-
-void HAL_MspInit(void) {
-}
+ // grab SWD control
+ void swdInit();
+ // issue a reset command
+ void swdReset();
+ // release SWD
+ void swdKill();

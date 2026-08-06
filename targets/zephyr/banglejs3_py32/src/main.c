@@ -1,5 +1,19 @@
+/*
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ * Copyright (C) 2026 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * LCD driver firmware for Bangle.js 3
+ * ----------------------------------------------------------------------------
+ */
 #include "py32f07x_hal.h"
 #include "main.h"
+#include "swd.h"
 #include "lcd.h"
 
 /* TODO:
@@ -249,7 +263,7 @@ void Update_Outputs() {
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, (o&PY32_OUT_LCD_BL)?1:0);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, (o&PY32_OUT_TORCH_ON)?1:0);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 1/*(o&PY32_OUT_AUX_SWAP)?1:0*/);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, (o&PY32_OUT_AUX_POWER)?1:0);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, (o&PY32_OUT_AUX_POWER)?0:1); // inverted. PY32_OUT_AUX_POWER set will enable the output
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, (o&PY32_OUT_RGB_ON)?1:0);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, (o&PY32_OUT_SPEAKER_ON)?1:0);
   HAL_GPIO_WritePin(GPIOF, GPIO_PIN_6, (o&PY32_OUT_VIBRATE_ON)?1:0);
@@ -380,8 +394,7 @@ void HAL_SPI_AbortCpltCallback(SPI_HandleTypeDef *hspi)
   lcd_println("SPI ABORT");
 }
 
-int main(void)
-{
+int main(void) {
   HAL_Init();
   /* LCD GPIO Config */
   APP_LCD_GPIO_Config();
@@ -398,6 +411,10 @@ int main(void)
   /* GPIO Initialization */
   APP_GPIO_Config();
   HAL_Delay(10);
+
+  //swdInit();
+  //swdReset();
+  //swdKill();
 
   lcd_println("BANGLE.JS 3 BOOTING...");
 
@@ -446,8 +463,7 @@ int main(void)
   }
 }
 
-static void APP_LCD_GPIO_Config(void)
-{
+static void APP_LCD_GPIO_Config(void) {
   GPIO_InitTypeDef  GPIO_InitStruct;
   // enable clocks
   __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -471,8 +487,7 @@ static void APP_LCD_GPIO_Config(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 }
 
-static void APP_GPIO_Config(void)
-{
+static void APP_GPIO_Config(void) {
   GPIO_InitTypeDef  GPIO_InitStruct;
   EXTI_ConfigTypeDef EXTI_ConfigStruct;
 
