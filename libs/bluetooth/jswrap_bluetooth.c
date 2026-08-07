@@ -2834,7 +2834,7 @@ NRF.setSecurity({oob:bleKey, mitm:true});
 ```
 */
 
-#ifdef USE_NFCX
+#ifdef USE_NFC
 /* nfc_ble_pair_default_msg_encode uses *some* of adv_data_encode. We're including a minimal version here that does
 just what's needed to save flash since we now don't use it for bluetooth advertisements. This has been verified
 to produce the same result using the example code above. */
