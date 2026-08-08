@@ -406,7 +406,7 @@ bool twi1Initialised = false;
 #endif
 #endif
 #ifdef I2C_SLAVE
-static const nrf_drv_twis_t TWIS1 = NRF_DRV_TWIS_INSTANCE(1);
+static const nrf_drv_twis_t TWIS0 = NRF_DRV_TWIS_INSTANCE(0);
 static uint8_t twisRxBuf[32]; // receive buffer for I2C slave data
 static uint8_t twisAddr;
 #endif
@@ -638,7 +638,7 @@ const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
 #endif
 #ifdef I2C_SLAVE
 const nrf_drv_twis_t *jshGetTWIS(IOEventFlags device) {
-  if (device == EV_I2C1) return &TWIS1;
+  if (device == EV_I2C1) return &TWIS0;
   return 0;
 }
 #endif
@@ -1053,9 +1053,9 @@ void jshKill() {
   spiFlashSleep(); // power down SPI flash to save a few uA
 #endif
 #ifdef I2C_SLAVE
-  if (nrf_drv_twis_is_enabled(TWIS1_INSTANCE_INDEX)) {
-    nrf_drv_twis_disable(&TWIS1);
-    nrf_drv_twis_uninit(&TWIS1);
+  if (nrf_drv_twis_is_enabled(TWIS0_INSTANCE_INDEX)) {
+    nrf_drv_twis_disable(&TWIS0);
+    nrf_drv_twis_uninit(&TWIS0);
   }
 #endif
 }
@@ -2222,9 +2222,9 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
             size_t bufLen;
             char *bufPtr = jsvGetDataPointer(buf, &bufLen);
             if (bufPtr && bufLen>twisAddr)
-              nrf_drv_twis_tx_prepare(&TWIS1, bufPtr + twisAddr, bufLen - twisAddr);
+              nrf_drv_twis_tx_prepare(&TWIS0, bufPtr + twisAddr, bufLen - twisAddr);
             else
-              nrf_drv_twis_tx_prepare(&TWIS1, twisRxBuf, 0);
+              nrf_drv_twis_tx_prepare(&TWIS0, twisRxBuf, 0);
             jsvUnLock2(i2c,buf);
           }
         }
@@ -2235,7 +2235,7 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
         break;
     case TWIS_EVT_WRITE_REQ:
         if (p_event->data.buf_req)
-          nrf_drv_twis_rx_prepare(&TWIS1, twisRxBuf, sizeof(twisRxBuf));
+          nrf_drv_twis_rx_prepare(&TWIS0, twisRxBuf, sizeof(twisRxBuf));
         break;
     case TWIS_EVT_WRITE_DONE:
         if (p_event->data.rx_amount>0) {
@@ -2269,7 +2269,7 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
 }
 #endif
 
-#if TWI_ENABLED || defined(I2C_SLAVE)
+#if TWI_ENABLED
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   if (!jshIsPinValid(inf->pinSCL) || !jshIsPinValid(inf->pinSDA)) {
@@ -2277,10 +2277,24 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     return;
   }
   uint32_t err_code;
+  bool *twiInitialised = &twi0Initialised;
+  JshPinFunction pinFuncDevice = 0;
+  switch (device) {
+    case EV_I2C1:
+      twiInitialised = &twi0Initialised;
+      pinFuncDevice |= JSH_I2C1;
+      break;
+#if ESPR_I2C_COUNT > 1
+    case EV_I2C2:
+      twiInitialised = &twi1Initialised;
+      pinFuncDevice |= JSH_I2C2;
+      break;
+#endif
+  }
 #ifdef I2C_SLAVE
-  if ((device == EV_I2C1) && nrf_drv_twis_is_enabled(TWIS1_INSTANCE_INDEX)) {
-    nrf_drv_twis_disable(&TWIS1);
-    nrf_drv_twis_uninit(&TWIS1);
+  if ((device == EV_I2C1) && nrf_drv_twis_is_enabled(TWIS0_INSTANCE_INDEX)) {
+    nrf_drv_twis_disable(&TWIS0);
+    nrf_drv_twis_uninit(&TWIS0);
   }
   if (inf->slaveAddr >=0) {
     const nrf_drv_twis_t *twis = jshGetTWIS(device);
@@ -2301,7 +2315,6 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
       nrf_drv_twis_enable(twis);
   } else
 #endif
-#if TWI_ENABLED
   {
     const nrf_drv_twi_t *twi = jshGetTWI(device);
     if (!twi) return;
@@ -2313,17 +2326,6 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     p_twi_config.frequency =
                       ((inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K));
     p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
-    bool *twiInitialised = &twi0Initialised;
-    switch (device) {
-      case EV_I2C1:
-        twiInitialised = &twi0Initialised;
-        break;
-#if ESPR_I2C_COUNT > 1
-      case EV_I2C2:
-        twiInitialised = &twi1Initialised;
-        break;
-#endif
-    }
     if (*twiInitialised) nrf_drv_twi_uninit(twi);
     *twiInitialised = true;
     err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL, NULL);
@@ -2332,19 +2334,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     else
       nrf_drv_twi_enable(twi);
   }
-#endif
   // nrf_drv_twi_init will set pins, but this ensures we know so can reset state later
-  JshPinFunction pinFuncDevice = 0;
-  switch (device) {
-    case EV_I2C1:
-      pinFuncDevice |= JSH_I2C1;
-      break;
-#if ESPR_I2C_COUNT > 1
-    case EV_I2C2:
-      pinFuncDevice |= JSH_I2C2;
-      break;
-#endif
-  }
   if (jshIsPinValid(inf->pinSCL)) {
     jshPinSetFunction(inf->pinSCL, pinFuncDevice|JSH_I2C_SCL);
   }
