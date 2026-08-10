@@ -38,6 +38,10 @@ int jswrap_banglejs_isHRMOn();
 bool jswrap_banglejs_setGPSPower(bool isOn, JsVar *appId);
 int jswrap_banglejs_isGPSOn();
 JsVar *jswrap_banglejs_getGPSFix();
+
+bool jswrap_banglejs_setWiFiPower(bool isOn, JsVar *appId);
+int jswrap_banglejs_isWiFiOn();
+
 bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId);
 int jswrap_banglejs_isCompassOn();
 void jswrap_banglejs_resetCompass();

@@ -51,6 +51,7 @@ info = {
  'build' : {
    'libraries' : [
      'BLUETOOTH',
+     'NET',
      'GRAPHICS',
      'LCD_MEMLCD',
      'JIT' # JIT compiler enabled
@@ -84,6 +85,8 @@ info = {
      'DEFINES += -DESPR_USE_STORAGE_CACHE=32', # Add a 32 entry cache to speed up finding files
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'JSMODULESOURCES += libs/js/banglejs/Layout.min.js',
+     'JSMODULESOURCES+=libs/js/AT.min.js',
+     'JSMODULESOURCES+=libs/js/banglejs/Wifi.js', # FIXME:Minify
    ]
  }
 };
@@ -137,12 +140,21 @@ devices = { # 'V' pins are virtual
           },
   'BAT' : {
             'pin_charging' : 'C9', # active low
-            'pin_voltage' : 'B14'
+            'pin_voltage' : 'B14',
+            'pin_charge_en' : 'V9',
           },
   'TOUCH' : {
             'device' : 'CST816S', 'addr' : 0x15,
             'pin_rst' : 'V14',
           },
+  'VIBRATE' : { 
+            'pin' : 'C6',
+            'pin_en' : 'V8'
+  },
+  'SPEAKER' : { 
+            'pin' : 'B8', 
+            'pin_en' : 'V7'
+  },
   'ACCEL' : {
             'device' : 'LSM6DSOTR', 'addr' : 106,
             'pin_sda' : 'B5', 'pin_scl' : 'B4' # every other I2C device is on this too
@@ -154,7 +166,16 @@ devices = { # 'V' pins are virtual
   'PRESSURE' : {
             'device' : 'BME690', # v2.1 uses Goertek SPL06-001 - we handle both
             'addr' : 118, # both versions use the same address
-          }
+          },
+  'MISC' : {
+            'pin_torch' : 'V5',
+            'pin_rgb' : 'V6',
+            'pin_wifi' : 'V10',
+            'pin_wifi_boot' : 'V11',
+            'pin_aux_swap' : 'V12',
+            'pin_aux_power' : 'V13',
+            'pin_hrm_aux' : 'V15'
+  }
 };
 
 # left-right, or top-bottom order

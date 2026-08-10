@@ -156,12 +156,13 @@ Using ESP8684H4X
 Firmware is ESP32C2-AT from https://github.com/espressif/esp-at/releases
 
 ```JS
-Serial2.on("data",print);
+Serial2.on("data",d => print("WiFi:",d));
 V11.set(); // normal mode
-V10.set(); // on
+//V10.set(); // on
+Bangle.setWiFiPower(1);
 // 76800 baud: 'invalid header: 0xffffffff' if not flashed
 // if flashed, outputs at 115200
-V10.reset();
+V10.reset(); // bootloader mode
 ```
 
 
@@ -178,6 +179,19 @@ esptool --chip esp32c2 --port /dev/ttyUSB0 --baud 921600 \
 V10.reset(); // off
 ```
 
+### WiFi rebuild
+
+
+```bash
+git clone https://github.com/espressif/esp-at --depth=1
+edit ./components/customized_partitions/raw_data/factory_param/factory_param_data.csv
+# Change PLATFORM_ESP32C2,ESP32C2-4MB,"4MB, Wi-Fi + BluFi, OTA, All ECOs, TX:7 RX:6",4,78,1,1,13,CN,115200,7,6,5,4,1
+# To     PLATFORM_ESP32C2,ESP32C2-4MB,"4MB, Wi-Fi + BluFi, OTA, All ECOs, TX:20 RX:19",4,78,0,1,13,CN,115200,20,19,5,4,1
+
+./build.py
+PLATFORM_ESP32C2
+ESP32C2-4MB
+```
 
 
 ## Working
@@ -200,7 +214,7 @@ V10.reset(); // off
 * Pressure sensor
 * BME690 gas sensing
 * LCD update speed (12fps currently, not async)
-* WiFi
+* WiFi (build AT firmware that runs on UART0)
 * ... much more
 
 ## Testing

@@ -1037,7 +1037,9 @@ typedef enum {
   and overcome that resistance, and we also disable the button watch interrupt. */
   JSBF_BTN_LOW_RESISTANCE_FIX = 1<<22,
 #endif
-
+#ifdef BANGLEJS3
+   JSBF_WIFI_ON = 1<<22,
+#endif
 
   JSBF_DEFAULT = ///< default at power-on
       JSBF_WAKEON_TWIST|
@@ -3381,6 +3383,69 @@ JsVar *jswrap_banglejs_getGPSFix() {
 #else
   return 0;
 #endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setWiFiPower",
+    "generate" : "jswrap_banglejs_setWiFiPower",
+    "params" : [
+      ["isOn","bool","True if WiFi should be on, false if not"],
+      ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
+    ],
+    "return" : ["bool","Is WiFi on?"],
+    "ifdef" : "BANGLEJS3",
+    "typescript" : "setWiFiPower(isOn: ShortBoolean, appID: string): boolean;"
+}
+Set the power to WiFi.
+
+```
+Bangle.setWiFiPower(true, "myapp");
+```
+*/
+bool jswrap_banglejs_setWiFiPower(bool isOn, JsVar *appId) {
+#ifdef BANGLEJS3
+  bool wasOn = bangleFlags & JSBF_WIFI_ON;
+  isOn = setDeviceRequested("WiFi", appId, isOn);
+  //jsiConsolePrintf("setWiFiPower %d %d\n",wasOn,isOn);
+  if (isOn) bangleFlags |= JSBF_WIFI_ON;
+  else bangleFlags &= ~JSBF_WIFI_ON;
+  if (isOn!=wasOn) {
+    if (isOn) { // enable UART
+      JshUSARTInfo inf;
+      jshUSARTInitInfo(&inf);
+      inf.baudRate = 115200;
+      inf.pinRX = JSH_PORTC_OFFSET+7;
+      inf.pinTX = JSH_PORTC_OFFSET+8;
+      jshUSARTSetup(EV_SERIAL2, &inf);
+    } else { // disable UART
+      jshUSARTUnSetup(EV_SERIAL2);
+    }
+    jshPinSetValue(MISC_PIN_WIFI, isOn);
+
+  }
+  return isOn;
+#else
+  return false;
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "isWiFiOn",
+    "generate" : "jswrap_banglejs_isCompassOn",
+    "return" : ["bool","Is the Compass on?"],
+    "ifdef" : "BANGLEJS3"
+}
+Is the WiFi powered?
+
+Set power with `Bangle.setWiFiPower(...);`
+*/
+// emscripten bug means we can't use 'bool' as return value here!
+int jswrap_banglejs_isWiFiOn() {
+  return (bangleFlags & JSBF_WIFI_ON)!=0;
 }
 
 /*JSON{
