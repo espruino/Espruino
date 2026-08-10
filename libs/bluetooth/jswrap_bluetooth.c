@@ -2400,6 +2400,7 @@ void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
     "class" : "NRF",
     "name" : "filterDevices",
     "generate" : "jswrap_ble_filterDevices",
+    "ifndef" : "SAVE_ON_FLASH",
     "params" : [
       ["devices","JsVar","An array of `BluetoothDevice` objects, from `NRF.findDevices` or similar"],
       ["filters","JsVar","A list of filters (as would be passed to `NRF.requestDevice`) to filter devices by"]
@@ -2662,46 +2663,6 @@ void jswrap_ble_setTxPower(JsVarInt pwr) {
   jsble_set_tx_power(pwr);
 }
 
-
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "setLowPowerConnection",
-    "deprecated" : true,
-    "generate" : "jswrap_ble_setLowPowerConnection",
-    "params" : [
-      ["lowPower","bool","Whether the connection is low power or not"]
-    ]
-}
-
-**THIS IS DEPRECATED** - please use `NRF.setConnectionInterval` for peripheral
-and `NRF.connect(address, options)`/`BluetoothRemoteGATTServer.connect(options)`
-for central connections.
-
-This sets the connection parameters - these affect the transfer speed and power
-usage when the device is connected.
-
-* When not low power, the connection interval is between 7.5 and 20ms
-* When low power, the connection interval is between 500 and 1000ms
-
-When low power connection is enabled, transfers of data over Bluetooth will be
-very slow, however power usage while connected will be drastically decreased.
-
-This will only take effect after the connection is disconnected and
-re-established.
-*/
-void jswrap_ble_setLowPowerConnection(bool lowPower) {
-  BLEFlags oldflags = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_FLAGS));
-  BLEFlags flags = oldflags;
-  if (lowPower)
-    flags |= BLE_FLAGS_LOW_POWER;
-  else
-    flags &= ~BLE_FLAGS_LOW_POWER;
-  if (flags != oldflags) {
-    jsvObjectSetIntChild(execInfo.hiddenRoot, BLE_NAME_FLAGS, flags);
-    jswrap_ble_restart(NULL);
-  }
-}
 
 #ifdef USE_NFC
 static void nfc_raw_data_start(uint8_t *dataPtr, size_t dataLen){
@@ -3895,9 +3856,6 @@ it via `onInit`.
 **Note:** If connecting to another device (as Central), you can use an extra
 argument to `NRF.connect` or `BluetoothRemoteGATTServer.connect` to specify a
 connection interval.
-
-**Note:** This overwrites any changes imposed by the deprecated
-`NRF.setLowPowerConnection`
 */
 void jswrap_ble_setConnectionInterval(JsVar *interval) {
   if (jsvIsUndefined(interval) || jsvIsStringEqual(interval,"auto")) {
@@ -4440,8 +4398,7 @@ See [`NRF.requestDevice`](/Reference#l_NRF_requestDevice) for usage examples.
 }
 ```
 
-By default the interval is 20-200ms (or 500-1000ms if
-`NRF.setLowPowerConnection(true)` was called. During connection Espruino
+By default the interval is 20-200ms (or 500-1000ms in low power mode). During connection Espruino
 negotiates with the other device to find a common interval that can be used.
 
 For instance calling:
