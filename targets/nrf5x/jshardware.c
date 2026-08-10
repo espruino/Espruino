@@ -2278,19 +2278,19 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   }
   uint32_t err_code;
   bool *twiInitialised = &twi0Initialised;
-  JshPinFunction pinFuncDevice = 0;
+  JshPinFunction pinFuncDevice = JSH_I2C1;
+#if ESPR_I2C_COUNT > 1  
   switch (device) {
     case EV_I2C1:
       twiInitialised = &twi0Initialised;
-      pinFuncDevice |= JSH_I2C1;
+      pinFuncDevice = JSH_I2C1;
       break;
-#if ESPR_I2C_COUNT > 1
     case EV_I2C2:
       twiInitialised = &twi1Initialised;
-      pinFuncDevice |= JSH_I2C2;
+      pinFuncDevice = JSH_I2C2;
       break;
-#endif
   }
+#endif  
 #ifdef I2C_SLAVE
   if ((device == EV_I2C1) && nrf_drv_twis_is_enabled(TWIS0_INSTANCE_INDEX)) {
     nrf_drv_twis_disable(&TWIS0);
