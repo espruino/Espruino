@@ -34,11 +34,10 @@ true              : connected and ready
 // -----------------------------------------------------------------------------------
 var netCallbacks = {
   create : function(host, port, type) {
-    //console.log("CREATE ",arguments,connected);
     if (!at || !connected) return -1; // disconnected
     /* Create a socket and return its index, host is a string, port is an integer.
     If host isn't defined, create a server socket */
-    if (host===undefined && type!=2) {
+    if (host===undefined && (type&3)!=2) {
       var sckt = MAXSOCKETS;
       socks[sckt] = "Wait";
       sockData[sckt] = "";
@@ -60,13 +59,13 @@ var netCallbacks = {
       sockData[sckt] = "";
       socks[sckt] = "Wait";
       var cmd;
-      if (type==2) {
+      if ((type&3)==2) {
         // If there's a port specified, make a server now - otherwise reserve the socket and do it later
-        if (port) cmd = 'AT+CIPSTART='+sckt+',"UDP","255.255.255.255",'+port+','+port+',2\r\n';
+        if (port) cmd = `AT+CIPSTART=${sckt},"UDP","255.255.255.255",${port},${port},2\r\n`;
         else socks[sckt] = "UDP";
         sockUDP[sckt] = true;
       } else {
-        cmd = 'AT+CIPSTART='+sckt+',"TCP",'+JSON.stringify(host)+','+port+'\r\n';
+        cmd = `AT+CIPSTART=${sckt},"${(type&4)?"SSL":"TCP"}",${JSON.stringify(host)},${port}\r\n`;
         delete sockUDP[sckt];
       }
       if (cmd) at.cmd(cmd,10000,function cb(d) {
@@ -156,8 +155,8 @@ var netCallbacks = {
     at.cmd(cmd, 2000, function cb(d) {
       //console.log("SEND "+JSON.stringify(d));
       if (d=="OK") {
-        at.register('> ', function(l) {
-          at.unregister('> ');
+        at.register('>', function(l) {
+          at.unregister('>');
           at.write(data);
           return l.substr(2);
         });
@@ -171,7 +170,7 @@ var netCallbacks = {
         return;
       } else {
         socks[sckt]=undefined; // uh-oh. Error. If undefined it was probably a timeout
-        at.unregister('> ');
+        at.unregister('>');
         return;
       }
       return cb;
@@ -271,12 +270,9 @@ function turnOn(mode, callback) {
               if (d!="OK") return callback("CIPDINFO failed: "+(d?d:"Timeout"));
               at.cmd("AT+CIPMUX=1\r\n",1000,function(d) { // turn on multiple sockets
                 if (d!="OK") return callback("CIPMUX failed: "+(d?d:"Timeout"));
-                at.cmd('AT+UART_CUR=115200,8,1,0,2\r\n',500,function(d) { // enable flow control
-                  if (d!="OK") return callback("UART_CUR failed: "+(d?d:"Timeout"));
-                  else setTimeout(function() {
-                    changeMode(callback);
-                  }, 500);
-                });
+                else setTimeout(function() {
+                  changeMode(callback);
+                }, 500);
               });
             });
           }

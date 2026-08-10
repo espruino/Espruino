@@ -181,6 +181,7 @@ V10.reset(); // off
 
 ### WiFi rebuild
 
+The built files are in `banglejs3_esp32`
 
 ```bash
 git clone https://github.com/espressif/esp-at --depth=1
@@ -188,9 +189,15 @@ edit ./components/customized_partitions/raw_data/factory_param/factory_param_dat
 # Change PLATFORM_ESP32C2,ESP32C2-4MB,"4MB, Wi-Fi + BluFi, OTA, All ECOs, TX:7 RX:6",4,78,1,1,13,CN,115200,7,6,5,4,1
 # To     PLATFORM_ESP32C2,ESP32C2-4MB,"4MB, Wi-Fi + BluFi, OTA, All ECOs, TX:20 RX:19",4,78,0,1,13,CN,115200,20,19,5,4,1
 
-./build.py
-PLATFORM_ESP32C2
-ESP32C2-4MB
+# https://docs.espressif.com/projects/esp-at/en/latest/esp32c2/Compile_and_Develop/How_to_clone_project_and_compile_it.html
+./build.py install
+./build.py build
+choose PLATFORM_ESP32C2
+choose ESP32C2-4MB
+choose NO logging
+
+# to flash
+esptool.py --chip esp32c2 -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 60m --flash_size 4MB 0x0 bootloader/bootloader.bin 0x60000 esp-at.bin 0x8000 partition_table/partition-table.bin 0xd000 ota_data_initial.bin 0x1e000 at_customize.bin 0x1f000 customized_partitions/mfg_nvs.bin
 ```
 
 
@@ -205,6 +212,7 @@ ESP32C2-4MB
 * Touchscreen press + swipe gestures.
 * Touchscreen 'tap' handlers
 * Using external Flash memory in QSPI mode (and 64mbyte)
+* WiFi https: requests
 
 ## TODO
 
@@ -214,7 +222,7 @@ ESP32C2-4MB
 * Pressure sensor
 * BME690 gas sensing
 * LCD update speed (12fps currently, not async)
-* WiFi (build AT firmware that runs on UART0)
+* WiFi (Use `AT+CIPRECVMODE=1` for flow control)
 * ... much more
 
 ## Testing
