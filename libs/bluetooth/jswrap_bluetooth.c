@@ -1049,11 +1049,13 @@ bool _jswrap_ble_addService(uint8_t *advUUID16, size_t *advUUID16Len, uint8_t *a
   return true;
 }
 
-/** for jswrap_ble_getAdvertisingData - see NRF.setAdvertising for full info */
-JsVar *_jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options, bool isForSetAdvertising) {
+/** for jswrap_ble_getAdvertisingData - see NRF.setAdvertising for full info
+ * Data is written to advdata, which should ESPR_MAX_ADVERTISEMENT_DATA in length
+ * Returns length on success
+ */
+size_t _jswrap_ble_getAdvertisingDataRaw(uint8_t *advdata, JsVar *data, JsVar *options, bool isForSetAdvertising) {
   bool ok = true;
   size_t  len = 0; // of advdata
-  uint8_t   advdata[ESPR_MAX_ADVERTISEMENT_DATA];
   uint8_t advFlagsValue = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
   bool advName = true, advFlags = true, advManufacturer = false;
   uint16_t advManufacturerId = 0x0590; // Espruino's manufacturer ID
@@ -1176,7 +1178,14 @@ JsVar *_jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options, bool isForSet
       ok &= _jswrap_ble_getAdvertisingDataAdd(advdata, &len, "Name", flag, (uint8_t*)advNameData, advNameLen, 0);
     }
   }
-  return ok ? jsvNewArrayBufferWithData(len, advdata) : 0;
+  return ok ? len : 0;
+}
+
+
+JsVar *_jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options, bool isForSetAdvertising) {
+  uint8_t   advdata[ESPR_MAX_ADVERTISEMENT_DATA];
+  size_t len = _jswrap_ble_getAdvertisingDataRaw(advdata, data, options, isForSetAdvertising);
+  return len ? jsvNewArrayBufferWithData(len, advdata) : 0;
 }
 
 /*JSON{

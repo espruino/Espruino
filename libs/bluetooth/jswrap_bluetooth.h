@@ -105,6 +105,7 @@ JsVar *jswrap_ble_getCurrentAdvertisingData();
 
 JsVarFloat jswrap_ble_getBattery();
 void jswrap_ble_setAdvertising(JsVar *data, JsVar *options);
+size_t _jswrap_ble_getAdvertisingDataRaw(uint8_t *advdata, JsVar *data, JsVar *options, bool isForSetAdvertising);
 JsVar *_jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options, bool isForSetAdvertising);
 JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options);
 

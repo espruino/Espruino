@@ -40,10 +40,6 @@
 #define LOG_ERR jsiConsolePrintf
 #define LOG_INF jsiConsolePrintf
 
-// FIXME
-#define DEVICE_NAME "NRF54L15"
-#define DEVICE_NAME_LEN 8
-
 volatile BLEStatus bleStatus;
 ble_uuid_t bleUUIDFilter;
 uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
@@ -53,15 +49,6 @@ volatile uint16_t m_central_conn_handles[1] = { BLE_GATT_HANDLE_INVALID }; /**< 
 
 static struct bt_conn *current_conn[1];
 static struct bt_conn *auth_conn;
-
-static const struct bt_data ad[] = {
-	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
-};
-static const struct bt_data sd[] = {
-	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_VAL),
-};
-
 // Queue NUS transmission from data in our buffer
 void nus_transmit_string() {
   /// Array of data waiting to be sent over Bluetooth NUS
@@ -100,7 +87,7 @@ void nus_transmit_string() {
     }
   }
 }
-ble_gap_addr_t zephyrAddrToEspruino(bt_addr_le_t *addr) {
+ble_gap_addr_t zephyrAddrToEspruino(const bt_addr_le_t *addr) {
   ble_gap_addr_t a;
   memcpy(a.addr, addr->a.val, 6);
   a.addr_type = addr->type;
@@ -270,13 +257,13 @@ void jsble_init(){
   err = bt_conn_auth_cb_register(&conn_auth_callbacks);
   if (err) {
     jsiConsolePrintf("Failed to register authorization callbacks. (err: %d)", err);
-    return 0;
+    return;
   }
 
   err = bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
   if (err) {
     LOG_ERR("Failed to register authorization info callbacks. (err: %d)", err);
-    return 0;
+    return;
   }
   err = bt_enable(NULL);
 	if (jsble_check_error(err)) return;
@@ -291,7 +278,7 @@ void jsble_init(){
 	err = bt_nus_init(&nus_cb);
 	if (err) {
 		LOG_ERR("Failed to initialize UART service (err: %d)", err);
-		return 0;
+		return;
 	}
   bleStatus |= BLE_NUS_INITED;
 
@@ -314,7 +301,7 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
   assert(IOEVENT_MAX_LEN >= sizeof(BLEAdvReportData));
   int eventBytesHandled = 2+bufferLen;
   // Now handle the actual event
-  if (bufferLen<3) return;
+  if (bufferLen<3) return 0;
   BLEPending blep = (BLEPending)buffer[0];
   uint16_t data = (uint16_t)(buffer[1] | (buffer[2]<<8));
   // skip first 3 bytes
@@ -337,9 +324,53 @@ void jsble_restart_softdevice(JsVar *jsFunction){
   jswrap_ble_reconfigure_softdevice();
 }
 
+#define ZEPHYR_MAX_ADVDATA_PACKETS 8
+
+// pull our advertising data apart so we can pass it back into zephyr - I can't believe we actually have to do this
+size_t unpack_ble_advertisement_zephyr(uint8_t *advdata, size_t advdatalen, struct bt_data *outdata) {
+  if (!advdata) return 0;
+  size_t ad_count = 0;
+  size_t offset = 0;
+  while (offset < advdatalen && ad_count < ZEPHYR_MAX_ADVDATA_PACKETS) {
+    uint8_t len = advdata[offset];
+    if (len == 0 || (offset + len + 1) > advdatalen) {
+        break; // Corrupted or end of payload
+    }
+    outdata[ad_count].type = advdata[offset + 1];
+    outdata[ad_count].data_len = len - 1; // Exclude the 1 byte for AD Type
+    outdata[ad_count].data = &advdata[offset + 2];
+    ad_count++;
+    offset += (len + 1); // Advance to next LTV block
+  }
+  return ad_count;
+}
+
 uint32_t jsble_advertising_start() {
   // nordic demo did k_work_submit(&adv_work); here - why?
-  int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
+  /*FIXME:
+  JsVar *advDataVar = jswrap_ble_getCurrentAdvertisingData();
+  JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advDataVar);
+  if (!advPtr) {
+    jsWarn("No advertising data\n");
+    return -1;
+  }*/
+  uint8_t advPtr[ESPR_MAX_ADVERTISEMENT_DATA];
+  size_t advLen = _jswrap_ble_getAdvertisingDataRaw(advPtr, NULL, NULL, true/* for setAdvertising*/);
+
+  uint8_t scanPtr[ESPR_MAX_ADVERTISEMENT_DATA];
+  size_t scanLen = _jswrap_ble_getScanResponse(scanPtr);
+
+  struct bt_data advdata[ZEPHYR_MAX_ADVDATA_PACKETS];
+  struct bt_data scandata[ZEPHYR_MAX_ADVDATA_PACKETS];
+  size_t advdatalen = unpack_ble_advertisement_zephyr(advPtr, advLen, advdata);
+  size_t scandatalen = unpack_ble_advertisement_zephyr(scanPtr, scanLen, scandata);
+
+  //const struct bt_le_adv_param *params = BT_LE_ADV_CONN_FAST_2;
+  //JsVar *advOptions = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS);
+  // FIXME: advertising interval
+  // FIXME: phy/extended
+  int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, advdata, advdatalen, scandata, scandatalen);
+  // For extended advertising, the bt_le_ext_adv_* functions must be used.
   jsiConsolePrintf("jsble_advertising_start %d\n",err);
   jsble_check_error(err);
   return err;
