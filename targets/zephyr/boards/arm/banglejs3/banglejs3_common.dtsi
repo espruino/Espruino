@@ -133,3 +133,6 @@
 	status = "okay";
 };
 
+&timer00 { /* util timer */
+    status = "okay";
+};

@@ -21,6 +21,7 @@
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jstimer.h"
 #include "bluetooth.h"
 #include <time.h>
 
@@ -35,6 +36,7 @@
 #include <zephyr/drivers/rtc.h>
 #include <zephyr/drivers/flash.h>
 #include <zephyr/drivers/adc.h>
+#include <zephyr/drivers/counter.h>
 #include <zephyr/pm/device.h>
 #include <jesd216.h> // ext flash
 
@@ -87,6 +89,7 @@ const struct device *serial2_dev = DEVICE_DT_GET(DT_NODELABEL(uart21));
 const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi30));
 const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
+const struct device *utiltimer_dev = DEVICE_DT_GET(DT_NODELABEL(timer00));
 
 struct spi_config spi1_config = {
         .frequency = 4000000U, // 4 MHz - works - 8Mhz sends data too fast for PY32 to output it at the moment
@@ -575,13 +578,37 @@ bool jshSleep(JsSysTime timeUntilWake) {
   return true;
 }
 
+void jshUtilTimerCallback(const struct device *dev,
+                               uint8_t chan_id,
+                               uint32_t ticks,
+                               void *user_data) {
+  jstUtilTimerInterruptHandler();
+}
+
 void jshUtilTimerDisable() {
+  counter_stop(utiltimer_dev);
 }
 
 void jshUtilTimerReschedule(JsSysTime period) {
+  uint32_t ticks = counter_us_to_ticks(utiltimer_dev, period);
+  struct counter_alarm_cfg alarm_cfg = {
+      .callback = jshUtilTimerCallback,
+      .ticks = ticks,
+      .user_data = NULL,
+      .flags = 0, /* Relative alarm (fires after delay_us from now) */
+  };
+
+  /* Set channel 0 alarm */
+  int ret = counter_set_channel_alarm(utiltimer_dev, 0, &alarm_cfg);
+  if (ret != 0) {
+      jsWarn("Failed to set alarm: %d\n", ret);
+      return;
+  }
 }
 
 void jshUtilTimerStart(JsSysTime period) {
+  jshUtilTimerReschedule(period);
+  counter_start(utiltimer_dev);
 }
 
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
