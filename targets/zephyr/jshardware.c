@@ -11,6 +11,12 @@
  * Platform Specific part of Hardware interface Layer
  * ----------------------------------------------------------------------------
  */
+/*
+Notes:
+
+JshSysTime is treated as in microseconds (jshGetTimeFromMilliseconds/jshGetMillisecondsFromTime/jshUtilTimerReschedule)
+
+*/
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -89,7 +95,9 @@ const struct device *serial2_dev = DEVICE_DT_GET(DT_NODELABEL(uart21));
 const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi30));
 const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
+const struct device *qspi_dev = DEVICE_DT_GET(DT_NODELABEL(sqspi)); // for extflash
 const struct device *utiltimer_dev = DEVICE_DT_GET(DT_NODELABEL(timer00));
+volatile bool extflashEnabled = false;
 
 struct spi_config spi1_config = {
         .frequency = 4000000U, // 4 MHz - works - 8Mhz sends data too fast for PY32 to output it at the moment
@@ -106,6 +114,8 @@ struct spi_config spi1_config = {
 Pin eventFlagsToPin[ESPR_EXTI_COUNT];
 static struct gpio_callback eventData[ESPR_EXTI_COUNT]; // used for handling zephyr events
 // ----------------------------------------------------------------------------
+
+
 const struct device *jshToZephyrPort(JsvPinInfoPort port) {
   switch (port&JSH_PORT_MASK) {
     case JSH_PORTA: return DEVICE_DT_GET(DT_NODELABEL(gpio0));
@@ -171,6 +181,10 @@ void jshInit() {
   if (!device_is_ready(serial2_dev)) return jsWarn("serial2 not ready");
   uart_irq_callback_set(serial2_dev, serial_cb);
   uart_irq_rx_enable(serial2_dev);
+
+  /* Update CMSIS core clock variable */
+  //SystemCoreClockUpdate();
+  //jsiConsolePrintf("CPU SystemCoreClock: %d MHz\n", SystemCoreClock / 1000000);
 
   // SPI 1
   if (!device_is_ready(spi1_dev)) {
@@ -574,6 +588,13 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 bool jshSleep(JsSysTime timeUntilWake) {
   JsVarFloat t = jshGetMillisecondsFromTime(timeUntilWake)*1000;
   if (t>0x7FFFFFFF) t=0x7FFFFFFF;
+
+  if (extflashEnabled) { // FIXME: do we sleep flash if timeUntilWake < ???
+    pm_device_action_run(extflash_dev, PM_DEVICE_ACTION_SUSPEND);
+    pm_device_action_run(qspi_dev, PM_DEVICE_ACTION_SUSPEND);
+    extflashEnabled = false;
+  }
+
   k_usleep((uint32_t)t);
   return true;
 }
@@ -643,6 +664,11 @@ const struct device *jshFlashGetDevice(uint32_t *addr) {
   if (*addr >= SPIFLASH_BASE && *addr < (SPIFLASH_BASE+SPIFLASH_LENGTH)) {
     *addr -= SPIFLASH_BASE;
     flash = extflash_dev;
+    if (!extflashEnabled) {
+      pm_device_action_run(qspi_dev, PM_DEVICE_ACTION_RESUME);
+      pm_device_action_run(extflash_dev, PM_DEVICE_ACTION_RESUME);
+      extflashEnabled = true;
+    }
   }
   return flash;
 }

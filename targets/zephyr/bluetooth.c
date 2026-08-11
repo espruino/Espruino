@@ -371,7 +371,6 @@ uint32_t jsble_advertising_start() {
   // FIXME: phy/extended
   int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, advdata, advdatalen, scandata, scandatalen);
   // For extended advertising, the bt_le_ext_adv_* functions must be used.
-  jsiConsolePrintf("jsble_advertising_start %d\n",err);
   jsble_check_error(err);
   return err;
 }

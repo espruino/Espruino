@@ -779,7 +779,9 @@ JsVar *jswrap_interface_setWatch(
   Pin dataPin = PIN_UNDEFINED;
   if (IS_PIN_A_BUTTON(pin)) {
     edge = 1;
+#ifndef BANGLEJS3 // Bangle.js 3 comes via a controller chip that basically already does debouncing
     debounce = 25;
+#endif
   }
   if (jsvIsObject(repeatOrObject)) {
     JsVar *v;
