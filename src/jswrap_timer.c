@@ -276,7 +276,9 @@ int jswrap_timer_add(JsVar *timer) {
   JsVarFloat time=0, interval=0;
   JsVar *type = 0, *fn = 0;
   int value=0,ptr=0,userdata=0;
-  Pin pins[UTILTIMERTASK_PIN_COUNT] = {PIN_UNDEFINED, PIN_UNDEFINED, PIN_UNDEFINED, PIN_UNDEFINED};
+  Pin pins[UTILTIMERTASK_PIN_COUNT];
+  for (int i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
+    pins[i] = PIN_UNDEFINED;
   jsvConfigObject configs[] = {
       {"type", JSV_STRING_0, &type},
       {"time", JSV_FLOAT, &time},
