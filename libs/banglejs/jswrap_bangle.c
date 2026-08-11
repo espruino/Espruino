@@ -3445,7 +3445,11 @@ Set power with `Bangle.setWiFiPower(...);`
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isWiFiOn() {
+#ifdef BANGLEJS3
   return (bangleFlags & JSBF_WIFI_ON)!=0;
+#else
+  return 0;
+#endif
 }
 
 /*JSON{
