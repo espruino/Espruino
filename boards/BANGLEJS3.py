@@ -69,6 +69,7 @@ info = {
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
+     'WRAPPERSOURCES += libs/banglejs/jswrap_bangle3.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_14.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_17.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_22.c',
@@ -76,6 +77,8 @@ info = {
      'WRAPPERSOURCES += libs/graphics/jswrap_font_6x15.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_12x20.c',
      'SOURCES += libs/misc/stepcount.c',
+     'INCLUDE += -I$(ROOT)/libs/neopixel',
+     'SOURCES += libs/neopixel/neopixel_bitbang.c',
 # ------------------------
      'SOURCES += libs/misc/unistroke.c',
      'WRAPPERSOURCES += libs/misc/jswrap_unistroke.c',
@@ -169,7 +172,8 @@ devices = { # 'V' pins are virtual
           },
   'MISC' : {
             'pin_torch' : 'V5',
-            'pin_rgb' : 'V6',
+            'pin_rgb_en' : 'V6',
+            'pin_rgb_data' : 'C10',
             'pin_wifi' : 'V10',
             'pin_wifi_boot' : 'V11',
             'pin_aux_swap' : 'V12',

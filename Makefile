@@ -694,12 +694,6 @@ ifeq ($(USE_NFC),1)
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 endif
 
-ifeq ($(USE_WIO_LTE),1)
-  INCLUDE += -I$(ROOT)/libs/wio_lte
-  WRAPPERSOURCES += libs/wio_lte/jswrap_wio_lte.c
-  SOURCES += targets/stm32/stm32_ws2812b_driver.c
-endif
-
 ifeq ($(USE_TENSORFLOW),1)
 include make/misc/tensorflow.make
 endif

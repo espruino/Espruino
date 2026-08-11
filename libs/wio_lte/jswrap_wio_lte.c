@@ -17,7 +17,7 @@
 
 #include <jswrap_wio_lte.h>
 #include "jsparse.h"
-#include "stm32_ws2812b_driver.h"
+#include "neopixel_bitbang.h"
 #include "jspininfo.h"
 
 
@@ -49,7 +49,7 @@ void jswrap_wio_lte_led(int r, int g, int b) {
   if (g>255) g=255;
   if (b>255) b=255;
   unsigned char rgb[] = {(unsigned char)g,(unsigned char)r,(unsigned char)b};
-  stm32_neopixelWrite(JSH_PORTB_OFFSET+1, rgb, 3);
+  neopixelWrite_bitbang(JSH_PORTB_OFFSET+1, rgb, 3);
 }
 
 /*JSON{

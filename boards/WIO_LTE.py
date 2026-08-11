@@ -35,7 +35,10 @@ info = {
      'DEFINES+=-DWIO_LTE',
      'USE_DFU=1',
      'STLIB=STM32F405xx',
-     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o'
+     'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o',
+     'INCLUDE += -I$(ROOT)/libs/wio_lte',
+     'WRAPPERSOURCES += libs/wio_lte/jswrap_wio_lte.c',
+     'SOURCES += libs/neopixel/neopixel_bitbang.c'
    ]
   }
 };
