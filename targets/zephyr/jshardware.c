@@ -120,6 +120,8 @@ static struct gpio_callback eventData[ESPR_EXTI_COUNT]; // used for handling zep
 
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+/// Last period (1000000000/frequency) used for pwm
+uint32_t pwmPeriod;
 /// Current state of each pin
 JshPinFunction pinStates[JSH_PIN_COUNT];
 // ----------------------------------------------------------------------------
@@ -526,16 +528,23 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 
   // period/pulse width in nanoseconds
   int channel = pinStates[pin]>>JSH_SHIFT_INFO;
-  uint32_t period = (uint32_t)(1000000000.0/freq);
-  uint32_t pulse = (uint32_t)(period*value);
+  pwmPeriod = (uint32_t)(1000000000.0/freq);
+  uint32_t pulse = (uint32_t)(pwmPeriod*value);
   pwm_flags_t pwmFlags = 0; // see PWM_CAPTURE_FLAGS
-  int ret = pwm_set(pwm_dev, channel, period, pulse, pwmFlags); // stops pwm here
+  int ret = pwm_set(pwm_dev, channel, pwmPeriod, pulse, pwmFlags); // stops pwm here
   if (ret < 0) {
       jsWarn("Failed to set PWM pulse: %d\n", ret);
       return 0;
   }
   jshPinSetFunction(pin, func);
   return func;
+}
+
+void jshSetOutputValue(JshPinFunction func, int value) {
+  int channel = func>>JSH_SHIFT_INFO;
+  uint32_t pulse = (uint32_t)((((uint64_t)pwmPeriod)*(uint64_t)value) >> 16);
+  pwm_flags_t pwmFlags = 0; // see PWM_CAPTURE_FLAGS
+  pwm_set(pwm_dev, channel, pwmPeriod, pulse, pwmFlags); // stops pwm here
 }
 
 bool jshCanWatch(Pin pin) {
@@ -737,9 +746,6 @@ void jshUtilTimerStart(JsSysTime period) {
 
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
   return JSH_NOTHING;
-}
-
-void jshSetOutputValue(JshPinFunction func, int value) {
 }
 
 void jshEnableWatchDog(JsVarFloat timeout) {

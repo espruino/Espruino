@@ -200,12 +200,50 @@ choose NO logging
 esptool.py --chip esp32c2 -p /dev/ttyUSB0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 60m --flash_size 4MB 0x0 bootloader/bootloader.bin 0x60000 esp-at.bin 0x8000 partition_table/partition-table.bin 0xd000 ota_data_initial.bin 0x1e000 at_customize.bin 0x1f000 customized_partitions/mfg_nvs.bin
 ```
 
+## Microphone
+
+```JS
+// currently fails because of analogRead in ISR
+B11.set(); // Mic on
+var w = new Waveform(240);
+w.on("finish", function(buf) {
+  B11.set(); // Mic off
+  g.clear(1);
+  var l = g.drawLine.bind(g);
+  buf.forEach((x,y)=>l(x,120+y));
+});
+w.startInput(B12,2000,{repeat:false});
+
+// works
+B11.set(); // Mic on
+setInterval(function() {
+  g.clear(1);
+  var l = g.lineTo.bind(g), r = analogRead.bind(null,B12);
+  for (var x=0;x<240;x++) l(x,r()*2400 - 1240);
+},100);
+```
+
+## Speaker
+
+```JS
+var wave = E.toArrayBuffer(atob("haezvL6+ua+ZX0pAOzpASGKbsLm+v7qwl1xJPTs6RE5/rLa+v7qxllpHPTo9Rl6asru/vLSdYEY+OT9Haqa1vr+4rHdIQTg/RWmlt76+tqJiRT06QlOStbvAt6dnRTw7Ql+itsC7tYpNQThAUJO0vr21kE4/OUFZobfAua1sQjs+S4m3vb2vcUI9PE+Pu7u+oV48Pj1srL28s3ZAPTxgpry9tHk/PjxnrL68qmA8PEePvLy5fUA9P3i4u7yEQj0+erm7uno+PUaTvb2rWTs8ZLS7u3Y+PFCkvb2KPz5Inby+hT89UKe9unM6PWi7uqtLP0Gdur5yPjmAusCJQThuuL+VRDlot8COQDpzvrt9N0OIxq1lL16px4xCOoLCr1wzZra+fDVPoceJPUOZxpM/QZTHk0BDmcaFOE6owm40Yr2vVDeFx5A5U7G6XzWAxpA4WLixTj2cwms0isZ9MnPEkjVqw5g3ZsOYN2nEkjVxx3s0fsdrN567TEy6nTdxxnY3orRDWsWCNJO9SFzFeTWisT1zyFtNwoI4rqM3jb1AccJPV8ZfUMVxQsFzQsFxRMNvSbivur2/vLSnek1GOjw6Rk+AqrS9vr60qnpNRTo7PUhdm6+8vcC1rX9PQjs6QUl2qbW+v7mwjVJEOztBTYKvt8C8tqJoREA4QUh9rbjAvLSXVkM6PENdnre9vradWkQ6PUNqqbfAurN/SUA5QlactcC7tIZKPjpCYae3wbiqZUI6PkyOt768r3JBPTxRlLq8vKNgPD4+aKq+vLR4Qj08WqO9vbV5QT47Zau8vqtiPT1Ehbq8uohEPT1ss7y9kUc9PGy0vLyJQj1AhLu8tGg7PVWqvL6HQT1GlL69nEc+QIy8vpdFPUSVvryJPT5Usrq3XD87h7u/iUE5Z7W/oEk6U6nBqFM2VKjDoU81Xq/DlEU4cru8fDdFjcikVzJmtMB2OEmbx5VDPInGo082fcKrVTR4wqxUNXvDqE45j8WWPEqmw3gyZr6rTjqNx4Q1X7ytSz+ew20ze8aON128qENOtrBNQKq2UD+nt09BqrRJR6+vQFe/lzdpxYEyjMJaQbKoOmfGeDWcuEZYw3g2orI/ZcVkP7SbNJG7RGjJYEvBgDiykjKdqTOXrDaDujqDuDqHtTaOsqnBu8G3sZdhSUE6Oz5JX5muub6/urKbYUk/OjtCTHeqs7+9vbGiZUk+OztFVI+vub++tqlySUE5PURalbS6wbm0jlRDOzpDVJC0usC5sH9KQjhARnWsuMC7s4xOQjhASHyxucG4q25DPTpEZaq2wrivbEY7PUNzrru+uZhUPzo/XKK5vruhWz87P1yivL26kk89PER9try+qWY8Pj1vr729rWg9PT91tby9nlM8PE6Xvby0bz09Qoa6vLl/Pz1Bhrq8tW88PkiXvb6jUjw9aLW7unY9PVCkvryKPz1Lo7u+hkA7U6m9unY6PmO5uq5PPz+Wu755Pzl3ucCTRDhltcCeSTdfscKWRThquL+IPD59wrVxMlCZyZhMNXK7umo1UqfEizxDk8iYRjuJxaFKOITGoko5h8eXQkGZxos4Uq6/bzFwwqNHP5bGejNowaVERae/YzSGx4Q0Z8GgPVe8qEVIsq5IRrCvR0iyrEFQt6U6YcOLNHXGdTSXvlBIuZ02c8dsOaewPmXFazusqjlzxFhHvIgznrI9dcdTVsRrP7qFNaqdM6OhM5GxNZGvNZWrMp2nqMK7wbawk11IQDo7QEljna+6vr+5sZZcSD47O0NOfay0v768sZ1gRz46PEVYlbC6v761pmxHQDk+RF+btbvBubKJUEM6PENYlrW7wLiueElBOUFJe663v7mwhUxCOkJMg7G4vrWmaEU/Pkhsq7S/tKlnSD1CSHqtuLm0kFNDP0Rko7W5tZlZREFFZKO2t7OKT0NCTYOytbegY0NFRnistbWjZERFSX2wtLSUVEVEW5yztKhrRkdNi7KzrXVHR02LsbKpakdIVZixspdVSEl2ra+scEhJXqGwrn1KSlqgrrB9TElhpK6qcElMcK2snVVNUZesrXJNS4CrroZQSnGorY9TS2ymrYpRTXWqqn9MU4KwoG9HZJixildNe6qja0ton6qBTlqRrolVVIusj1hUh6yPWVWJq4dUW5OpgFBnnqJvUHuojllckaZ1Unamj1lhmZ9pVYele1N2o4pXbqGPXGackl1lm5JdZ5uQW26di1p0oH5af590XY6XZGmahlx9nHBiko5ge5pwZZOKYYGWa2yWe2OMjGR/lGt0lHJskntpj4JoioNohodqhYZrhYRthYSFiYeHhYN+eXh6fH18fXx9fH18fXx9fH0="));
+
+var w = new Waveform(wave);
+w.on("finish", function() {
+  print("Done");
+  B8.reset(); // PWM off
+  V7.reset(); // speaker off
+});
+analogWrite(B8, 0.5, {freq:40000});
+V7.set();w.startOutput(B8,4000);
+```
+
 
 ## Working
 
 * Simple bluetooth comms
 * Apps run from internal flash
-* Graphics (albeit slightly glitchy)
+* Graphics
 * Buttons
 * Accelerometer
 * Magnetometer
@@ -213,14 +251,18 @@ esptool.py --chip esp32c2 -p /dev/ttyUSB0 -b 460800 --before=default_reset --aft
 * Touchscreen 'tap' handlers
 * Using external Flash memory in QSPI mode (and 64mbyte)
 * WiFi https: requests
+* Speaker via analogWrite
 
 ## TODO
 
 * Touchscreen sometimes misses lift events (touch IRQ has been missed by PY32)
-* Graphics incomplete partial updates (PY32 skips if SPI transfer ends at wrong time)
+  * To fix, change display update so we send an SPI display update packet first, and *then* the data
+* Graphics updates of <16px (and non-even row start) - using SPI display update packet
 * Gyro
 * Pressure sensor
 * BME690 gas sensing
+* Microphone (analogRead in ISR, plus ranging)
+* Wrap Waveform handling to allow sounds to be played more easily
 * LCD update speed (12fps currently, not async)
 * WiFi (Use `AT+CIPRECVMODE=1` for flow control)
 * ... much more

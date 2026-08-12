@@ -712,7 +712,7 @@ codeOut('bool jswIdle() {')
 codeOut('  bool wasBusy = false;')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="idle":
-    codeOut("  if ("+jsondata["generate"]+"()) wasBusy = true;")
+    codeOut("  wasBusy |= "+jsondata["generate"]+"();")
 codeOut('  return wasBusy;')
 codeOut('}')
 

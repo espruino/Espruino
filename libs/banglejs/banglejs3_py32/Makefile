@@ -192,4 +192,7 @@ reset:
 gdb:
 	sudo $(PYOCD_EXE) gdbserver -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml & SERVER_PID=$$!; arm-none-eabi-gdb -x $(TOP)/misc/gdbinit;kill $$SERVER_PID
 
+rtt:
+	sudo $(PYOCD_EXE) rtt -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml
+
 

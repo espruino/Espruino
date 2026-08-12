@@ -42,3 +42,7 @@ typedef enum {
 typedef enum {
   PY32_IN_TOUCH_IRQ = 1,
 } PY32InputState;
+
+
+#define PY32_TIMEOUT_MS(ms) (ms*400/1000)
+#define PY32_4BTN_REBOOT_DELAY PY32_TIMEOUT_MS(10000) // how long do we hold 4 buttons down for before PY32 issues a reboot?

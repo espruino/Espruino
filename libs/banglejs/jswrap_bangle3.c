@@ -117,6 +117,9 @@ JshPinState jshVirtualPinGetState(Pin pin) {
 
 /// called when we're sure the LCD SPI interface is idle!
 void jshVirtualPinIRQWorker() {
+  static volatile bool alreadyInWorker = false;
+  if (alreadyInWorker) return;
+  alreadyInWorker = true;
   uint16_t lastState = sxValues;
   jshPY32Update(false); // no set
   uint16_t changed = lastState ^ sxValues;
@@ -131,6 +134,7 @@ void jshVirtualPinIRQWorker() {
         jshPushIOWatchEvent(EV_EXTI0+i);
       }
   }
+  alreadyInWorker = false;
 }
 
 void jshVirtualPinIRQHandler(bool state, IOEventFlags flags) {
@@ -286,4 +290,17 @@ void jswrap_banglejs3_hwinit() {
   jshPY32Update(false); // update current status (and clear IRQ line)
   IOEventFlags channel = jshPinWatch(LCD_SPI_IRQ, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, jshVirtualPinIRQHandler);
+}
+
+/*JSON{
+  "type" : "idle",
+  "generate" : "jswrap_banglejs3_idle"
+}*/
+bool jswrap_banglejs3_idle() {
+  /* if for some reason the IRQ is low while in idle (it should normally
+  be handled by IRQ, handle it here */
+  /*if (!jshPinGetValue(LCD_SPI_IRQ))
+    lcdMemLCD_callWhenIdle(jshVirtualPinIRQWorker);*/
+  // FIXME: we can't do this here because the py32 wants to wait until it has finished updating the LCD before re-initialising SPI
+  return false;
 }

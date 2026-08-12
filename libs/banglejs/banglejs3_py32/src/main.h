@@ -17,14 +17,15 @@
 #include "const.h"
 
 typedef struct {
-  bool initialised;
-  bool spiInProgress;
-  bool displayInProgress;
-  bool buttonPressed;
-  bool irqAsserted;
-  uint8_t buttonMask;
-  PY32OutputState output; // current output state
-  PY32InputState input; // current input state
+  volatile bool initialised;
+  volatile bool spiInProgress;
+  volatile bool displayInProgress;
+  volatile bool buttonPressed;
+  volatile bool irqAsserted;
+  volatile uint8_t buttonMask;
+  volatile uint16_t buttonLength; // amount of time button held down for
+  volatile PY32OutputState output; // current output state
+  volatile PY32InputState input; // current input state
   // IRQ state
   // IR light status?
 } PY32State;
