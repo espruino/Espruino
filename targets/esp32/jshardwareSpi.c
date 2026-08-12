@@ -10,18 +10,18 @@
  *
  * ----------------------------------------------------------------------------
  * Contains ESP32 board specific functions to Support SPI Peripherials
- * 
+ *
  * Espruino models a given SPI peripherial interface in the SPIChannels[channelPnt] struct.
  *   With elements for each identified Espruino SPI Device.
- * 
+ *
  * The jshSPISetup() function:
  *  Initialises a target SPI Bus to an ESP32 'peripherial Host' (Espruino Device SPI1 or SPI2)
  *   - Assigns Pins etc via struct spi_bus_config_t
- *   - Stores the IDF host ID against an Espruino SPIChannel in SPIChannels[channelPnt].HOST 
- *  and registers an 'ESP32 Device' attached to the bus 
+ *   - Stores the IDF host ID against an Espruino SPIChannel in SPIChannels[channelPnt].HOST
+ *  and registers an 'ESP32 Device' attached to the bus
  *   - configures timing etc via struct dev_config
- *   - assigns handle (via pointer SPIChannels[channelPnt].spi) for sendingtransactions to device 
- * 
+ *   - assigns handle (via pointer SPIChannels[channelPnt].spi) for sendingtransactions to device
+ *
  * Note this SPIChannels[] model combines the one to many ESP32 Host/Bus and Device concepts into one Espruino Channel.
  * However Espruino channels do not include Bus CS pins (a descriminating element of an ESP32 Bus vs device)
  * Espruino identifies the CS pin from individual JS SPI.send commands and sets/clears it a higher level in jswrap_spi_send
@@ -97,7 +97,7 @@ void jshSPISetup(
     dma_chan = (SPIChannels[channelPnt].HOST == SPICHANNEL0_HOST) ? 1 : 2;
   #endif
 
-  // Default pins as set in board.py 
+  // Default pins as set in board.py
   JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
   if (!jshIsPinValid(inf->pinSCK))
     inf->pinSCK = jshFindPinForFunction(funcType, JSH_SPI_SCK);
@@ -116,7 +116,7 @@ void jshSPISetup(
             SPIChannels[channelPnt].HOST, funcTypeStr, inf->pinSCK, inf->pinMISO,
             inf->pinMOSI);
   #endif
-  
+
   spi_bus_config_t buscfg = {.miso_io_num = inf->pinMISO,
                              .mosi_io_num = inf->pinMOSI,
                              .sclk_io_num = inf->pinSCK,
@@ -175,28 +175,40 @@ int jshSPISend(
  * rx (if supplied). Returns true on success.
  */
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
-    if (!jshIsDeviceInitialised(device)) return false;
-    if (count==1) {
-      int r = jshSPISend(device, tx?*tx:-1);
-      if (rx) *rx = r;
-      if(callback)callback();
-      return true;
-    }
+  if (!jshIsDeviceInitialised(device)) return false;
+  if (count==1) {
+    int r = jshSPISend(device, tx?*tx:-1);
+    if (rx) *rx = r;
+    if (callback) callback();
+    return true;
+  }
+  // TODO: could use spi_device_queue_trans if callback is set, and make this async
   jshSPIWait(device);
   int channelPnt = getSPIChannelPnt(device);
   esp_err_t ret;
-  memset(&spi_trans, 0, sizeof(spi_trans));
-  spi_trans.length=count*8;
-  spi_trans.tx_buffer=tx;
-  spi_trans.rx_buffer=rx;
+
   spi_Sending = true;
-  ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, rx?0:portMAX_DELAY);
-  if (ret != ESP_OK) {
-    spi_Sending = false;
-    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d", ret);
-    return false;
+  // ESP32 can only transfer so much at a time - we need to split the transfer into chunks
+  while (count) {
+    size_t tx_len = count;
+    if (tx_len > 4092) tx_len = 4092; // max ESP32 transfer size
+    memset(&spi_trans, 0, sizeof(spi_trans));
+    spi_trans.length = tx_len*8;
+    spi_trans.tx_buffer = tx;
+    spi_trans.rx_buffer = rx;
+    spi_device_transmit(SPIChannels[channelPnt].spi, &spi_trans); // blocking
+    if (ret != ESP_OK) {
+      spi_Sending = false;
+      jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d", ret);
+      return false;
+    }
+    // move onward in buffer
+    count -= tx_len;
+    if (tx) tx += tx_len;
+    if (rx) rx += tx_len;
   }
-  jshSPIWait(device);
+  spi_Sending = false;
+  // no jshSPIWait as spi_device_transmit is blocking
   if(callback)callback();
   return true;
 }

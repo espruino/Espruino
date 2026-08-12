@@ -33,6 +33,7 @@
             BLE: switch to our own code for creating advertisement packets (shared across all platforms). 
             BLE: Allow `NRF.getAdvertisingData({},{name:"foo"})` to force a name for a specific advertising packet
             BLE: Remove deprecated NRF.setLowPowerConnection (NRF.setConnectionInterval is better)
+            ESP32: Remove 4092b limit on hardware SPI sends
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes
