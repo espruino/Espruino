@@ -200,6 +200,9 @@ def get_pins():
   pinutils.findpin(pins, "PB12", True)["functions"]["ADC1_IN5"]=0;
   pinutils.findpin(pins, "PB13", True)["functions"]["ADC1_IN6"]=0;
   pinutils.findpin(pins, "PB14", True)["functions"]["ADC1_IN7"]=0;
+  # timer/etc that are set in banglejs3_nrf54l15_cpuapp.overlay
+  pinutils.findpin(pins, "PB8", True)["functions"]["TIM1_CH1"]=0; # speaker
+  pinutils.findpin(pins, "PC6", True)["functions"]["TIM1_CH2"]=0; # vibrate
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;

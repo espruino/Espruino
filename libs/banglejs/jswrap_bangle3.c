@@ -251,6 +251,29 @@ void jswrap_banglejs_setRGB(int r, int g, int b) {
 }
 
 /*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "enableUART",
+    "generate" : "jswrap_banglejs_enableUART",
+    "params" : [
+      ["en","bool","true to enable"]
+    ],
+    "ifdef" : "BANGLEJS3"
+}
+Enables the UART on the charging port of the Bangle.js
+*/
+void jswrap_banglejs_enableUART(bool en) {
+  if (en) {
+    //jshPinSetValue(MISC_PIN_AUX_SWAP, 1); // FIXME
+    pm_device_action_run(DEVICE_DT_GET(DT_NODELABEL(uart20)), PM_DEVICE_ACTION_RESUME);
+  } else {
+    //jshPinSetValue(MISC_PIN_AUX_SWAP, 0); // FIXME
+    pm_device_action_run(DEVICE_DT_GET(DT_NODELABEL(uart20)), PM_DEVICE_ACTION_SUSPEND);
+  }
+}
+
+
+/*JSON{
   "type" : "hwinit",
   "generate" : "jswrap_banglejs3_hwinit"
 }*/

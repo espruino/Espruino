@@ -13,5 +13,6 @@
  */
 
 void jswrap_banglejs_setRGB(int r, int g, int b);
+void jswrap_banglejs_enableUART(bool en);
 
 void jswrap_banglejs3_hwinit();

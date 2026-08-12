@@ -43,6 +43,7 @@ JshSysTime is treated as in microseconds (jshGetTimeFromMilliseconds/jshGetMilli
 #include <zephyr/drivers/flash.h>
 #include <zephyr/drivers/adc.h>
 #include <zephyr/drivers/counter.h>
+#include <zephyr/drivers/pwm.h>
 #include <zephyr/pm/device.h>
 #include <jesd216.h> // ext flash
 
@@ -97,7 +98,10 @@ const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_control
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
 const struct device *qspi_dev = DEVICE_DT_GET(DT_NODELABEL(sqspi)); // for extflash
 const struct device *utiltimer_dev = DEVICE_DT_GET(DT_NODELABEL(timer00));
+const struct device *adc_dev = DEVICE_DT_GET(DT_NODELABEL(adc));
+const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm20));
 volatile bool extflashEnabled = false;
+
 
 struct spi_config spi1_config = {
         .frequency = 4000000U, // 4 MHz - works - 8Mhz sends data too fast for PY32 to output it at the moment
@@ -113,6 +117,11 @@ struct spi_config spi1_config = {
 // ----------------------------------------------------------------------------
 Pin eventFlagsToPin[ESPR_EXTI_COUNT];
 static struct gpio_callback eventData[ESPR_EXTI_COUNT]; // used for handling zephyr events
+
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+/// Current state of each pin
+JshPinFunction pinStates[JSH_PIN_COUNT];
 // ----------------------------------------------------------------------------
 
 
@@ -137,8 +146,6 @@ const struct device *jshEventFlagsToDevice(IOEventFlags dev) {
   assert(0);
   return NULL;
 }
-
-
 
 void serial_cb(const struct device *dev, void *user_data) {
   IOEventFlags espruinoDev = jshDeviceToEventFlags(dev);
@@ -166,8 +173,13 @@ void serial_cb(const struct device *dev, void *user_data) {
 }
 
 // ----------------------------------------------------------------------------
+void jshResetPeripherals() {
+  BITFIELD_CLEAR(jshPinSoftPWM);
+}
+
 
 void jshInit() {
+  memset(pinStates, 0, sizeof(pinStates));
   for (int i=0;i<ESPR_EXTI_COUNT;i++)
     eventFlagsToPin[i] = PIN_UNDEFINED;
 #if JSH_PORTV_COUNT>0
@@ -198,6 +210,7 @@ void jshInit() {
   jshUSARTUnSetup(EV_SERIAL2);
   // disable SPI1 (LCD) initially as we start it only when we want to update the LCD
   pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI
+  pm_device_action_run(pwm_dev, PM_DEVICE_ACTION_SUSPEND); // stop PWM by default
 
   // Ext flash
   if (!device_is_ready(extflash_dev)) {
@@ -218,7 +231,7 @@ void jshInit() {
 
 void jshReset() {
   jshResetDevices();
-
+  jshResetPeripherals();
 }
 
 void jshKill() {
@@ -265,8 +278,36 @@ void jshDelayMicroseconds(int microsec) {
   k_usleep(microsec);
 }
 
+static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
+  if (pinStates[pin]==func) return;
+  // disconnect existing peripheral (if there was one)
+  if (JSH_PINFUNCTION_IS_TIMER(pinStates[pin]) && !JSH_PINFUNCTION_IS_TIMER(func)) {
+    // if no PWM needed, turn it off
+    bool pwmOn = false;
+    for (int i=0;i<JSH_PIN_COUNT;i++)
+      if (i!=pin && JSH_PINFUNCTION_IS_TIMER(pinStates[i]))
+        pwmOn = true;
+    if (!pwmOn) {
+      jsiConsolePrintf("PWM off\n");
+      pm_device_action_run(pwm_dev, PM_DEVICE_ACTION_SUSPEND);
+    }
+  }
+
+  // connect new peripheral
+  pinStates[pin] = func;
+}
+
 void jshPinSetState(Pin pin, JshPinState state) {
   const JshPinInfo *p = &pinInfo[pin];
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
+  // If this was set to be some kind of AF (USART, etc), reset it.
+  jshPinSetFunction(pin, JSH_NOTHING);
+
 #if JSH_PORTV_COUNT>0
   // ignore virtual ports (eg. pins on an IO Expander)
   if ((p->port & JSH_PORT_MASK)==JSH_PORTV) return jshVirtualPinSetState(pin, state);
@@ -385,15 +426,11 @@ JsVarFloat jshPinAnalog(Pin pin) {
   const int ADC_GAIN = ADC_GAIN_1_4;
   const int ADC_RESOLUTION = 12;
 
-  /* Get the raw ADC device node */
-  const struct device *adc_dev = DEVICE_DT_GET(DT_NODELABEL(adc));
-
   if (!device_is_ready(adc_dev)) {
       jsiConsolePrintf("ADC device %s is not ready", adc_dev->name);
       return 0;
   }
 
-  /* 1. Manually configure the ADC channel */
   struct adc_channel_cfg channel_cfg = {
       .gain             = ADC_GAIN,
       .reference        = ADC_REF_INTERNAL,
@@ -408,7 +445,6 @@ JsVarFloat jshPinAnalog(Pin pin) {
       return 0;
   }
 
-  /* 2. Manually define the read sequence */
   struct adc_sequence sequence = {
       .channels    = BIT(ADC_CHANNEL_ID),
       .buffer      = &sample_buffer,
@@ -416,7 +452,6 @@ JsVarFloat jshPinAnalog(Pin pin) {
       .resolution  = ADC_RESOLUTION,
   };
 
-  /* 3. Perform the read operation */
   err = adc_read(adc_dev, &sequence);
   if (err < 0) {
     jsiConsolePrintf("ADC read failed (%d)", err);
@@ -428,11 +463,79 @@ JsVarFloat jshPinAnalog(Pin pin) {
 }
 
 int jshPinAnalogFast(Pin pin) {
-  return 0;
+  const JshPinInfo *p = &pinInfo[pin];
+  int err;
+  uint16_t sample_buffer;
+
+  const int ADC_CHANNEL_ID = 0;
+  const int ADC_GAIN = ADC_GAIN_1_4;
+  const int ADC_RESOLUTION = 12;
+
+  struct adc_channel_cfg channel_cfg = {
+      .gain             = ADC_GAIN,
+      .reference        = ADC_REF_INTERNAL,
+      .acquisition_time = ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 3), // or ADC_ACQ_TIME_DEFAULT,
+      .channel_id       = ADC_CHANNEL_ID,
+      .input_positive   = p->analog & JSH_MASK_ANALOG_CH,
+  };
+
+  err = adc_channel_setup(adc_dev, &channel_cfg);
+  if (err < 0) {
+      jsiConsolePrintf("Failed to setup ADC channel (%d)", err);
+      return 0;
+  }
+
+  struct adc_sequence sequence = {
+      .channels    = BIT(ADC_CHANNEL_ID),
+      .buffer      = &sample_buffer,
+      .buffer_size = sizeof(sample_buffer),
+      .resolution  = ADC_RESOLUTION,
+  };
+
+  err = adc_read(adc_dev, &sequence);
+  if (err < 0) {
+    jsiConsolePrintf("ADC read failed (%d)", err);
+    return 0;
+  }
+  return ((int32_t)sample_buffer) << (16-ADC_RESOLUTION);
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0,
-  return JSH_NOTHING;
+  if (value>1) value=1;
+  if (value<0) value=0;
+  // Try and use existing pin function
+  JshPinFunction func = pinInfo[pin].functions[0];
+  /* we set the bit field here so that if the user changes the pin state
+   * later on, we can get rid of the IRQs */
+  if ((flags & JSAOF_FORCE_SOFTWARE) ||
+      ((flags & JSAOF_ALLOW_SOFTWARE) && !func)) {
+    if (!jshGetPinStateIsManual(pin)) {
+      BITFIELD_SET(jshPinSoftPWM, pin, 0);
+      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+    }
+    BITFIELD_SET(jshPinSoftPWM, pin, 1);
+    if (freq<=0) freq=50;
+    jstPinPWM(freq, value, pin);
+    return JSH_NOTHING;
+  }
+
+  if (!func) {
+    jsWarn("No pwm for %p\n");
+    return JSH_NOTHING;
+  }
+
+  // period/pulse width in nanoseconds
+  int channel = pinStates[pin]>>JSH_SHIFT_INFO;
+  uint32_t period = (uint32_t)(1000000000.0/freq);
+  uint32_t pulse = (uint32_t)(period*value);
+  pwm_flags_t pwmFlags = 0; // see PWM_CAPTURE_FLAGS
+  int ret = pwm_set(pwm_dev, channel, period, pulse, pwmFlags); // stops pwm here
+  if (ret < 0) {
+      jsWarn("Failed to set PWM pulse: %d\n", ret);
+      return 0;
+  }
+  jshPinSetFunction(pin, func);
+  return func;
 }
 
 bool jshCanWatch(Pin pin) {
@@ -743,4 +846,11 @@ void jsvGetProcessorPowerUsage(JsVar *devices) {
       jsvObjectSetStringChild(devices,  dev->name, s);
     }
   }
+  // check if PWM is being used
+  bool pwmOn = false;
+  for (int i=0;i<JSH_PIN_COUNT;i++)
+    if (JSH_PINFUNCTION_IS_TIMER(pinStates[i]))
+      pwmOn = true;
+  if (pwmOn)
+    jsvObjectSetIntChild(devices, "PWM", 200);
 }

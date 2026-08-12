@@ -38,6 +38,31 @@
 	pinctrl-names = "default", "sleep";
 };
 
+/* PWM for speaker/vibration */
+&pinctrl {
+    pwm20_default: pwm20_default {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 1, 8)>, // speaker
+	            <NRF_PSEL(PWM_OUT1, 2, 6)>; // vibrate
+        };
+    };
+
+    pwm20_sleep: pwm20_sleep {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 1, 8)>,
+	            <NRF_PSEL(PWM_OUT1, 2, 6)>;
+            low-power-enable;
+        };
+    };
+};
+
+/* Enable PWM peripheral */
+&pwm20 {
+    status = "okay";
+    pinctrl-0 = <&pwm20_default>;
+    pinctrl-1 = <&pwm20_sleep>;
+    pinctrl-names = "default", "sleep";
+};
 
 /* Software QSPI using the FLPR */
 &pinctrl {
