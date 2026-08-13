@@ -1,0 +1,235 @@
+/*
+ * Copyright (c) 2024 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
+ /* copied from ./v3.3.0/zephyr/boards/nordic/nrf54lm20dk/nrf54lm20dk_common.dtsi because I can't seem to include it */
+
+/ {
+	leds {
+		compatible = "gpio-leds";
+
+		led0: led_0 {
+			gpios = <&gpio1 22 GPIO_ACTIVE_HIGH>;
+			label = "Green LED 0";
+		};
+
+		led1: led_1 {
+			gpios = <&gpio1 25 GPIO_ACTIVE_HIGH>;
+			label = "Green LED 1";
+		};
+
+		led2: led_2 {
+			gpios = <&gpio1 27 GPIO_ACTIVE_HIGH>;
+			label = "Green LED 2";
+		};
+
+		led3: led_3 {
+			gpios = <&gpio1 28 GPIO_ACTIVE_HIGH>;
+			label = "Green LED 3";
+		};
+	};
+	buttons {
+		compatible = "gpio-keys";
+
+		button0: button_0 {
+			gpios = <&gpio1 26 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Push button 0";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+
+		button1: button_1 {
+			gpios = <&gpio1 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Push button 1";
+			zephyr,code = <INPUT_KEY_1>;
+		};
+
+		button2: button_2 {
+			gpios = <&gpio1 8 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Push button 2";
+			zephyr,code = <INPUT_KEY_2>;
+		};
+
+		button3: button_3 {
+			gpios = <&gpio0 5 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Push button 3";
+			zephyr,code = <INPUT_KEY_3>;
+		};
+	};
+
+	aliases {
+		led0 = &led0;
+		led1 = &led1;
+		led2 = &led2;
+		led3 = &led3;
+		sw0 = &button0;
+		sw1 = &button1;
+		sw2 = &button2;
+		sw3 = &button3;
+	};
+};
+
+/* QSPI flash */
+&pinctrl {
+	sqspi_default: sqspi_default {
+		group1 {
+			psels = <NRF_PSEL(SDP_MSPI_SCK, 2, 1)>,
+				<NRF_PSEL(SDP_MSPI_CS0, 2, 5)>,
+				<NRF_PSEL(SDP_MSPI_DQ0, 2, 2)>;
+			nordic,drive-mode = <NRF_DRIVE_E0E1>;
+		};
+
+		group2 {
+			psels = <NRF_PSEL(SDP_MSPI_DQ1, 2, 4)>,
+				<NRF_PSEL(SDP_MSPI_DQ2, 2, 3)>,
+				<NRF_PSEL(SDP_MSPI_DQ3, 2, 0)>;
+			nordic,drive-mode = <NRF_DRIVE_E0E1>;
+			bias-pull-up;
+		};
+	};
+
+	sqspi_sleep: sqspi_sleep {
+		group1 {
+			low-power-enable;
+			psels = <NRF_PSEL(SDP_MSPI_SCK, 2, 1)>,
+				<NRF_PSEL(SDP_MSPI_CS0, 2, 5)>,
+				<NRF_PSEL(SDP_MSPI_DQ0, 2, 2)>,
+				<NRF_PSEL(SDP_MSPI_DQ1, 2, 4)>,
+				<NRF_PSEL(SDP_MSPI_DQ2, 2, 3)>,
+				<NRF_PSEL(SDP_MSPI_DQ3, 2, 0)>;
+		};
+	};
+};
+
+&cpuflpr_vpr {
+	pinctrl-0 = <&sqspi_default>;
+	pinctrl-1 = <&sqspi_sleep>;
+	pinctrl-names = "default", "sleep";
+	interrupts = <76 NRF_DEFAULT_IRQ_PRIORITY>;
+	status = "okay";
+};
+
+/ {
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		softperipheral_ram: memory@2003c000 {
+			reg = <0x2003c000 0x4000>;
+			ranges = <0 0x2003c000 0x4000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			sqspi: sqspi@3b40 {
+				compatible = "nordic,nrf-sqspi";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x3b40 0x200>;
+				status = "okay";
+				zephyr,pm-device-runtime-auto;
+			};
+		};
+	};
+zephyr,user {
+		/* Reference our external flash node */
+		ext-flash = &extflash;
+
+		/* You can even define the XIP base here for use in C */
+		xip-base = <0x60000000>;
+	};
+};
+
+/delete-node/ &mx25r64;
+
+&sqspi {
+	extflash: extflash@0 {
+		compatible = "mxicy,mx25r", "jedec,mspi-nor";
+		status = "okay";
+		reg = <0>;
+		jedec-id = [c2 28 17];
+		quad-enable-requirements = "S1B6";
+		sfdp-bfp = [e5 20 f1 ff ff ff ff 03 44 eb 08 6b 08 3b 04 bb
+			    ee ff ff ff ff ff 00 ff ff ff 00 ff 0c 20 0f 52
+			    10 d8 00 ff 23 72 f5 00 82 ed 04 cc 44 83 68 44
+			    30 b0 30 b0 f7 c4 d5 5c 00 be 29 ff f0 d0 ff ff];
+		size = <67108864>;
+		has-dpd;
+		t-enter-dpd = <10000>;
+		t-exit-dpd = <35000>;
+		t-reset-pulse = <10000>;
+		t-reset-recovery = <35000>;
+
+		mspi-max-frequency = <DT_FREQ_M(32)>;
+		mspi-io-mode = "MSPI_IO_MODE_QUAD_1_4_4";
+		mspi-data-rate = "MSPI_DATA_RATE_SINGLE";
+		mspi-hardware-ce-num = <1>;
+		mspi-cpp-mode = "MSPI_CPP_MODE_0";
+		mspi-endian = "MSPI_BIG_ENDIAN";
+		mspi-ce-polarity = "MSPI_CE_ACTIVE_LOW";
+	};
+};
+
+/* Other configs */
+/delete-node/ &spi00;
+/delete-node/ &spi22;
+/delete-node/ &pwm20;
+/delete-node/ &uart30;
+
+&pinctrl {
+	/omit-if-no-ref/ uart20_default: uart20_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 1, 4)>,
+				<NRF_PSEL(UART_RTS, 1, 6)>;
+		};
+
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 1, 5)>,
+				<NRF_PSEL(UART_CTS, 1, 7)>;
+			bias-pull-up;
+		};
+	};
+
+	/omit-if-no-ref/ uart20_sleep: uart20_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_RX, 1, 5)>,
+				<NRF_PSEL(UART_RTS, 1, 6)>,
+				<NRF_PSEL(UART_CTS, 1, 7)>;
+			low-power-enable;
+		};
+
+		group2 {
+			psels = <NRF_PSEL(UART_TX, 1, 4)>;
+			low-power-enable;
+			bias-pull-up;
+		};
+	};
+
+	/omit-if-no-ref/ uart30_default: uart30_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 0)>,
+				<NRF_PSEL(UART_RTS, 0, 2)>;
+		};
+
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 0, 1)>,
+				<NRF_PSEL(UART_CTS, 0, 3)>;
+			bias-pull-up;
+		};
+	};
+
+	/omit-if-no-ref/ uart30_sleep: uart30_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 0)>,
+				<NRF_PSEL(UART_RX, 0, 1)>,
+				<NRF_PSEL(UART_RTS, 0, 2)>,
+				<NRF_PSEL(UART_CTS, 0, 3)>;
+			low-power-enable;
+		};
+	};
+};
+
+&timer00 { /* util timer */
+    status = "okay";
+};

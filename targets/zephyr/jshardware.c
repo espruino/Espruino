@@ -50,6 +50,10 @@ JshSysTime is treated as in microseconds (jshGetTimeFromMilliseconds/jshGetMilli
 #include <nrfx.h>
 #include <hal/nrf_gpio.h>
 
+#ifdef BANGLEJS3
+#define ESPR_HAS_PWM 1
+#endif
+
 
 #define FLASH_UNITARY_WRITE_SIZE 4
 #define FAKE_FLASH_BLOCKSIZE 4096
@@ -92,17 +96,23 @@ k_tid_t main_thread_id;
 
 // Get the device binding for the console UART (usually "zephyr,console")
 const struct device *serial1_dev = DEVICE_DT_GET(DT_NODELABEL(uart20)); // was using DT_CHOSEN(zephyr_console)
+#if ESPR_USART_COUNT>1
 const struct device *serial2_dev = DEVICE_DT_GET(DT_NODELABEL(uart21));
+#endif
+#if ESPR_SPI_COUNT>0
 const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi30));
+#endif
 const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
 const struct device *qspi_dev = DEVICE_DT_GET(DT_NODELABEL(sqspi)); // for extflash
 const struct device *utiltimer_dev = DEVICE_DT_GET(DT_NODELABEL(timer00));
 const struct device *adc_dev = DEVICE_DT_GET(DT_NODELABEL(adc));
+#if ESPR_HAS_PWM
 const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm20));
+#endif
 volatile bool extflashEnabled = false;
 
-
+#if ESPR_SPI_COUNT>0
 struct spi_config spi1_config = {
         .frequency = 4000000U, // 4 MHz - works - 8Mhz sends data too fast for PY32 to output it at the moment
         //.frequency = 5333333U, // 5.3 MHz - magic number that seems to be allowed
@@ -113,7 +123,7 @@ struct spi_config spi1_config = {
         .slave     = 0,                     // Target index
         .cs        = { .gpio = { .port = NULL } }
     };
-
+#endif
 // ----------------------------------------------------------------------------
 Pin eventFlagsToPin[ESPR_EXTI_COUNT];
 static struct gpio_callback eventData[ESPR_EXTI_COUNT]; // used for handling zephyr events
@@ -137,14 +147,17 @@ const struct device *jshToZephyrPort(JsvPinInfoPort port) {
 }
 IOEventFlags jshDeviceToEventFlags(const struct device *dev) {
   if (dev==serial1_dev) return EV_SERIAL1;
+#if ESPR_USART_COUNT>1
   if (dev==serial2_dev) return EV_SERIAL2;
-
+#endif
   assert(0);
   return EV_NONE;
 }
 const struct device *jshEventFlagsToDevice(IOEventFlags dev) {
   if (dev==EV_SERIAL1) return serial1_dev;
+#if ESPR_USART_COUNT>1
   if (dev==EV_SERIAL2) return serial2_dev;
+#endif
   assert(0);
   return NULL;
 }
@@ -191,28 +204,37 @@ void jshInit() {
   if (!device_is_ready(serial1_dev)) return jsWarn("serial1 not ready");
   uart_irq_callback_set(serial1_dev, serial_cb);
   uart_irq_rx_enable(serial1_dev);
-
+#if ESPR_USART_COUNT>1
   if (!device_is_ready(serial2_dev)) return jsWarn("serial2 not ready");
   uart_irq_callback_set(serial2_dev, serial_cb);
   uart_irq_rx_enable(serial2_dev);
+#endif
 
   /* Update CMSIS core clock variable */
   //SystemCoreClockUpdate();
   //jsiConsolePrintf("CPU SystemCoreClock: %d MHz\n", SystemCoreClock / 1000000);
 
+#if ESPR_SPI_COUNT>0
   // SPI 1
   if (!device_is_ready(spi1_dev)) {
     jsWarn("spi30 not ready\n");
   }
+#endif
   // set up flow control/pins/etc
   jshInitDevices();
   // reset LCD/etc
   jshReset();
+#if ESPR_USART_COUNT>1
   // disable Serial 2 initially
   jshUSARTUnSetup(EV_SERIAL2);
+#endif
+#if ESPR_SPI_COUNT>0
   // disable SPI1 (LCD) initially as we start it only when we want to update the LCD
   pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI
+#endif
+#if ESPR_HAS_PWM
   pm_device_action_run(pwm_dev, PM_DEVICE_ACTION_SUSPEND); // stop PWM by default
+#endif
 
   // Ext flash
   if (!device_is_ready(extflash_dev)) {
@@ -283,6 +305,7 @@ void jshDelayMicroseconds(int microsec) {
 static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
   if (pinStates[pin]==func) return;
   // disconnect existing peripheral (if there was one)
+#if ESPR_HAS_PWM
   if (JSH_PINFUNCTION_IS_TIMER(pinStates[pin]) && !JSH_PINFUNCTION_IS_TIMER(func)) {
     // if no PWM needed, turn it off
     bool pwmOn = false;
@@ -294,7 +317,7 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
       pm_device_action_run(pwm_dev, PM_DEVICE_ACTION_SUSPEND);
     }
   }
-
+#endif
   // connect new peripheral
   pinStates[pin] = func;
 }
@@ -505,6 +528,7 @@ int jshPinAnalogFast(Pin pin) {
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0,
   if (value>1) value=1;
   if (value<0) value=0;
+#if ESPR_HAS_PWM
   // Try and use existing pin function
   JshPinFunction func = pinInfo[pin].functions[0];
   /* we set the bit field here so that if the user changes the pin state
@@ -538,13 +562,18 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   }
   jshPinSetFunction(pin, func);
   return func;
+#else
+  return 0;
+#endif
 }
 
 void jshSetOutputValue(JshPinFunction func, int value) {
+#if ESPR_HAS_PWM
   int channel = func>>JSH_SHIFT_INFO;
   uint32_t pulse = (uint32_t)((((uint64_t)pwmPeriod)*(uint64_t)value) >> 16);
   pwm_flags_t pwmFlags = 0; // see PWM_CAPTURE_FLAGS
   pwm_set(pwm_dev, channel, pwmPeriod, pulse, pwmFlags); // stops pwm here
+#endif
 }
 
 bool jshCanWatch(Pin pin) {
@@ -627,8 +656,10 @@ void jshUSARTUnSetup(IOEventFlags device) {
 void jshUSARTKick(IOEventFlags device) {
   if (device == EV_SERIAL1)
     uart_irq_tx_enable(serial1_dev); // kick IRQ for transmission
+#if ESPR_USART_COUNT>1
   if (device == EV_SERIAL2)
     uart_irq_tx_enable(serial2_dev); // kick IRQ for transmission
+#endif
 
   if (device == EV_BLUETOOTH) {
     // FIXME: should ideally do this before packet TX
@@ -641,6 +672,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 }
 
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+#if ESPR_SPI_COUNT>0
   struct spi_buf tx_buf = { .buf = tx, .len = count  };
   struct spi_buf rx_buf = { .buf = rx, .len = count  };
   struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
@@ -658,6 +690,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
 
   // FIXME use spi_transceive_cb for async writes (and use CONFIG_SPI_ASYNC=y)
   if (callback) callback();
+#endif
   return true;
 }
 
