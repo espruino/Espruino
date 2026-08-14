@@ -259,10 +259,11 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #if ESP_IDF_VERSION_MAJOR>=4
   double ms = jshGetMillisecondsFromTime(timeUntilWake);
   if (ms>1000) ms=1000; // hack for now - ideally jshHadEvent called from UART IRQs would break out of vTaskDelay
+  if (ms<1) return false; // don't sleep as minimum tick accuracy is 1ms
   sleepingTaskHandle = xTaskGetCurrentTaskHandle();
   uint32_t ulNotificationValue = ulTaskNotifyTake(
             pdTRUE,               // Clear notification count on exit
-            pdMS_TO_TICKS(ms)   // Max sleep duration in ticks
+            pdMS_TO_TICKS(ms)     // Max sleep duration in ticks
         );
   sleepingTaskHandle = NULL;
 #else

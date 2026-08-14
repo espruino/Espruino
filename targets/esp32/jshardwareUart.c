@@ -128,9 +128,14 @@ void initConsole(){
 
 uint8_t rxbuf[256];
 void pollSerialDevices() {
-  // sleep handling - if idle for 1000s, we start waiting 200ms for data - otherwise just 1ms
+  if (jshGetIOCharEventsFree() < 256) { // if we don't have enough space for data
+    jshHadEvent(); // ensure we don't sleep the main task
+    vTaskDelay(pdMS_TO_TICKS(1));
+    return; // don't bother reading if we can't put the data in
+  }
+  // sleep handling - if idle for 5s, we start waiting 100ms for data - otherwise just 1ms
   static uint16_t idleCount = 0;
-  TickType_t ticksToWait = (idleCount>1000) ? pdMS_TO_TICKS(200) : pdMS_TO_TICKS(1);
+  TickType_t ticksToWait = (idleCount>5000) ? pdMS_TO_TICKS(100) : pdMS_TO_TICKS(1);
   bool busy = false;
   int len;
   /* FIXME: we should use esp_vfs_usb_serial_jtag_use_driver/esp_vfs_dev_uart_register
@@ -147,7 +152,7 @@ void pollSerialDevices() {
     busy = true;
   }
   if(serial2_initialized){
-    len = uart_read_bytes(uart_Serial2,rxbuf, sizeof(rxbuf), ticksToWait);
+    len = uart_read_bytes(uart_Serial2,rxbuf, sizeof(rxbuf), 0/*don't wait*/);
     if(len > 0) {
       jshPushIOCharEvents(EV_SERIAL2, rxbuf, len);
       busy = true;
@@ -155,7 +160,7 @@ void pollSerialDevices() {
   }
 #if ESPR_USART_COUNT>2
   if(serial3_initialized){
-    len = uart_read_bytes(uart_Serial3,rxbuf, sizeof(rxbuf), ticksToWait);
+    len = uart_read_bytes(uart_Serial3,rxbuf, sizeof(rxbuf), 0/*don't wait*/);
     if(len > 0) {
       jshPushIOCharEvents(EV_SERIAL3, rxbuf,len);
       busy = true;
