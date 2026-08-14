@@ -489,6 +489,19 @@ static void sendWifiEvent(
   return;
 }
 
+/** Called when we can an AP or Station disconnect event. If
+ * we don't seem to be connected to anything, stop wifi*/
+void stopWifiIfIdle() {
+  wifi_mode_t mode;
+  esp_wifi_get_mode(&mode);
+  if ((mode == WIFI_MODE_NULL ||
+      (mode == WIFI_MODE_STA && !g_isStaConnected)) &&
+      !g_jsScanCallback/*scanning*/) {
+    jsDebug(DBG_INFO, "stopWifiIfIdle: calling esp_wifi_stop()\n");
+    esp_wifi_stop();
+  }
+}
+
 /**
  * Wifi event handler
  * Here we get invoked whenever a WiFi event is received from the ESP32 WiFi
@@ -534,6 +547,8 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     jsvObjectSetStringChild(jsDetails, "reason", temp);
     jsvObjectSetStringChild(jsDetails, "msg", wifiReasonToString(event->event_info.disconnected.reason));
     sendWifiEvent(event->event_id, jsDetails);
+
+    stopWifiIfIdle();
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_DISCONNECTED
 
@@ -653,6 +668,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    */
   if (event->event_id == SYSTEM_EVENT_SCAN_DONE) {
     scanCB();
+    stopWifiIfIdle();
     return ESP_OK;
   }
 
@@ -664,6 +680,14 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     sendWifiCompletionCB(&g_jsAPStartedCallback, NULL);
     return ESP_OK;
   }
+  /**
+   * SYSTEM_EVENT_AP_STOP
+   * Called when we have stopped being an access point.
+   */
+  if (event->event_id == SYSTEM_EVENT_AP_STOP) {
+    stopWifiIfIdle();
+  }
+
   jsDebug(DBG_INFO, "Wifi: event_handler -> NOT HANDLED EVENT: %d\n", event->event_id );
   return ESP_OK;
 } // End of event_handler

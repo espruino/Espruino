@@ -382,10 +382,11 @@ available are:
 
 * `phy` - Modulation standard to allow: `11b`, `11g`, `11n` (the esp8266 docs
   are not very clear, but it is assumed that 11n means b/g/n).
-* `powersave` - Power saving mode: `none` (radio is on all the time), `ps-poll`
-  (radio is off between beacons as determined by the access point's DTIM
-  setting). Note that in 'ap' and 'sta+ap' modes the radio is always on, i.e.,
-  no power saving is possible.
+* `powersave` - Power saving mode. Note that in 'ap' and 'sta+ap' modes the radio is always on, i.e.,  no power saving is possible.
+  * `none` (radio is on all the time),
+  * `ps-poll` (radio is off between beacons as determined by the access point's DTIM setting).
+  * `min`
+  * `max`
 
 Note: esp8266 SDK programmers may be missing an "opmode" option to set the
 sta/ap/sta+ap operation mode. Please use connect/scan/disconnect/startAP/stopAP,
@@ -584,7 +585,7 @@ includes an announcement for the "espruino" service.
   "class"    : "Wifi",
   "name"     : "setSNTP",
   "generate" : "jswrap_wifi_setSNTP",
-  "#if" : "defined(ESP8266) || defined(ESP32)",  
+  "#if" : "defined(ESP8266) || defined(ESP32)",
   "params"   : [
     ["server", "JsVar", "The NTP server to query, for example, `us.pool.ntp.org`"],
     ["tz_offset", "JsVar", "Local time zone offset in the range -11..13."]

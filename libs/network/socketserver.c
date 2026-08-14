@@ -759,7 +759,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
   return hadSockets;
 }
 
-
+// return true if we should *not* sleep
 bool socketIdle(JsNetwork *net) {
   if (networkState != NETWORKSTATE_ONLINE) {
     // clear all clients and servers
