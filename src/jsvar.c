@@ -1187,6 +1187,7 @@ JsVar *jsvNewFromLongInteger(long long value) {
 
 #ifndef ESPR_EMBED
 JsVar *jsvNewFromPin(int pin) {
+  if (pin == PIN_UNDEFINED) return 0;
   JsVar *v = jsvNewFromInteger((JsVarInt)pin);
   if (v) {
     v->flags = (JsVarFlags)((v->flags & ~JSV_VARTYPEMASK) | JSV_PIN);

@@ -232,12 +232,41 @@ Possible causes include:
 * `4: ESP_SLEEP_WAKEUP_TIMER` - Wakeup caused by timer
 * `5: ESP_SLEEP_WAKEUP_TOUCHPAD` - Wakeup caused by touchpad
 * `6: ESP_SLEEP_WAKEUP_ULP` - Wakeup caused by ULP program
+* `7: ESP_SLEEP_WAKEUP_GPIO` - Wakeup caused by GPIO (light sleep only)
+* `8: ESP_SLEEP_WAKEUP_UART` - Wakeup caused by UART (light sleep only)
 
 */
 int jswrap_ESP32_getWakeupCause() {
   return esp_sleep_get_wakeup_cause();
 } // End of jswrap_ESP32_getWakeupCause
 
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef" : "ESP32",
+  "name"     : "getWakeupPin",
+  "generate" : "jswrap_ESP32_getWakeupPin",
+  "return"   : ["pin", "The Pin that caused the ESP32's wakeup from sleep, or undefined"]
+}
+Returns the pin responsible for the wakeup, or `undefined` if none.
+*/
+Pin jswrap_ESP32_getWakeupPin() {
+#ifdef ESP32C3
+  uint64_t wakeup_pin_mask = esp_sleep_get_gpio_wakeup_status();
+  if (wakeup_pin_mask != 0) {
+    return __builtin_ffsll(wakeup_pin_mask) - 1; // Calculate the GPIO number from the bitmask
+  }
+#else
+  esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+  if (cause == ESP_SLEEP_WAKEUP_EXT1) { // Returns a bitmask of pins that triggered EXT1 wakeup
+    uint64_t wakeup_pin_mask = esp_sleep_get_ext1_wakeup_status();
+    if (wakeup_pin_mask != 0) {
+        return __builtin_ffsll(wakeup_pin_mask) - 1; // Calculate the GPIO number from the bitmask
+    }
+  }
+#endif
+  return PIN_UNDEFINED;
+}
 
 /*JSON{
   "type"     : "staticmethod",
