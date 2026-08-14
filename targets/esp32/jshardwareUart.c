@@ -129,8 +129,8 @@ void initConsole(){
 uint8_t rxbuf[256];
 void pollSerialDevices() {
   if (jshGetIOCharEventsFree() < 256) { // if we don't have enough space for data
-    jshHadEvent(); // ensure we don't sleep the main task
-    vTaskDelay(pdMS_TO_TICKS(1));
+    jshHadEvent(); // ensure we wake up the main task
+    vTaskDelay(pdMS_TO_TICKS(10)); // wait for the espruino task
     return; // don't bother reading if we can't put the data in
   }
   // sleep handling - if idle for 5s, we start waiting 100ms for data - otherwise just 1ms

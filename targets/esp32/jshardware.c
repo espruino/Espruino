@@ -81,7 +81,7 @@
 #define UNUSED(x) (void)(x)
 
 // Store the handle of the task during jshSleep so jshHadEvent can target it
-TaskHandle_t sleepingTaskHandle = NULL;
+volatile TaskHandle_t sleepingTaskHandle = NULL;
 
 /**
  * Convert a pin id to the corresponding Pin Event id.
@@ -265,7 +265,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
             pdTRUE,               // Clear notification count on exit
             pdMS_TO_TICKS(ms)     // Max sleep duration in ticks
         );
-  sleepingTaskHandle = NULL;
 #else
   UNUSED(timeUntilWake);
   // we never sleep in older IDFs

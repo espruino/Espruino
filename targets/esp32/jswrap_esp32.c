@@ -251,7 +251,7 @@ int jswrap_ESP32_getWakeupCause() {
 Returns the pin responsible for the wakeup, or `undefined` if none.
 */
 Pin jswrap_ESP32_getWakeupPin() {
-#ifdef ESP32C3
+#ifdef CONFIG_IDF_TARGET_ESP32C3
   uint64_t wakeup_pin_mask = esp_sleep_get_gpio_wakeup_status();
   if (wakeup_pin_mask != 0) {
     return __builtin_ffsll(wakeup_pin_mask) - 1; // Calculate the GPIO number from the bitmask
