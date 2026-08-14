@@ -66,8 +66,7 @@ extern void initialise_wifi(void);
 static void uartTask(void *data) {
   initConsole();
   while(1) {
-    consoleToEspruino();
-    serialToEspruino();
+    pollSerialDevices();
 #ifdef ESPR_USE_USB_SERIAL_JTAG
     /* The USB CDC UART on the C3 only writes the data to USB after a newline.
     We don't want that, so we call flush in this uart task if any data has been sent. */
@@ -133,12 +132,11 @@ int app_main(void)
 #ifdef RELEASE
   esp_log_level_set("wifi", ESP_LOG_WARN); //  remove `I wifi:...` info messages
 #endif
-
   esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      err = nvs_flash_init();
-    }
+  if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    err = nvs_flash_init();
+  }
 #ifdef BLUETOOTH
   jsble_init();
 #endif

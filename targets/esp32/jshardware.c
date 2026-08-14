@@ -58,6 +58,7 @@
 #include "esp_system.h"
 #include "esp_task_wdt.h"
 #include "esp_log.h"
+#include "esp_pm.h"
 #include "rom/ets_sys.h"
 #include "rom/uart.h"
 #include "driver/gpio.h"
@@ -78,6 +79,9 @@
 #define FLASH_PAGE ((uint32_t)1<<FLASH_PAGE_SHIFT)  //4KB
 
 #define UNUSED(x) (void)(x)
+
+// Store the handle of the task during jshSleep so jshHadEvent can target it
+TaskHandle_t sleepingTaskHandle = NULL;
 
 /**
  * Convert a pin id to the corresponding Pin Event id.
@@ -243,12 +247,24 @@ bool jshIsInInterrupt() {
   return false; // FIXME!
 }
 
+// We had an event - wake up!
+void jshHadEvent() {
+  if (sleepingTaskHandle != NULL)
+    xTaskNotifyGive(sleepingTaskHandle);
+}
+
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
+  // we definitely don't sleep when we have an active connection...
 #if ESP_IDF_VERSION_MAJOR>=4
   double ms = jshGetMillisecondsFromTime(timeUntilWake);
-  if (ms>50) ms=50; // hack for now - ideally jshHadEvent called from UART IRQs would break out of vTaskDelay
-  vTaskDelay(ms / portTICK_PERIOD_MS);
+  if (ms>1000) ms=1000; // hack for now - ideally jshHadEvent called from UART IRQs would break out of vTaskDelay
+  sleepingTaskHandle = xTaskGetCurrentTaskHandle();
+  uint32_t ulNotificationValue = ulTaskNotifyTake(
+            pdTRUE,               // Clear notification count on exit
+            pdMS_TO_TICKS(ms)   // Max sleep duration in ticks
+        );
+  sleepingTaskHandle = NULL;
 #else
   UNUSED(timeUntilWake);
   // we never sleep in older IDFs

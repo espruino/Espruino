@@ -35,6 +35,8 @@
             BLE: Remove deprecated NRF.setLowPowerConnection (NRF.setConnectionInterval is better)
             ESP32: Remove 4092b limit on hardware SPI sends
             ESP32: Automatically call esp_wifi_stop() if WiFi not needed (reduces power draw)
+            ESP32: Allow uartTask to sleep for 200ms when idle, and ramp to 1ms when busy
+            ESP32: allow jshSleep to sleep for 1sec and wake when jshHasEvent is called
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

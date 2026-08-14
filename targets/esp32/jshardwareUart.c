@@ -127,31 +127,44 @@ void initConsole(){
 }
 
 uint8_t rxbuf[256];
-void consoleToEspruino(){
-  TickType_t ticksToWait = 100;
-#if ESP_IDF_VERSION_MAJOR>=4
-  ticksToWait = 50 / portTICK_RATE_MS;
-#endif
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-  int len = usb_serial_jtag_read_bytes(rxbuf, sizeof(rxbuf), ticksToWait);
-#else
-  int len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), ticksToWait);  // Read data from UART
-#endif
-  if(len > 0) jshPushIOCharEvents(EV_SERIAL1, rxbuf, len);
-}
-
-void serialToEspruino(){
+void pollSerialDevices() {
+  // sleep handling - if idle for 1000s, we start waiting 200ms for data - otherwise just 1ms
+  static uint16_t idleCount = 0;
+  TickType_t ticksToWait = (idleCount>1000) ? pdMS_TO_TICKS(200) : pdMS_TO_TICKS(1);
+  bool busy = false;
   int len;
+  /* FIXME: we should use esp_vfs_usb_serial_jtag_use_driver/esp_vfs_dev_uart_register
+  and then 'select' on ALL of these open files - then we can sleep for however long
+  we want. */
+
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+  len = usb_serial_jtag_read_bytes(rxbuf, sizeof(rxbuf), ticksToWait);
+#else
+  len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), ticksToWait);  // Read data from UART
+#endif
+  if(len > 0) {
+    jshPushIOCharEvents(EV_SERIAL1, rxbuf, len);
+    busy = true;
+  }
   if(serial2_initialized){
-    len = uart_read_bytes(uart_Serial2,rxbuf, sizeof(rxbuf),0);
-    if(len > 0)jshPushIOCharEvents(EV_SERIAL2, rxbuf, len);
+    len = uart_read_bytes(uart_Serial2,rxbuf, sizeof(rxbuf), ticksToWait);
+    if(len > 0) {
+      jshPushIOCharEvents(EV_SERIAL2, rxbuf, len);
+      busy = true;
+    }
   }
 #if ESPR_USART_COUNT>2
   if(serial3_initialized){
-    len = uart_read_bytes(uart_Serial3,rxbuf, sizeof(rxbuf),0);
-    if(len > 0) jshPushIOCharEvents(EV_SERIAL3, rxbuf,len);
+    len = uart_read_bytes(uart_Serial3,rxbuf, sizeof(rxbuf), ticksToWait);
+    if(len > 0) {
+      jshPushIOCharEvents(EV_SERIAL3, rxbuf,len);
+      busy = true;
+    }
   }
 #endif
+  // idle counter
+  if (busy) idleCount = 0;
+  else if (idleCount<65535) idleCount++;
 }
 
 void writeSerial(IOEventFlags device,uint8_t c){
