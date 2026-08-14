@@ -293,6 +293,7 @@ function epdUpdate(){
 }
 
 Badge.showTestImage = function() {
+  if (Badge.epaperBusy) throw new Error("ePaper is busy");
   Badge.epaperBusy = true;
   return epdInit().then(() => {
     eC(0x10);
@@ -314,14 +315,62 @@ Badge.showTestImage = function() {
   }).then(epdSleep).then(() => {
     Badge.epaperBusy = false;
   });
-
 }
 
-/* Show full-res graphics on the display. We don't have a full-size
+
+/* Return a 400x240 2bpp graphics instance, which you can call `.flip()` on to update the screen.
+   0=black, 1=white, 2=yellow, 3=red */
+Badge.getGraphics = function() {
+  var g = Graphics.createArrayBuffer(400,240,2); /* 0=black, 1=white, 2=yellow, 3=red */
+  
+  g.flip = function() {
+    if (Badge.epaperBusy) throw new Error("ePaper is busy");
+    Badge.epaperBusy = true;
+    return epdInit().then(() => {
+      eC(0x10);    
+      
+      var line = new Uint16Array(100);
+      /*var lut = new Uint16Array(256);
+      for (var i=0;i<256;i++) lut[i] = (((i&0x03)<<8) | ((i&0x0C)<<10) | ((i&0x30)>>4) | ((i&0xC0)>>2)) * 0b0101;
+      print(btoa(lut.buffer))*/
+      var lut = new Uint16Array(E.toArrayBuffer(atob("AAAABQAKAA8AUABVAFoAXwCgAKUAqgCvAPAA9QD6AP8FAAUFBQoFDwVQBVUFWgVfBaAFpQWqBa8F8AX1BfoF/woACgUKCgoPClAKVQpaCl8KoAqlCqoKrwrwCvUK+gr/DwAPBQ8KDw8PUA9VD1oPXw+gD6UPqg+vD/AP9Q/6D/9QAFAFUApQD1BQUFVQWlBfUKBQpVCqUK9Q8FD1UPpQ/1UAVQVVClUPVVBVVVVaVV9VoFWlVapVr1XwVfVV+lX/WgBaBVoKWg9aUFpVWlpaX1qgWqVaqlqvWvBa9Vr6Wv9fAF8FXwpfD19QX1VfWl9fX6BfpV+qX69f8F/1X/pf/6AAoAWgCqAPoFCgVaBaoF+goKCloKqgr6DwoPWg+qD/pQClBaUKpQ+lUKVVpVqlX6WgpaWlqqWvpfCl9aX6pf+qAKoFqgqqD6pQqlWqWqpfqqCqpaqqqq+q8Kr1qvqq/68ArwWvCq8Pr1CvVa9ar1+voK+lr6qvr6/wr/Wv+q//8ADwBfAK8A/wUPBV8FrwX/Cg8KXwqvCv8PDw9fD68P/1APUF9Qr1D/VQ9VX1WvVf9aD1pfWq9a/18PX19fr1//oA+gX6CvoP+lD6Vfpa+l/6oPql+qr6r/rw+vX6+vr//wD/Bf8K/w//UP9V/1r/X/+g/6X/qv+v//D/9f/6//8=")));
+      for (var y=0;y<240;y++) {
+        E.mapInPlace(new Uint8Array(g.buffer, y*100, 100), line, lut);
+        eD(line.buffer);
+        eD(line.buffer);
+      }
+      return epdUpdate();
+    }).then(epdSleep).then(() => {
+      Badge.epaperBusy = false;
+    });
+  };
+  return g;
+}
+
+Badge.showTestScreen = function() {
+  return Badge.showRendering(function(g) {
+    g.setColor(1).drawRect(0,0,399,239).drawRect(1,1,398,238);
+      g.setBgColor(1).clear();
+      for (var i=0;i<4;i++) g.setColor(i).fillRect(i*40,0,(i+1)*40,479);
+      g.setColor(0);
+      for (var i=0;i<480;i+=10) g.drawLine(799,i, 799-i,479);     
+      g.setColor(0).setFontVector(80).setFontAlign(0,0).drawString("Hello World",400,240);
+      var env = process.env, mem=process.memory();
+      g.setFont("6x8:2").setFontAlign(0,0).drawString(`Espruino ${env.VERSION} (${env.GIT_COMMIT})
+https://espruino.com/Badge
+${env.BOARD}
+${mem.free} / ${mem.total} vars free
+`,400,320);
+  });
+};
+
+
+/* Show full-res 800x480 graphics on the display. We don't have a full-size
 buffer for this, so we have a callback which is called to render each
 slice in turn. Just render as-normal in gfxCallback */
 Badge.showRendering = function(gfxCallback) {
- Badge.epaperBusy = true;
+  if (Badge.epaperBusy) throw new Error("ePaper is busy");
+  Badge.epaperBusy = true;
   return epdInit().then(() => {
     eC(0x10);
     var g = Graphics.createArrayBuffer(800,48,2); /* 0=black, 1=white, 2=yellow, 3=red */
@@ -337,10 +386,11 @@ Badge.showRendering = function(gfxCallback) {
 };
 
 Badge.showImageFile = function(filename) {
- Badge.epaperBusy = true;
+  if (Badge.epaperBusy) throw new Error("ePaper is busy");
+  Badge.epaperBusy = true;
   return epdInit().then(() => {
     eC(0x10);
-    eD(require("Storage").read(filename).substr(0, 800*(480-48)>>2));
+    eD(require("Storage").read(filename));
     return epdUpdate();
   }).then(epdSleep).then(() => {
     Badge.epaperBusy = false;
