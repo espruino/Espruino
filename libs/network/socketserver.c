@@ -56,7 +56,7 @@ extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf
 #endif
 
 #if NET_DBG > 0
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
 // #include "jsinteractive.h"
 // #define DBG(format, ...) jsiConsolePrintf(format, ## __VA_ARGS__)
 static char DBG_LIB[] = "socketserver"; // library name
@@ -355,9 +355,9 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
         jsvAppendPrintf(partialChunk, "%x\r\n", nextIdx - len - 2);
       }
 
-      JsVar *chunkData = jsvNewFromEmptyString();
+      // FIXME: This often gets called, requesting more data from *receiveData than is available (often nothing is available)
+      JsVar *chunkData = jsvNewFromStringVar(*receiveData, startIdx, (size_t)chunkLen);
       if (!chunkData) return; // out of memory
-      jsvAppendStringVar(chunkData, *receiveData, startIdx, (size_t)chunkLen);
       jsvUnLock(*receiveData);
       *receiveData = chunkData;
     } else {
@@ -369,7 +369,7 @@ void socketPushReceiveData(JsVar *reader, JsVar **receiveData, bool isHttp, bool
   }
 
   // execute 'data' callback or save data
-  if (!jswrap_stream_pushData(reader, *receiveData, force)) {
+  if (!jsvIsEmptyString(*receiveData) && !jswrap_stream_pushData(reader, *receiveData, force)) {
     jsvUnLock2(nextChunk, partialChunk);
     return;
   }
