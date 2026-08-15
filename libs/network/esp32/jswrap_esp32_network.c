@@ -90,6 +90,9 @@ static system_event_sta_disconnected_t g_lastEventStaDisconnected;
 // Are we connected as a station?
 static bool g_isStaConnected = false;
 
+// Has the AP started?
+static bool g_isAPStarted = false;
+
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOPT)
 
@@ -677,6 +680,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * Called when we have started being an access point.
    */
   if (event->event_id == SYSTEM_EVENT_AP_START) {
+    g_isAPStarted = true;
     sendWifiCompletionCB(&g_jsAPStartedCallback, NULL);
     return ESP_OK;
   }
@@ -685,6 +689,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * Called when we have stopped being an access point.
    */
   if (event->event_id == SYSTEM_EVENT_AP_STOP) {
+    g_isAPStarted = false;
     stopWifiIfIdle();
   }
 
@@ -1252,8 +1257,10 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
     jsvObjectSetChildAndUnLock(jsWiFiStatus, "station",
         jsvNewFromString(wifiReasonToString(g_lastEventStaDisconnected.reason)));
   }
-  jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode",
-    jsvNewFromString(wifiModeToString(mode)));
+  // if wifi hasn't started, return NULL
+  if (!g_isAPStarted && !g_isStaConnected)
+    mode = WIFI_MODE_NULL;
+  jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode", jsvNewFromString(wifiModeToString(mode)));
   jsvObjectSetStringChild(jsWiFiStatus, "powersave", psTypeStr);
 
   return jsWiFiStatus;
@@ -1452,26 +1459,17 @@ void jswrap_wifi_restore(void) {
   JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
   JsVar *o = jswrap_storage_readJSON(name, true);
   if (!o) { // no data
-    jsDebug(DBG_INFO, "jswrap_wifi_restore: No data - Starting default AP\n");
-    esp_wifi_start();
+    jsDebug(DBG_INFO, "jswrap_wifi_restore: No data - not starting WiFi\n");
     jsvUnLock2(name,o);
     return;
   }
 
-  wifi_mode_t savedMode;
-
-  JsVar *v = jsvObjectGetChildIfExists(o,"mode");
-  savedMode=jsvGetInteger(v);
+  JsVar *v;
+  wifi_mode_t savedMode = jsvObjectGetIntegerChild(o,"mode");
   esp_wifi_set_mode(savedMode);
-  jsvUnLock(v);
 
-  //v = jsvObjectGetChildIfExists(o,"phyMode");
-  //wifi_set_phy_mode(jsvGetInteger(v));
-  //jsvUnLock(v);
-
-  //v = jsvObjectGetChildIfExists(o,"sleepType");
-  //esp_wifi_get_ps(jsvGetInteger(v));
-  //jsvUnLock(v);
+  //wifi_set_phy_mode(jsvObjectGetIntegerChild(o,"phyMode"));
+  //esp_wifi_get_ps(jsvObjectGetIntegerChild(o,"sleepType"));
 
   wifi_ap_config_t apConfig;
   bzero(&apConfig, sizeof(apConfig));
@@ -1481,17 +1479,12 @@ void jswrap_wifi_restore(void) {
     wifi_ap_config_t ap_config;
 	  bzero(&apConfig, sizeof(ap_config));
 
-    v = jsvObjectGetChildIfExists(o,"authmodeAP");
-    ap_config.authmode =jsvGetInteger(v);
-    jsvUnLock(v);
+    ap_config.authmode = jsvObjectGetIntegerChild(o,"authmodeAP");
 
-    v = jsvObjectGetChildIfExists(o,"hiddenAP");
-    ap_config.ssid_hidden = jsvGetInteger(v);
-    jsvUnLock(v);
+    ap_config.ssid_hidden = jsvObjectGetIntegerChild(o,"hiddenAP");
 
     v = jsvObjectGetChildIfExists(o,"ssidAP");
     jsvGetString(v, (char *)ap_config.ssid, sizeof(ap_config.ssid));
-
     ap_config.ssid_len = jsvGetStringLength(v);
     jsvUnLock(v);
 
@@ -1499,9 +1492,7 @@ void jswrap_wifi_restore(void) {
     jsvGetString(v, (char *)ap_config.password, sizeof(ap_config.password));
     jsvUnLock(v);
 
-    v = jsvObjectGetChildIfExists(o,"channelAP");
-    ap_config.channel = jsvGetInteger(v);
-    jsvUnLock(v);
+    ap_config.channel = jsvObjectGetIntegerChild(o,"channelAP");
 
     ap_config.max_connection = 4;
     ap_config.beacon_interval = 100;
