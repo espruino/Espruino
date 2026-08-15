@@ -640,6 +640,7 @@ void jslGetNextToken() {
       jslSkipWhiteSpace();
       // If the current char is '/'
       jumpCh = (unsigned char)lex->currCh;
+      if (!jumpCh) return; // jslSkipWhiteSpace hit end of file - lex->tk either LEX_EOF or LEX_UNFINISHED_COMMENT
       if (jumpCh > jslJumpTableEnd) jumpCh = 0; // which also happens to be JSLJT_SINGLE_CHAR - what we want.
       if (jumpCh=='/') jumpCh = jslJumpTableForwardSlash; // force us to jump to handle the comments
       // go back, so we can re-check the next character against our jumptable
