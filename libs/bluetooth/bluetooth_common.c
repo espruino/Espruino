@@ -16,7 +16,7 @@
 #include "bluetooth.h"
 #include "bluetooth_common.h"
 
-#ifdef NRF52
+#ifdef NRF5X
 #include "app_util.h" // MSEC_TO_UNITS
 #endif
 
