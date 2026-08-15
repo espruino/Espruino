@@ -135,7 +135,7 @@ void pollSerialDevices() {
   }
   // sleep handling - if idle for 5s, we start waiting 100ms for data - otherwise just 1ms
   static uint16_t idleCount = 0;
-  TickType_t ticksToWait = (idleCount>5000) ? pdMS_TO_TICKS(100) : pdMS_TO_TICKS(1);
+  TickType_t ticksToWait = (idleCount>5000) ? pdMS_TO_TICKS(100) : pdMS_TO_TICKS(5);
   bool busy = false;
   int len;
   /* FIXME: we should use esp_vfs_usb_serial_jtag_use_driver/esp_vfs_dev_uart_register
