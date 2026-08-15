@@ -18,8 +18,9 @@
 #include "jswrap_string.h"
 #include "jsnative.h"
 
-#include "bluetooth_utils.h"
 #include "bluetooth.h"
+#include "bluetooth_utils.h"
+#include "bluetooth_common.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -53,7 +54,6 @@
 #include "BLE/esp32_gap_func.h"
 #include "BLE/esp32_gatts_func.h"
 #include "BLE/esp32_gattc_func.h"
-#define BLE_CONN_HANDLE_INVALID -1
 #endif
 
 // ------------------------------------------------------------------------------

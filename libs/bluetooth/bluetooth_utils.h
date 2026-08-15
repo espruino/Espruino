@@ -12,6 +12,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifndef BLUETOOTH_UTILS_H
+#define BLUETOOTH_UTILS_H
+
 #include "jsvar.h"
 #include "bluetooth.h"
 #if PEER_MANAGER_ENABLED
@@ -98,3 +101,5 @@ void jsble_queue_pending(BLEPending blep, uint16_t data);
 /* Handler for common event types (between nRF52/ESP32). Called first
  * from ESP32/nRF52 jsble_exec_pending function */
 bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *buffer, size_t bufferLen);
+
+#endif // BLUETOOTH_UTILS_H

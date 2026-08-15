@@ -18,6 +18,7 @@
 #include "jsparse.h"
 #include "jshardware.h"
 #include "jswrap_bluetooth.h"
+#include "bluetooth_common.h"
 
 #ifdef NRF5X
 #include "app_error.h"

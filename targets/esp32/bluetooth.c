@@ -22,6 +22,7 @@
 #include "jswrap_bluetooth.h"
 #include "bluetooth.h"
 #include "bluetooth_utils.h"
+#include "bluetooth_common.h"
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
@@ -32,11 +33,6 @@
 #include "BLE/esp32_bluetooth_utils.h"
 #include "jshardwareESP32.h"
 
-volatile BLEStatus bleStatus;
-ble_uuid_t bleUUIDFilter;
-uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
-volatile uint16_t m_peripheral_conn_handle;    /**< Handle of the current connection. */
-volatile uint16_t m_central_conn_handles[1]; /**< Handle of central mode connection */
 
 /** Initialise the BLE stack - called before Espruino is ready */
 void jsble_init(){
@@ -78,7 +74,7 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
   assert(IOEVENT_MAX_LEN >= sizeof(BLEAdvReportData));
   int eventBytesHandled = 2+bufferLen;
   // Now handle the actual event
-  if (bufferLen<3) return;
+  if (bufferLen<3) return 0;
   BLEPending blep = (BLEPending)buffer[0];
   uint16_t data = (uint16_t)(buffer[1] | (buffer[2]<<8));
   // skip first 3 bytes
@@ -108,7 +104,7 @@ uint32_t jsble_advertising_start() {
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
   esp_err_t status;
-  if (bleStatus & BLE_IS_ADVERTISING) return;
+  if (bleStatus & BLE_IS_ADVERTISING) return 0;
   status = bluetooth_gap_startAdvertising(true);
   bleStatus |= BLE_IS_ADVERTISING;
   return status;
@@ -124,40 +120,6 @@ void jsble_advertising_stop() {
   if(status){
      jsExceptionHere(JSET_ERROR,"error in stop advertising:0X%x",status);
   }
-}
-/** Is BLE connected to any device at all? */
-bool jsble_has_connection(){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
-    return false; // ESP32.enableBLE(false)
-#if CENTRAL_LINK_COUNT>0
-  return (m_central_conn_handles[0] != BLE_GATT_HANDLE_INVALID) ||
-         (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
-#else
-  return m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID;
-#endif
-}
-
-/** Is BLE connected to a central device at all? */
-bool jsble_has_central_connection(){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
-    return false; // ESP32.enableBLE(false)
-#if CENTRAL_LINK_COUNT>0
-  return (m_central_conn_handles[0] != BLE_GATT_HANDLE_INVALID);
-#else
-  return false;
-#endif
-}
-
-/** Return the index of the central connection in m_central_conn_handles, or -1 */
-int jsble_get_central_connection_idx(uint16_t handle) {
-  return 0; // only one central connection!
-}
-
-/** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
-bool jsble_has_peripheral_connection(){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
-    return false;
-  return (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
 }
 
 /** Call this when something happens on BLE with this as

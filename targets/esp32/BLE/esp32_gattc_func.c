@@ -19,6 +19,7 @@
 #include "BLE/esp32_bluetooth_utils.h"
 
 #include "bluetooth_utils.h"
+#include "bluetooth_common.h"
 #include "jswrap_bluetooth.h"
 
 #include "jsvar.h"
@@ -47,7 +48,7 @@ void gattc_reset() {
     ret = esp_ble_gattc_app_unregister((esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if);
     if(ret) jsWarn("could not unregister GATTC(%d)\n",ret);
   }
-  m_central_conn_handles[0] = BLE_GATT_HANDLE_INVALID;
+  m_central_conn_handles[0] = BLE_CONN_HANDLE_INVALID;
 }
 
 void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
@@ -147,7 +148,7 @@ void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
       break;
 
     case ESP_GATTC_DISCONNECT_EVT:
-      m_central_conn_handles[0] = BLE_GATT_HANDLE_INVALID;
+      m_central_conn_handles[0] = BLE_CONN_HANDLE_INVALID;
       jsble_queue_pending(BLEP_CENTRAL_DISCONNECTED, p_data->disconnect.reason);
       break;
     default: break;

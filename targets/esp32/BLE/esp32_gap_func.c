@@ -25,6 +25,7 @@
 #include "jshardware.h"
 #include "jshardwareESP32.h"
 #include "bluetooth_utils.h"
+#include "bluetooth_common.h"
 #include "jswrap_bluetooth.h"
 
 #define adv_config_flag      (1 << 0)
@@ -35,9 +36,9 @@
 static uint8_t adv_config_done = 0;
 uint16_t blePeriphConnectionInterval = 0;
 
-static esp_ble_adv_params_t adv_params = {
-    .adv_int_min        = 0x20,
-    .adv_int_max        = 0x40,
+static esp_ble_adv_params_t adv_params = { // Time = N * 0.625 msec Time Range: 20 ms to 10.24
+    .adv_int_min        = 600,
+    .adv_int_max        = 600,
     .adv_type           = ADV_TYPE_IND,
     .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
     //.peer_addr            =
@@ -55,22 +56,6 @@ static esp_ble_scan_params_t ble_scan_params =   {
   .scan_duplicate         = BLE_SCAN_DUPLICATE_DISABLE // allow duplicates
 };
 
-static esp_ble_adv_data_t adv_data = {
-    .set_scan_rsp = false,
-    .include_name = true,
-    .include_txpower = true,
-    .min_interval = 0x20,
-    .max_interval = 0x40,
-    .appearance = 0x00,
-    .manufacturer_len = 0, //TEST_MANUFACTURER_DATA_LEN,
-    .p_manufacturer_data =  NULL, //&test_manufacturer[0],
-    .service_data_len = 0,
-    .p_service_data = NULL,
-    .service_uuid_len = 0,  //needs to be set before used
-    .p_service_uuid = &adv_service_uuid128,
-    .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
-};
-
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
   jsWarnGapEvent(event);
   switch (event) {
@@ -82,7 +67,6 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
       break;
     }
     case ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT:{
-
       adv_config_done &= (~scan_rsp_config_flag);
       if (adv_config_done == 0){
         esp_ble_gap_start_advertising(&adv_params);
@@ -166,6 +150,9 @@ void bluetooth_gap_setScan(bool enable, bool activeScan){
 esp_err_t bluetooth_gap_startAdvertising(bool enable){
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
+
+  adv_params.adv_int_min = bleAdvertisingInterval;
+  adv_params.adv_int_max = bleAdvertisingInterval;
   if(enable)
     return esp_ble_gap_start_advertising(&adv_params);
   else

@@ -22,6 +22,7 @@
 #endif
 #ifdef BLUETOOTH
 #include "jswrap_bluetooth.h"
+#include "bluetooth_common.h"
 #endif
 
 /*JSON{

@@ -11,12 +11,14 @@
  * Common low-level device handling (Events, IO buffers)
  * ----------------------------------------------------------------------------
  */
+#include "jsutils.h"
 #include "jsdevices.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
 #ifdef BLUETOOTH
 #include "bluetooth.h"
+#include "bluetooth_common.h"
 #endif
 
 #ifdef LINUX

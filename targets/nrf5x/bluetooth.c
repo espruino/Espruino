@@ -26,6 +26,7 @@
 #include "nrf5x_utils.h"
 #include "bluetooth.h"
 #include "bluetooth_utils.h"
+#include "bluetooth_common.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -181,7 +182,6 @@ uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Ad
 int8_t m_tx_power = 0;
 #endif
 
-volatile uint16_t                       m_peripheral_conn_handle;    /**< Handle of the current connection. */
 #ifndef SAVE_ON_FLASH
 ble_gap_addr_t m_peripheral_addr;
 #endif
@@ -191,7 +191,6 @@ volatile uint16_t m_peripheral_effective_mtu;
 const uint16_t m_peripheral_effective_mtu = GATT_MTU_SIZE_DEFAULT;
 #endif
 #if CENTRAL_LINK_COUNT>0
-volatile uint16_t                       m_central_conn_handles[CENTRAL_LINK_COUNT]; /**< Handle for central mode connection */
 #ifdef EXTENSIBLE_MTU
 volatile uint16_t m_central_effective_mtu;
 #else
@@ -203,11 +202,6 @@ const uint16_t m_central_effective_mtu = GATT_MTU_SIZE_DEFAULT;
 volatile bool nfcEnabled = false;
 #endif
 
-/// The advertising interval (in units of 0.625 ms)
-uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(BLUETOOTH_ADVERTISING_INTERVAL, UNIT_0_625_MS);
-
-volatile BLEStatus bleStatus = 0;
-ble_uuid_t bleUUIDFilter;
 /// When doing service discovery, this is the last handle we'll need to discover with
 uint16_t bleFinalHandle;
 
@@ -708,38 +702,6 @@ uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max) {
     // Not connected, just tell the stack
     return sd_ble_gap_ppcp_set(&gap_conn_params);
   }
-}
-
-/** Is BLE connected to any device at all? */
-bool jsble_has_connection() {
-  if (jsble_has_central_connection())
-    return true;
-  return m_peripheral_conn_handle != BLE_CONN_HANDLE_INVALID;
-}
-
-/** Is BLE connected to a central device at all? */
-bool jsble_has_central_connection() {
-#if CENTRAL_LINK_COUNT>0
-  for (int i=0;i<CENTRAL_LINK_COUNT;i++)
-    if (m_central_conn_handles[i] != BLE_CONN_HANDLE_INVALID)
-      return true;
-#endif
-  return false;
-}
-
-/** Return the index of the central connection in m_central_conn_handles, or -1 */
-int jsble_get_central_connection_idx(uint16_t handle) {
-#if CENTRAL_LINK_COUNT>0
-  for (int i=0;i<CENTRAL_LINK_COUNT;i++)
-    if (m_central_conn_handles[i] == handle)
-      return i;
-#endif
-  return -1;
-}
-
-/** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
-bool jsble_has_peripheral_connection() {
-  return (m_peripheral_conn_handle != BLE_CONN_HANDLE_INVALID);
 }
 
 /** Call this when something happens on BLE with this as
@@ -2650,9 +2612,19 @@ static void ble_stack_init() {
         APP_ERROR_CHECK(err_code);
     }
 #endif
+    /*{ // default NRF_SDH_BLE_GATTS_ATTR_TAB_SIZE 1408
+      ble_cfg_t ble_cfg;
+      memset(&ble_cfg, 0, sizeof(ble_cfg));
+      ble_cfg.gatts_cfg.attr_tab_size.attr_tab_size = 0xC00; // 0xC00 = 3072 bytes
+      // Apply configuration BEFORE enabling the SoftDevice
+      ret_code_t err_code = sd_ble_cfg_set(BLE_GATTS_CFG_ATTR_TAB_SIZE, &ble_cfg, ram_start);
+      APP_ERROR_CHECK(err_code);
+    }*/
 
     // Enable BLE stack.
     err_code = nrf_sdh_ble_enable(&app_ram_base);
+    if (err_code == NRF_ERROR_NO_MEM)
+      jsiConsolePrintf("NO_MEM: set RAM_START=0x%x\n", ram_start);
     APP_ERROR_CHECK(err_code);
 
     // Register a handler for BLE events.

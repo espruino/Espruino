@@ -33,6 +33,7 @@
 #endif
 #ifdef BLUETOOTH
 #include "bluetooth.h"
+#include "bluetooth_common.h"
 #include "jswrap_bluetooth.h"
 #endif
 #ifdef BANGLEJS

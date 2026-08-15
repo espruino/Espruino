@@ -25,6 +25,7 @@
 
 #include "bluetooth.h"
 #include "bluetooth_utils.h"
+#include "bluetooth_common.h"
 
 #include "jsutils.h"
 #include "jsparse.h"
@@ -251,7 +252,7 @@ static void gatts_disconnect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
       // TODO: Maybe use BLEP_DISCONNECTED handler rather than doing this here?
       JsVar *args[1];
       args[0] = jsvNewFromInteger(param->disconnect.reason);
-      m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID;
+      m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;
       emitNRFEvent(BLE_DISCONNECT_EVENT,args,1);
       if(gatts_service[g].serviceFlag == BLE_SERVICE_NUS) uart_gatts_connected = true;
     }

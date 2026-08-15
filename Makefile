@@ -645,7 +645,7 @@ ifeq ($(USE_BLUETOOTH),1)
   DEFINES += -DBLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
-  SOURCES += libs/bluetooth/bluetooth_utils.c
+  SOURCES += libs/bluetooth/bluetooth_utils.c libs/bluetooth/bluetooth_common.c
 endif
 
 ifeq ($(USE_CRYPTO),1)

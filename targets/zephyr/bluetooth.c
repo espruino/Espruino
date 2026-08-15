@@ -33,19 +33,13 @@
 #include "jswrap_bluetooth.h"
 #include "bluetooth.h"
 #include "bluetooth_utils.h"
+#include "bluetooth_common.h"
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
 
 #define LOG_ERR jsiConsolePrintf
 #define LOG_INF jsiConsolePrintf
-
-volatile BLEStatus bleStatus;
-ble_uuid_t bleUUIDFilter;
-uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
-
-volatile uint16_t m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID;    /**< Handle of the current connection. */
-volatile uint16_t m_central_conn_handles[1] = { BLE_GATT_HANDLE_INVALID }; /**< Handle of central mode connection */
 
 static struct bt_conn *current_conn[1];
 static struct bt_conn *auth_conn;
@@ -126,7 +120,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 		auth_conn = NULL;
 	}
 
-  m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID; // fixme
+  m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID; // fixme
 	if (current_conn[0]) {
 		bt_conn_unref(current_conn[0]);
 		current_conn[0] = NULL;
@@ -378,30 +372,6 @@ uint32_t jsble_advertising_update_scanresponse(char *dPtr, unsigned int dLen) {
   return 0; // FIXME
 }
 void jsble_advertising_stop() {
-}
-/** Is BLE connected to any device at all? */
-bool jsble_has_connection(){
-#if CENTRAL_LINK_COUNT>0
-  return (m_central_conn_handles[0] != BLE_GATT_HANDLE_INVALID) ||
-         (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
-#else
-  return m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID;
-#endif
-}
-
-/** Is BLE connected to a central device at all? */
-bool jsble_has_central_connection(){
-  return (m_central_conn_handles[0] != BLE_GATT_HANDLE_INVALID);
-}
-
-/** Return the index of the central connection in m_central_conn_handles, or -1 */
-int jsble_get_central_connection_idx(uint16_t handle) {
-  return 0; // only one central connection!
-}
-
-/** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
-bool jsble_has_peripheral_connection(){
-  return (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
 }
 
 /** Call this when something happens on BLE with this as
