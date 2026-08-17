@@ -198,7 +198,7 @@ void jshPushIOWatchEvent(IOEventFlags channel);
 /// Push a single character event (for example USART RX)
 void jshPushIOCharEvent(IOEventFlags channel, char ch);
 /// Push many character events at once (for example USB RX)
-void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count);
+void jshPushIOCharEvents(IOEventFlags channel, const char *data, unsigned int count);
 
 /// Debugging only - prints the IO buffer, one item per line
 void jshDumpIOEvents();
@@ -242,6 +242,8 @@ void jshTransmitClearDevice(IOEventFlags device);
 void jshTransmitMove(IOEventFlags from, IOEventFlags to);
 /// Do we have anything we need to send?
 bool jshHasTransmitData();
+/** Returns the number of bytes currently used in the transmit buffer */
+int jshGetTransmitBufferUsage();
 // Return the device at the top of the transmit queue (or EV_NONE)
 IOEventFlags jshGetDeviceToTransmit();
 /// Try and get a character for transmission - could just return -1 if nothing

@@ -124,7 +124,7 @@ static void _jswrap_promise_queue_reaction(JsVar *promise, JsVar *reaction, JsVa
   }
 }
 static void _jswrap_promise_seal(JsVar *promise, JsVar *data,bool resolving) {
-  jsvObjectSetChildAndUnLock(promise, JS_PROMISE_STATE_NAME, jsvNewFromInteger(resolving ? JS_PROMISE_STATE_FULFILLED : JS_PROMISE_STATE_REJECTED));
+  jsvObjectSetIntChild(promise, JS_PROMISE_STATE_NAME, resolving ? JS_PROMISE_STATE_FULFILLED : JS_PROMISE_STATE_REJECTED);
 
   const char *eventName = resolving ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
   JsVar *reactions = jsvObjectGetChildIfExists(promise, eventName);
@@ -158,7 +158,7 @@ static void _jswrap_prombox_resolve_or_reject(JsVar *prombox, JsVar *data, bool 
   if (isResolved)
     return;
 
-  jsvObjectSetChildAndUnLock(prombox, JS_PROMISE_ISRESOLVED_NAME, jsvNewFromBool(true));
+  jsvObjectSetBoolChild(prombox, JS_PROMISE_ISRESOLVED_NAME, true);
   JsVar * promise = jsvObjectGetChildIfExists(prombox, JS_PROMISE_PROM_NAME);
   if (promise) {
     if (jsvIsEqual(data,promise)) {
@@ -189,7 +189,7 @@ static void _jswrap_prombox_resolve_or_reject(JsVar *prombox, JsVar *data, bool 
     JsVar *jsReject = _jswrap_promise_native_with_prombox(_jswrap_prombox_reject, prombox);
     if (prombox) {
       jsvObjectSetChild(prombox, JS_PROMISE_PROM_NAME, promise);
-      jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
+      jsvObjectSetBoolChild(prombox,JS_PROMISE_ISRESOLVED_NAME, false);
 
       if (isThenable) {
         JsVar *args[2] = {jsResolve,jsReject};
@@ -243,7 +243,7 @@ static void jspromise_resolve_or_reject(JsVar *promise, JsVar *data, bool isReso
     return;
   }
   jsvObjectSetChild(prombox, JS_PROMISE_PROM_NAME, promise);
-  //jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false)); // not setting will still; return false
+  //jsvObjectSetBoolChild(prombox,JS_PROMISE_ISRESOLVED_NAME, false); // not setting will still; return false
   _jswrap_prombox_queueresolve_or_reject(prombox, data, isResolve);
   jsvUnLock(prombox);
 }
@@ -270,9 +270,9 @@ static JsVar *jspromise_create_prombox(JsVar ** promise) {
     jsvUnLock(p);
     return 0;
   }
-  jsvObjectSetChildAndUnLock(p, JS_PROMISE_STATE_NAME, jsvNewFromInteger(JS_PROMISE_STATE_PENDING));
+  jsvObjectSetIntChild(p, JS_PROMISE_STATE_NAME, JS_PROMISE_STATE_PENDING);
   jsvObjectSetChildAndUnLock(box, JS_PROMISE_PROM_NAME, p);
-  //jsvObjectSetChildAndUnLock(box,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false)); // not setting will still; return false
+  //jsvObjectSetBoolChild(box,JS_PROMISE_ISRESOLVED_NAME, false); // not setting will still; return false
 
   *promise = p;
   return box;
@@ -334,7 +334,7 @@ static void _jswrap_prombox_all_resolve(JsVar *prombox, JsVar *index, JsVar *dat
       jsvSetArrayItem(arr, jsvGetInteger(index), data);
       // Update remaining list
       remaining--;
-      jsvObjectSetChildAndUnLock(promise, JS_PROMISE_REMAINING_NAME, jsvNewFromInteger(remaining));
+      jsvObjectSetIntChild(promise, JS_PROMISE_REMAINING_NAME, remaining);
       if (remaining==0) {
         _jswrap_prombox_queueresolve(prombox, arr);
       }
@@ -412,7 +412,7 @@ JsVar *jswrap_promise_all(JsVar *arr) {
       promise = jswrap_promise_resolve(promiseResults);
       jsvUnLock2(promise, promiseResults);
     } else { // return our new promise that will resolve when everything is done
-      jsvObjectSetChildAndUnLock(promise, JS_PROMISE_REMAINING_NAME, jsvNewFromInteger(promiseIndex-promisesComplete));
+      jsvObjectSetIntChild(promise, JS_PROMISE_REMAINING_NAME, promiseIndex-promisesComplete);
       jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, promiseResults);
     }
     jsvUnLock2(reject,promBox);

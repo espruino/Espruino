@@ -416,24 +416,24 @@ JsVar * jswrap_ethernet_getStatus( JsVar *wlanObj, JsVar *callback) {
 
   JsVar *jsStatus = jsvNewObject();
 
-  jsvObjectSetChildAndUnLock(jsStatus, "state", jsvNewFromString(state[networkState]));
+  jsvObjectSetStringChild(jsStatus, "state", state[networkState]);
 
   ctlwizchip(CW_GET_ID,(void*)tmpstr);
-  jsvObjectSetChildAndUnLock(jsStatus, "id",jsvNewFromString(tmpstr));
+  jsvObjectSetStringChild(jsStatus, "id", tmpstr);
 
   ctlwizchip(CW_GET_PHYLINK, (void*)&tmp);
-  jsvObjectSetChildAndUnLock(jsStatus, "phylink", jsvNewFromString(phylink[tmp]));
+  jsvObjectSetStringChild(jsStatus, "phylink", phylink[tmp]);
 
   ctlwizchip(CW_GET_PHYPOWMODE,(void*)&tmp);
-  jsvObjectSetChildAndUnLock(jsStatus, "phypowmode", jsvNewFromString(phypowm[tmp]));
+  jsvObjectSetStringChild(jsStatus, "phypowmode", phypowm[tmp]);
 
 #if  _WIZCHIP_ == 5500
   wiz_PhyConf tmpPhycConf;
   ctlwizchip(CW_GET_PHYCONF,(void*)&tmpPhycConf);
-  jsvObjectSetChildAndUnLock(jsStatus, "by", jsvNewFromInteger(tmpPhycConf.by));
-  jsvObjectSetChildAndUnLock(jsStatus, "mode", jsvNewFromInteger(tmpPhycConf.mode));
+  jsvObjectSetIntChild(jsStatus, "by", tmpPhycConf.by);
+  jsvObjectSetIntChild(jsStatus, "mode", tmpPhycConf.mode);
   jsvObjectSetChildAndUnLock(jsStatus, "speed",  tmpPhycConf.speed ? jsvNewFromInteger(10) :  jsvNewFromInteger(100));
-  jsvObjectSetChildAndUnLock(jsStatus, "duplex", jsvNewFromInteger(tmpPhycConf.duplex));
+  jsvObjectSetIntChild(jsStatus, "duplex", tmpPhycConf.duplex);
 #endif
 
   networkFree(&net);

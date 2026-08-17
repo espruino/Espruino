@@ -48,7 +48,6 @@
 #include "apps/sntp/sntp.h"
 #endif
 
-
 #include "lwip/dns.h"
 #include "jsinteractive.h"
 #include "network.h"
@@ -110,6 +109,9 @@ static system_event_sta_disconnected_t g_lastEventStaDisconnected;
 #endif
 // Are we connected as a station?
 static bool g_isStaConnected = false;
+
+// Has the AP started?
+static bool g_isAPStarted = false;
 
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOPT)
@@ -359,20 +361,20 @@ static void scanCB() {
     int i;
     for (i=0; i<apCount; i++) {
       JsVar *jsCurrentAccessPoint = jsvNewObject();
-      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(list[i].rssi));
-      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromString(authModeToString(list[i].authmode)));
+      jsvObjectSetIntChild(jsCurrentAccessPoint, "rssi", list[i].rssi);
+      jsvObjectSetStringChild(jsCurrentAccessPoint, "authMode", authModeToString(list[i].authmode));
 
       // The SSID may **NOT** be NULL terminated ... so handle that.
       char temp[32 + 1];
       strncpy((char *)temp, list[i].ssid, 32);
       temp[32] = '\0';
-      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "ssid", jsvNewFromString(temp));
+      jsvObjectSetStringChild(jsCurrentAccessPoint, "ssid", temp);
       sprintf(temp, MACSTR, MAC2STR(list[i].bssid));
-      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "mac", jsvNewFromString(temp));
+      jsvObjectSetStringChild(jsCurrentAccessPoint, "mac", temp);
       sprintf(temp, "%d", list[i].primary);
-      jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromString(temp));
+      jsvObjectSetStringChild(jsCurrentAccessPoint, "channel", temp);
       // Can't find a flag for this?  http://esp-idf.readthedocs.io/en/latest/api-reference/wifi/esp_wifi.html?highlight=wifi_ap_record_t
-      //jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "isHidden", jsvNewFromBool(list[i].ssid_hidden));
+      //jsvObjectSetBoolChild(jsCurrentAccessPoint, "isHidden", list[i].ssid_hidden);
       // Add the new record to the array
       jsvArrayPush(jsAccessPointArray, jsCurrentAccessPoint);
       jsvUnLock(jsCurrentAccessPoint);
@@ -437,7 +439,7 @@ static char *ipGetEvent(uint32_t event) {
   //jsDebug(DBG_INFO, "Unhandled wifi event type: %d\n", event);
   jsDebug(DBG_INFO, "Unhandled ip event type: %d\n", event);
   return NULL;
-} 
+}
 #endif
 
 #if ESP_IDF_VERSION_MAJOR>=5
@@ -451,7 +453,7 @@ const char *getEventToString(int e) {
     case WIFI_EVENT_STA_DISCONNECTED: return "#ondisconnected";
     case WIFI_EVENT_STA_AUTHMODE_CHANGE: return "#onauth_change";
     case WIFI_EVENT_AP_START: return "#onap_start";
-    case WIFI_EVENT_AP_STOP: return "#onap_stop";  
+    case WIFI_EVENT_AP_STOP: return "#onap_stop";
     case WIFI_EVENT_AP_STACONNECTED: return "#onsta_joined";
     case WIFI_EVENT_AP_STADISCONNECTED: return "#onsta_left";
     case WIFI_EVENT_AP_PROBEREQRECVED: return "#onprobe_recv";
@@ -461,8 +463,8 @@ const char *getEventToString(int e) {
 #else
 const char *getEventToString(int e) {
   switch (e) {
-    // no handler name; treat as invalid / no script 
-    case SYSTEM_EVENT_WIFI_READY: return NULL;  
+    // no handler name; treat as invalid / no script
+    case SYSTEM_EVENT_WIFI_READY: return NULL;
     case SYSTEM_EVENT_SCAN_DONE: return NULL;
     case SYSTEM_EVENT_STA_START: return "#onsta_start";
     case SYSTEM_EVENT_STA_STOP: return NULL;
@@ -528,7 +530,7 @@ static void sendWifiEvent(
   // get event name as string and compose param list
   JsVar *params[1];
   params[0] = jsDetails;
-  char *eventName = getEventToString(eventType);
+  const char *eventName = getEventToString(eventType);
   if (eventName == NULL) {
     return;
   }
@@ -536,6 +538,19 @@ static void sendWifiEvent(
   jsiQueueObjectCallbacks(module, eventName, params, 1);
   jsvUnLock(module);
   return;
+}
+
+/** Called when we can an AP or Station disconnect event. If
+ * we don't seem to be connected to anything, stop wifi*/
+void stopWifiIfIdle() {
+  wifi_mode_t mode;
+  esp_wifi_get_mode(&mode);
+  if ((mode == WIFI_MODE_NULL ||
+      (mode == WIFI_MODE_STA && !g_isStaConnected)) &&
+      !g_jsScanCallback/*scanning*/) {
+    jsDebug(DBG_INFO, "stopWifiIfIdle: calling esp_wifi_stop()\n");
+    esp_wifi_stop();
+  }
 }
 
 /**
@@ -547,7 +562,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
 
   //jsDebug(DBG_INFO, "Event: %s (%d)\n", event_base == WIFI_EVENT ? wifiEventToString(event_id) : "OTHER", event_id);
   jsDebug(DBG_INFO, "Event: %s (%d)\n", event_base == WIFI_EVENT ? wifiEventToString(event_id) : "OTHER", event_id);
-  
+
   if (event_base == WIFI_EVENT && event_id >= WIFI_EVENT_MAX) {
     jsDebug(DBG_INFO, "Internal event ");
   }
@@ -658,8 +673,8 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     if (--s_retry_num > 0 ) {
       esp_wifi_connect();
       jsDebug(DBG_INFO,"retry to AP connect\n");
-      return;
-      }
+      return ESP_OK;
+    }
     g_isStaConnected = false; // Flag as disconnected
     g_lastEventStaDisconnected = event->event_info.disconnected; // Save the last disconnected info
 
@@ -673,13 +688,21 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     char temp[33];
     memcpy(temp, event->event_info.disconnected.ssid, 32);
     temp[32] = '\0';
-    jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(temp));
+    jsvObjectSetStringChild(jsDetails, "ssid", temp);
     sprintf(temp, MACSTR, MAC2STR(event->event_info.disconnected.bssid));
-    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
+    jsvObjectSetStringChild(jsDetails, "mac", temp);
     sprintf(temp, "%d", event->event_info.disconnected.reason);
-    jsvObjectSetChildAndUnLock(jsDetails, "reason", jsvNewFromString(temp));
-    jsvObjectSetChildAndUnLock(jsDetails, "msg", jsvNewFromString(wifiReasonToString(event->event_info.disconnected.reason)));
+    jsvObjectSetStringChild(jsDetails, "reason", temp);
+    jsvObjectSetStringChild(jsDetails, "msg", wifiReasonToString(event->event_info.disconnected.reason));
     sendWifiEvent(event->event_id, jsDetails);
+
+    if (g_jsGotIpCallback) {
+      /* If we were connecting, g_jsGotIpCallback is set. If we fail (eg this event is fired) then we
+      should call the callback with the first argument as the error */
+      sendWifiCompletionCB(&g_jsGotIpCallback, wifiReasonToString(event->event_info.disconnected.reason));
+    }
+
+    stopWifiIfIdle();
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_DISCONNECTED
 
@@ -703,11 +726,11 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     char temp[33];
     memcpy(temp, event->event_info.connected.ssid, 32);
     temp[32] = '\0';
-    jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(temp));
+    jsvObjectSetStringChild(jsDetails, "ssid", temp);
     sprintf(temp, MACSTR, MAC2STR(event->event_info.connected.bssid));
-    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
+    jsvObjectSetStringChild(jsDetails, "mac", temp);
     sprintf(temp, "%d", event->event_info.connected.channel);
-    jsvObjectSetChildAndUnLock(jsDetails, "channel", jsvNewFromString(temp));
+    jsvObjectSetStringChild(jsDetails, "channel", temp);
     sendWifiEvent(event->event_id, jsDetails);
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_CONNECTED
@@ -717,7 +740,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     esp_err_t err = esp_wifi_connect();
     if (err != ESP_OK) {
       jsDebug(DBG_INFO, "Wifi: event_handler STA_START: esp_wifi_connect: %d(%s)\n", err,wifiErrorToString(err));
-      return NULL;
+      return ESP_OK;
     }
     return ESP_OK;
   }
@@ -737,11 +760,11 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     // xxx.xxx.xxx.xxx\0
     char temp[16];
     sprintf(temp, IPSTR, IP2STR(&event->event_info.got_ip.ip_info.ip));
-    jsvObjectSetChildAndUnLock(jsDetails, "ip", jsvNewFromString(temp));
+    jsvObjectSetStringChild(jsDetails, "ip", temp);
     sprintf(temp, IPSTR, IP2STR(&event->event_info.got_ip.ip_info.netmask));
-    jsvObjectSetChildAndUnLock(jsDetails, "netmask", jsvNewFromString(temp));
+    jsvObjectSetStringChild(jsDetails, "netmask", temp);
     sprintf(temp, IPSTR, IP2STR(&event->event_info.got_ip.ip_info.gw));
-    jsvObjectSetChildAndUnLock(jsDetails, "gw", jsvNewFromString(temp));
+    jsvObjectSetStringChild(jsDetails, "gw", temp);
     jsDebug(DBG_INFO, "Wifi: About to emit connect!\n");
     sendWifiEvent(event->event_id, jsDetails);
     // start mDNS
@@ -769,7 +792,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     // xx:xx:xx:xx:xx:xx\0
     char temp[18];
     sprintf(temp, MACSTR, MAC2STR(event->event_info.sta_connected.mac));
-    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
+    jsvObjectSetStringChild(jsDetails, "mac", temp);
     sendWifiEvent(event->event_id, jsDetails);
     return ESP_OK;
   }
@@ -786,7 +809,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     // xx:xx:xx:xx:xx:xx\0
     char temp[18];
     sprintf(temp, MACSTR, MAC2STR(event->event_info.sta_disconnected.mac));
-    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
+    jsvObjectSetStringChild(jsDetails, "mac", temp);
     sendWifiEvent(event->event_id, jsDetails);
     return ESP_OK;
   }
@@ -799,6 +822,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    */
   if (event->event_id == SYSTEM_EVENT_SCAN_DONE) {
     scanCB();
+    stopWifiIfIdle();
     return ESP_OK;
   }
 
@@ -807,9 +831,19 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
    * Called when we have started being an access point.
    */
   if (event->event_id == SYSTEM_EVENT_AP_START) {
+    g_isAPStarted = true;
     sendWifiCompletionCB(&g_jsAPStartedCallback, NULL);
     return ESP_OK;
   }
+  /**
+   * SYSTEM_EVENT_AP_STOP
+   * Called when we have stopped being an access point.
+   */
+  if (event->event_id == SYSTEM_EVENT_AP_STOP) {
+    g_isAPStarted = false;
+    stopWifiIfIdle();
+  }
+
   jsDebug(DBG_INFO, "Wifi: event_handler -> NOT HANDLED EVENT: %d\n", event->event_id );
   return ESP_OK;
 } // End of event_handler
@@ -820,14 +854,11 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
  * handler.
  */
 void esp32_wifi_init() {
-  
-#if ESP_IDF_VERSION_MAJOR>=5  
+#if ESP_IDF_VERSION_MAJOR>=5
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   esp_netif_create_default_wifi_ap();
   esp_netif_create_default_wifi_sta();
-#else
-
 #endif
 
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -1036,7 +1067,8 @@ void jswrap_wifi_connect(
     jsError( "jswrap_wifi_connect: esp_wifi_get_mode: %d(%s)", err,wifiErrorToString(err));
     return;
   }
-  switch(mode) {
+  wifi_mode_t oldMode = mode;
+  switch(oldMode) {
     case WIFI_MODE_NULL:
     case WIFI_MODE_STA:
       mode = WIFI_MODE_STA;
@@ -1054,16 +1086,17 @@ void jswrap_wifi_connect(
       break;
   }
 
+  jsDebug(DBG_INFO, "jswrap_wifi_connect: mode %s -> %s\n", wifiModeToString(oldMode), wifiModeToString(mode));
+
   err = esp_wifi_set_mode(mode);
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_connect: esp_wifi_set_mode: %d(%s), mode=%d", err,wifiErrorToString(err), mode);
+    jsError( "jswrap_wifi_connect: esp_wifi_set_mode: %d(%s), mode=%d", err, wifiErrorToString(err), mode);
     return;
   }
   jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_mode done\n");
 
   // Perform a an esp_wifi_set_config
   wifi_config_t staConfig;
-
   memset(&staConfig, 0, sizeof(staConfig));
   memcpy(staConfig.sta.ssid, ssid, sizeof(staConfig.sta.ssid));
   memcpy(staConfig.sta.password, password, sizeof(staConfig.sta.password));
@@ -1080,17 +1113,27 @@ void jswrap_wifi_connect(
   }
   jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_config done\n");
 
-  // Perform an esp_wifi_start
-  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_start %s\n",ssid);
-  err = esp_wifi_start();
-  if (err != ESP_OK) {
-    jsError( "jswrap_wifi_connect: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
-    return;
+  // Attempt to reconnect 3 times, just in case
+  s_retry_num = 3;
+  /* If we were already connected in station mode, force a disconnect so
+  we reconnect. s_retry_num meant we won't fail immediately on disconnect
+  but will reconnect */
+  if (g_isStaConnected) {
+    jsDebug(DBG_INFO, "jswrap_wifi_connect: disconnecting so we can reconnect\n");
+    esp_wifi_disconnect();
+  } else { // not connected - call esp_wifi_start
+    // Perform an esp_wifi_start
+    jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_start %s\n",ssid);
+    err = esp_wifi_start();
+    if (err != ESP_OK) {
+      jsError( "jswrap_wifi_connect: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
+      return;
+    }
   }
 
   // Save the callback for later execution.
   g_jsGotIpCallback = jsvLockAgainSafe(jsCallback);
-  err = esp_wifi_connect();
+  // esp_wifi_connect gets called from the WIFI_EVENT_STA_START event - it errors if we call it here
 }
 
 void jswrap_wifi_scan(JsVar *jsCallback) {
@@ -1346,7 +1389,7 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
 
   JsVar *jsWiFiStatus = jsvNewObject();
   if (g_isStaConnected) {
-    jsvObjectSetChildAndUnLock(jsWiFiStatus, "station", jsvNewFromString("connected"));
+    jsvObjectSetStringChild(jsWiFiStatus, "station", "connected");
 
     if (mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA) {
       wifi_ap_record_t ap_info;
@@ -1356,18 +1399,18 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
       // SSID of AP
       strncpy(buf, ap_info.ssid, sizeof(buf));
       buf[34] = 0;
-      jsvObjectSetChildAndUnLock(jsWiFiStatus, "ssid", jsvNewFromString(buf));
+      jsvObjectSetStringChild(jsWiFiStatus, "ssid", buf);
 
       // MAC address of AP
       sprintf(buf, MACSTR, MAC2STR(ap_info.bssid));
       buf[18] = 0;
-      jsvObjectSetChildAndUnLock(jsWiFiStatus, "bssid", jsvNewFromString(buf));
+      jsvObjectSetStringChild(jsWiFiStatus, "bssid", buf);
 
       // Channel of AP
-      jsvObjectSetChildAndUnLock(jsWiFiStatus, "channel", jsvNewFromInteger(ap_info.primary));
+      jsvObjectSetIntChild(jsWiFiStatus, "channel", ap_info.primary);
 
       // RSSI
-      jsvObjectSetChildAndUnLock(jsWiFiStatus, "rssi", jsvNewFromInteger(ap_info.rssi));
+      jsvObjectSetIntChild(jsWiFiStatus, "rssi", ap_info.rssi);
 
       // HT mode
       jsvObjectSetChildAndUnLock(jsWiFiStatus, "htMode",
@@ -1392,9 +1435,11 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
     jsvObjectSetChildAndUnLock(jsWiFiStatus, "station",
         jsvNewFromString(wifiReasonToString(g_lastEventStaDisconnected.reason)));
   }
-  jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode",
-    jsvNewFromString(wifiModeToString(mode)));
-  jsvObjectSetChildAndUnLock(jsWiFiStatus, "powersave", jsvNewFromString(psTypeStr));
+  // if wifi hasn't started, return NULL
+  if (!g_isAPStarted && !g_isStaConnected)
+    mode = WIFI_MODE_NULL;
+  jsvObjectSetStringChild(jsWiFiStatus, "mode", wifiModeToString(mode));
+  jsvObjectSetStringChild(jsWiFiStatus, "powersave", psTypeStr);
 
   return jsWiFiStatus;
 } // End of jswrap_wifi_getStatus
@@ -1463,15 +1508,15 @@ JsVar *jswrap_wifi_getDetails(JsVar *jsCallback) {
     // ssid
     strncpy(buf, (char *)config.ssid, 32);
     buf[32] = 0;
-    jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
+    jsvObjectSetStringChild(jsDetails, "ssid", buf);
 
     // password
     strncpy(buf, (char *)config.password, 64);
     buf[64] = 0;
-    jsvObjectSetChildAndUnLock(jsDetails, "password", jsvNewFromString((char *)config.password));
+    jsvObjectSetStringChild(jsDetails, "password", (char *)config.password);
 
     // Status
-    jsvObjectSetChildAndUnLock(jsDetails, "status", jsvNewFromString("connected"));
+    jsvObjectSetStringChild(jsDetails, "status", "connected");
 
     // Authmode
     jsvObjectSetChildAndUnLock(jsDetails, "authMode",
@@ -1503,21 +1548,21 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
 
   wifi_ap_config_t config;
   esp_wifi_get_config(WIFI_IF_AP, (wifi_config_t *)&config);
-  jsvObjectSetChildAndUnLock(jsDetails, "authMode", jsvNewFromString(authModeToString(config.authmode)));
-  jsvObjectSetChildAndUnLock(jsDetails, "hidden",   jsvNewFromBool(config.ssid_hidden));
-  jsvObjectSetChildAndUnLock(jsDetails, "maxConn",  jsvNewFromInteger(config.max_connection));
+  jsvObjectSetStringChild(jsDetails, "authMode", authModeToString(config.authmode));
+  jsvObjectSetBoolChild(jsDetails, "hidden", config.ssid_hidden);
+  jsvObjectSetIntChild(jsDetails, "maxConn", config.max_connection);
 
   char buf[65];
 
   // ssid
   strncpy(buf, (char *)config.ssid, 32);
   buf[32] = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "ssid", jsvNewFromString(buf));
+  jsvObjectSetStringChild(jsDetails, "ssid", buf);
 
   // password
   strncpy(buf, (char *)config.password, 64);
   buf[64] = 0;
-  jsvObjectSetChildAndUnLock(jsDetails, "password", jsvNewFromString((char *)config.password));
+  jsvObjectSetStringChild(jsDetails, "password", (char *)config.password);
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
@@ -1533,17 +1578,17 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
 static void dumpJsVarObject(JsVar *o) {
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, o);
-  
+
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *key = jsvObjectIteratorGetKey(&it);
     JsVar *val = jsvObjectIteratorGetValue(&it);
-    
+
     char keyBuf[32], valBuf[64];
     jsvGetString(key, keyBuf, sizeof(keyBuf));
     jsvGetString(val, valBuf, sizeof(valBuf));  // ← Converts ANY type to string
-    
+
     jsDebug(DBG_INFO, "  %s='%s'\n", keyBuf, valBuf);
-    
+
     jsvUnLock(key);
     jsvUnLock(val);
     jsvObjectIteratorNext(&it);
@@ -1568,26 +1613,26 @@ void jswrap_wifi_save(JsVar *what) {
   // station stuff
   wifi_sta_config_t sta_config;
   esp_wifi_get_config(WIFI_IF_STA, (wifi_config_t *)&sta_config);
-  jsvObjectSetChildAndUnLock(o, "ssid", jsvNewFromString((char *)sta_config.ssid));
-  jsvObjectSetChildAndUnLock(o, "password", jsvNewFromString((char *)sta_config.password));
+  jsvObjectSetStringChild(o, "ssid", (char *)sta_config.ssid);
+  jsvObjectSetStringChild(o, "password", (char *)sta_config.password);
 
   wifi_mode_t wifi_mode;
   esp_wifi_get_mode(&wifi_mode);
-  jsvObjectSetChildAndUnLock(o, "mode", jsvNewFromInteger(wifi_mode));
+  jsvObjectSetIntChild(o, "mode", wifi_mode);
 
-  //jsvObjectSetChildAndUnLock(o, "phyMode", jsvNewFromInteger(wifi_get_phy_mode()));
+  //jsvObjectSetIntChild(o, "phyMode", wifi_get_phy_mode());
   wifi_ps_type_t psType;
   esp_wifi_get_ps(&psType);
-  jsvObjectSetChildAndUnLock(o, "sleepType", jsvNewFromInteger(psType));
+  jsvObjectSetIntChild(o, "sleepType", psType);
 
   wifi_ap_config_t ap_config;
   esp_wifi_get_config(WIFI_IF_AP, (wifi_config_t *)&ap_config);
 
-  jsvObjectSetChildAndUnLock(o, "ssidAP", jsvNewFromString((char *)ap_config.ssid));
-  jsvObjectSetChildAndUnLock(o, "passwordAP", jsvNewFromString((char *) ap_config.password));
-  jsvObjectSetChildAndUnLock(o, "authmodeAP", jsvNewFromInteger(ap_config.authmode));
-  jsvObjectSetChildAndUnLock(o, "hiddenAP", jsvNewFromInteger(ap_config.ssid_hidden));
-  jsvObjectSetChildAndUnLock(o, "channelAP", jsvNewFromInteger(ap_config.channel));
+  jsvObjectSetStringChild(o, "ssidAP", (char *)ap_config.ssid);
+  jsvObjectSetStringChild(o, "passwordAP", (char *) ap_config.password);
+  jsvObjectSetIntChild(o, "authmodeAP", ap_config.authmode);
+  jsvObjectSetIntChild(o, "hiddenAP", ap_config.ssid_hidden);
+  jsvObjectSetIntChild(o, "channelAP", ap_config.channel);
 
   const char * hostname = NULL;
 #if ESP_IDF_VERSION_MAJOR>=5
@@ -1598,7 +1643,7 @@ void jswrap_wifi_save(JsVar *what) {
 #else
   esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
 #endif
-  if (hostname) jsvObjectSetChildAndUnLock(o, "hostname", jsvNewFromString((char *) hostname));
+  if (hostname) jsvObjectSetStringChild(o, "hostname", (char *) hostname);
   // save object
 #ifdef DEBUG
   dumpJsVarObject(o);
@@ -1621,44 +1666,32 @@ void jswrap_wifi_restore(void) {
   JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
   JsVar *o = jswrap_storage_readJSON(name, true);
   if (!o) { // no data
-    jsDebug(DBG_INFO, "jswrap_wifi_restore: No data - Starting default AP\n");
-    esp_wifi_start();
+    jsDebug(DBG_INFO, "jswrap_wifi_restore: No data - not starting WiFi\n");
     jsvUnLock2(name,o);
     return;
   }
 
-  wifi_mode_t savedMode;
-
-  JsVar *v = jsvObjectGetChildIfExists(o,"mode");
-  savedMode = jsvGetInteger(v);
+  JsVar *v;
+  wifi_mode_t savedMode = jsvObjectGetIntegerChild(o,"mode");
   esp_wifi_set_mode(savedMode);
-  jsvUnLock(v);
 
   wifi_config_t config;  // Unified config for IDF 5.x
   bzero(&config, sizeof(config));
 
   esp_err_t err;
   if (savedMode & WIFI_MODE_AP) {
-    v = jsvObjectGetChildIfExists(o,"authmodeAP");
-    config.ap.authmode = jsvGetInteger(v);
-    jsvUnLock(v);
-
-    v = jsvObjectGetChildIfExists(o,"hiddenAP");
-    config.ap.ssid_hidden = jsvGetInteger(v);
-    jsvUnLock(v);
+    config.ap.authmode = jsvObjectGetIntegerChild(o,"authmodeAP");
+    config.ap.ssid_hidden = jsvObjectGetIntegerChild(o,"hiddenAP");
 
     v = jsvObjectGetChildIfExists(o,"ssidAP");
-    jsvGetString(v, (char *)config.ap.ssid, sizeof(config.ap.ssid));
-    config.ap.ssid_len = jsvGetStringLength(v);
+    config.ap.ssid_len = jsvGetString(v, (char *)config.ap.ssid, sizeof(config.ap.ssid));
     jsvUnLock(v);
 
     v = jsvObjectGetChildIfExists(o,"passwordAP");
     jsvGetString(v, (char *)config.ap.password, sizeof(config.ap.password));
     jsvUnLock(v);
 
-    v = jsvObjectGetChildIfExists(o,"channelAP");
-    config.ap.channel = jsvGetInteger(v);
-    jsvUnLock(v);
+    config.ap.channel = jsvObjectGetIntegerChild(o,"channelAP");
 
     config.ap.max_connection = 4;
     config.ap.beacon_interval = 100;
@@ -1712,7 +1745,7 @@ void jswrap_wifi_restore(void) {
   } else {
     jsDebug(DBG_INFO, "Wifi: Both STA AND APSTA are off\n");
   }
-  
+
   jsvUnLock2(name,o);
 }
 
@@ -1729,7 +1762,7 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
 
   JsVar *jsIpInfo = jsvNewObject();
   if (!jsIpInfo) return NULL;  // Early out on OOM
-  
+
 #if ESP_IDF_VERSION_MAJOR >= 5
   esp_netif_t *netif = esp_netif_get_handle_from_ifkey(
     interface == TCPIP_ADAPTER_IF_STA ? "WIFI_STA_DEF" : "WIFI_AP_DEF"
@@ -1744,9 +1777,9 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
   if (err == ESP_OK) {
     jsvObjectSetChildAndUnLock(jsIpInfo, "ip",
       networkGetAddressAsString((uint8_t*)&ipInfo.ip, 4, 10, '.'));
-    jsvObjectSetChildAndUnLock(jsIpInfo, "netmask", 
+    jsvObjectSetChildAndUnLock(jsIpInfo, "netmask",
       networkGetAddressAsString((uint8_t*)&ipInfo.netmask, 4, 10, '.'));
-    jsvObjectSetChildAndUnLock(jsIpInfo, "gw", 
+    jsvObjectSetChildAndUnLock(jsIpInfo, "gw",
       networkGetAddressAsString((uint8_t*)&ipInfo.gw, 4, 10, '.'));
   }
 
@@ -1756,7 +1789,7 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
   esp_wifi_get_mac(wifif, mac);
   char macStr[18];
   sprintf(macStr, MACSTR, MAC2STR(mac));
-  jsvObjectSetChildAndUnLock(jsIpInfo, "mac", jsvNewFromString(macStr));
+  jsvObjectSetStringChild(jsIpInfo, "mac", macStr);
 
   // Callback
   if (jsvIsFunction(jsCallback)) {
@@ -1805,7 +1838,7 @@ void jswrap_wifi_setHostname(JsVar *jsHostname, JsVar *jsCallback) {
   char hostname[256];
   jsvGetString(jsHostname, hostname, sizeof(hostname));
   jsDebug(DBG_INFO, "Wifi.setHostname: %s\n", hostname);
-  
+
 #if ESP_IDF_VERSION_MAJOR >= 5
   esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
   if (netif != NULL) {
@@ -1837,15 +1870,15 @@ esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
 	//printf("Resp(mS):%d Timeouts:%d Total Time:%d\n",pf->resp_time, pf->timeout_count, pf->total_time);
   if (g_jsPingCallback != NULL) {
     JsVar *jsPingResponse = jsvNewObject();
-    jsvObjectSetChildAndUnLock(jsPingResponse, "totalCount",   jsvNewFromInteger(pingResp->send_count));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "totalBytes",   jsvNewFromInteger(pingResp->total_bytes));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "totalTime",    jsvNewFromInteger(pingResp->total_time));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "respTime",     jsvNewFromInteger(pingResp->resp_time));
+    jsvObjectSetIntChild(jsPingResponse, "totalCount", pingResp->send_count);
+    jsvObjectSetIntChild(jsPingResponse, "totalBytes", pingResp->total_bytes);
+    jsvObjectSetIntChild(jsPingResponse, "totalTime", pingResp->total_time);
+    jsvObjectSetIntChild(jsPingResponse, "respTime", pingResp->resp_time);
     // don't have a sequence
-    jsvObjectSetChildAndUnLock(jsPingResponse, "seqNo",        jsvNewFromInteger(++seq_no));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "timeoutCount", jsvNewFromInteger(pingResp->timeout_count));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "bytes",        jsvNewFromInteger(pingResp->bytes));
-    jsvObjectSetChildAndUnLock(jsPingResponse, "error",        jsvNewFromInteger(pingResp->err_count));
+    jsvObjectSetIntChild(jsPingResponse, "seqNo", ++seq_no);
+    jsvObjectSetIntChild(jsPingResponse, "timeoutCount", pingResp->timeout_count);
+    jsvObjectSetIntChild(jsPingResponse, "bytes", pingResp->bytes);
+    jsvObjectSetIntChild(jsPingResponse, "error", pingResp->err_count);
     JsVar *params[1];
     params[0] = jsPingResponse;
     jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
@@ -1961,10 +1994,11 @@ static void dnsFoundCallback(
   jsDebug(DBG_INFO, "Wifi.getHostByName CB - %s %x\n", hostname, ipAddr );
   if (g_jsHostByNameCallback != NULL) {
     JsVar *params[1];
-    if (ipAddr == NULL) {
-      params[0] = jsvNewNull();
+    if (ipAddr && IP_IS_V4(ipAddr)) {
+      ip4_addr_t *ip4 = ip_2_ip4(ipAddr);
+      params[0] = networkGetAddressAsString((uint8_t *)&ip4->addr, 4, 10, '.');
     } else {
-      params[0] = networkGetAddressAsString((uint8_t *)&ipAddr, 4, 10, '.');
+      params[0] = jsvNewNull();
     }
     jsiQueueEvents(NULL, g_jsHostByNameCallback, params, 1);
     jsvUnLock(params[0]);
@@ -2017,7 +2051,7 @@ void jswrap_wifi_getHostByName(
 
   jsDebug(DBG_INFO, "Wifi.getHostByName: %s\n", hostname);
   esp_err_t err = dns_gethostbyname(hostname, &ipAddr, dnsFoundCallback, NULL);
-  jsDebug(DBG_INFO,"err = %d (%s)\n", err, esp_err_to_name(err));
+  if (err) jsDebug(DBG_INFO,"err = %d (%s)\n", err, esp_err_to_name(err));
   if (err == ESP_OK) {
     jsDebug(DBG_INFO, "Already resolved\n");
     dnsFoundCallback(hostname, &ipAddr, NULL);
@@ -2041,10 +2075,10 @@ static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
   char ipTmp[20];
   int len = 0;
   esp_err_t err;
-#if ESP_IDF_VERSION_MAJOR>=5 
+#if ESP_IDF_VERSION_MAJOR>=5
   esp_netif_ip_info_t info;
   memset(&info, 0, sizeof(info));
-#else  
+#else
   tcpip_adapter_ip_info_t info;
   memset( &info, 0, sizeof(info) );
 #endif
@@ -2104,7 +2138,7 @@ static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
   jsvUnLock(jsNM);
 // set IP for station
   if (interface == WIFI_IF_STA) {
-#if ESP_IDF_VERSION_MAJOR>=5 
+#if ESP_IDF_VERSION_MAJOR>=5
     esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     esp_netif_dhcpc_stop(netif);  // CLIENT DHCP for STA
     err = esp_netif_set_ip_info(netif, &info);

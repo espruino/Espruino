@@ -410,12 +410,12 @@ JsVar *jswrap_pb_audioRead(JsVar *fn, JsVar *returnOptions) {
       if (wavLoad(buf, (int)actual, &wavInfo, debugInfo)) {
         if (jsvIsObject(returnOptions)) {
           if (wavInfo.sampleRate!=16000)
-            jsvObjectSetChildAndUnLock(returnOptions, "sampleRate", jsvNewFromInteger(wavInfo.sampleRate));
+            jsvObjectSetIntChild(returnOptions, "sampleRate", wavInfo.sampleRate);
           if (wavInfo.formatTag == WAVFMT_RAW)
-            jsvObjectSetChildAndUnLock(returnOptions, "encoding", jsvNewFromInteger(wavInfo.sampleSize));
+            jsvObjectSetIntChild(returnOptions, "encoding", wavInfo.sampleSize);
           else if (wavInfo.formatTag == WAVFMT_IMA_ADPCM) {
-            jsvObjectSetChildAndUnLock(returnOptions, "encoding", jsvNewFromString("adpcm"));
-            jsvObjectSetChildAndUnLock(returnOptions, "blockAlign", jsvNewFromInteger(wavInfo.blockAlign));
+            jsvObjectSetStringChild(returnOptions, "encoding", "adpcm");
+            jsvObjectSetIntChild(returnOptions, "blockAlign", wavInfo.blockAlign);
           }
         }
         f_lseek(&file, (uint32_t)(wavInfo.streamOffset)); // go back to start of audio data
@@ -1482,7 +1482,7 @@ void jswrap_pb_init() {
       f_read(&f, version, sizeof(version), &sz);
       f_close(&f);
       version[sz]=0;
-      jsvObjectSetChildAndUnLock(execInfo.root, "VERSION", jsvNewFromString(version));
+      jsvObjectSetStringChild(execInfo.root, "VERSION", version);
        JsVar *s = jsvVarPrintf("FW %s", version);
       jsvUnLock2(jswrap_graphics_drawString(g, s, (LCD_WIDTH/2) + 64, 10+LCD_HEIGHT/2, 0), s);
       // Now run some JS code which will check if what's in Storage is that file, and if not will update it
@@ -1535,7 +1535,7 @@ void jswrap_pb_init() {
     JsVar *qr_img = jsvNewNativeString((char*)&qr_raw[0], sizeof(qr_raw));
     JsVar *options = jsvNewObject();
     if (options) {
-      jsvObjectSetChild(options, "scale", jsvNewFromInteger(3));
+      jsvObjectSetIntChild(options, "scale", 3);
       jsvUnLock(jswrap_graphics_drawImage(g, qr_img, (LCD_WIDTH-76)/2, LCD_HEIGHT/2+31, options));
     }
     jsvUnLock3(msg,qr_img,options);

@@ -83,10 +83,12 @@ typedef struct {
 // Macro used for defining entries in JswSymPtr jswSymbols_*
 #define JSWSYMPTR_ENTRY(offset, argSpec, pointer) \
   { offset, argSpec, pointer}
-#define JSWSYMPTR_OFFSET(symPtr) \
-  ((symPtr)->strOffset)
-#define JSWSYMPTR_FUNCTION_PTR(symPtr) \
-  ((symPtr)->functionPtr)
+#ifdef ESP8266 // ESP8266 doesn't like unaligned accesses (#2687)
+#define JSWSYMPTR_OFFSET(symPtr) READ_FLASH_UINT16(&((symPtr)->strOffset))
+#else
+#define JSWSYMPTR_OFFSET(symPtr) ((symPtr)->strOffset)
+#endif
+#define JSWSYMPTR_FUNCTION_PTR(symPtr) ((symPtr)->functionPtr)
 #else // ESPR_PACKED_SYMPTR - strOffset *is* packed into function pointer
 // On most ARM embedded targets we know the top 12 bits of the address are 0, so we use them for storing 'strOffset'
 typedef struct {

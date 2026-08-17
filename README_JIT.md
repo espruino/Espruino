@@ -22,11 +22,11 @@ Works:
 * On the whole functions that can't be JITed will produce a message on the console and will be treated as normal functions.
 * Short-circuit execution (`&&`/`||`)
 * Array `[]` and Object `{}` declarations
+* `new X(...)`
 
 Doesn't work:
 
-* `new X(...)`
-* Everything not mentioned under `Works`
+* Everything not mentioned under `Works`!
 
 Performance:
 
@@ -212,6 +212,14 @@ jit()=="1,2,3,Hello,World"
 
 function jit() {'jit';return {a:42,b:10,12:5};}
 JSON.stringify(jit()) == '{"a":42,"b":10,"12":5}'
+
+function jit() { "jit" return new Array(1,2,3,4); } 
+jit()=="1,2,3,4"
+
+function A() { this.foo=42; } 
+function jit() { "jit" return new A(); } 
+JSON.stringify(jit()) == "{\"foo\":42}"
+
 
 E.setFlags({jitDebug:1});
 function jit() {'jit';return 0&&2;}

@@ -16,6 +16,7 @@
 import pinutils;
 info = {
  'name' : "Bangle.js 2 emulator",
+ 'boardname' : "BANGLEJS2",
  'default_console' : "EV_USBSERIAL",
  'variables' :  12000, # 0 = resizable variables, rather than fixed
  'binary_name' : 'emulator_banglejs2.js',
@@ -41,7 +42,7 @@ info = {
      'DEFINES += -DSPIFLASH_BASE=0x8000000 -DSPIFLASH_LENGTH=8388608',
 #     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DESPR_UNICODE_SUPPORT=1',
-     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
+     'DEFINES+=-DDUMP_IGNORE_VARIABLES="g\\0"',
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
      'DEFINES+=-DESPR_BATTERY_FULL_VOLTAGE=0.3144',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',

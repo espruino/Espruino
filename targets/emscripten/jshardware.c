@@ -41,12 +41,12 @@ EM_JS(void, emscripten_memcpy_js, (uint8_t* dest, uint8_t* src, size_t numBytes)
 });
 // ----------------------------------------------------------------------------
 
-Pin eventFlagsToPin[16];
+Pin eventFlagsToPin[ESPR_EXTI_COUNT];
 int timeToSleep = -1;
 bool firstIdle = true;
 
 void jshInit() {
-  for (int i=0;i<16;i++)
+  for (int i=0;i<ESPR_EXTI_COUNT;i++)
     eventFlagsToPin[i] = PIN_UNDEFINED;
   jshInitDevices();
   firstIdle = true;
@@ -160,7 +160,7 @@ bool jshCanWatch(Pin pin) {
 }
 
 IOEventFlags jshGetEventFlagsForPin(Pin pin) {
-  for (int i=0;i<16;i++)
+  for (int i=0;i<ESPR_EXTI_COUNT;i++)
     if (eventFlagsToPin[i]==pin)
       return EV_EXTI0+i;
   return EV_NONE;
@@ -168,13 +168,13 @@ IOEventFlags jshGetEventFlagsForPin(Pin pin) {
 
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (shouldWatch)
-    for (int i=0;i<16;i++)
+    for (int i=0;i<ESPR_EXTI_COUNT;i++)
       if (eventFlagsToPin[i]==PIN_UNDEFINED) {
         eventFlagsToPin[i]=pin;
         return EV_EXTI0+i;
       }
   else {
-    for (int i=0;i<16;i++)
+    for (int i=0;i<ESPR_EXTI_COUNT;i++)
       if (eventFlagsToPin[i]==pin)
         eventFlagsToPin[i]=PIN_UNDEFINED;
   }

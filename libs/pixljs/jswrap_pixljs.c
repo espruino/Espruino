@@ -740,5 +740,5 @@ To remove the window, call `E.showAlert()` with no arguments.
   "generate" : "jswrap_pixljs_powerusage"
 }*/
 void jswrap_pixljs_powerusage(JsVar *devices) {
-  jsvObjectSetChildAndUnLock(devices, "LCD", jsvNewFromInteger(lcdIsOn ? 170 : 20));
+  jsvObjectSetIntChild(devices, "LCD", lcdIsOn ? 170 : 20);
 }

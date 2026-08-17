@@ -52,7 +52,7 @@
 #ifdef ESPR_LINE_FONTS
 #include "line_font.h"
 #endif
-#ifdef BANGLEJS2
+#if defined(BANGLEJS2) || defined(BANGLEJS3)
 #include "jswrap_font_14.h"
 #include "jswrap_font_17.h"
 #include "jswrap_font_22.h"
@@ -608,6 +608,8 @@ void jswrap_graphics_init() {
   graphicsTheme.bg2 = (JsGraphicsThemeColor)0;
   graphicsTheme.fgH = (JsGraphicsThemeColor)-1;
   graphicsTheme.bgH = (JsGraphicsThemeColor)0;
+  graphicsTheme.fgW = (JsGraphicsThemeColor)-1;
+  graphicsTheme.bgW = (JsGraphicsThemeColor)0;
   graphicsTheme.dark = true;
 #endif
 }
@@ -912,8 +914,8 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
   // Sorted - now create the object, set it up and create the buffer
   JsVar *img = jsvNewObject();
   if (!img) return 0;
-  jsvObjectSetChildAndUnLock(img,"width",jsvNewFromInteger(width));
-  jsvObjectSetChildAndUnLock(img,"height",jsvNewFromInteger(height));
+  jsvObjectSetIntChild(img,"width", width);
+  jsvObjectSetIntChild(img,"height", height);
   // bpp is 1, no need to set it
   int len = (width*height+7)>>3;
   JsVar *buffer = jsvNewStringOfLength((unsigned)len, NULL);
@@ -996,6 +998,7 @@ int jswrap_graphics_getBPP(JsVar *parent) {
   "class" : "Graphics",
   "name" : "reset",
   "generate" : "jswrap_graphics_reset",
+  "params" : [["usage","JsVar","[2v30+] Optional: What we're resetting graphics for. See below. ]"]],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
@@ -1005,8 +1008,15 @@ have been used when Graphics was initialised.
 **Note:** The current graphics theme is not reset when `g.reset()` is called. To reset that
 you must store the value from `g.getTheme()` before calling `g.setTheme()`, and manually
 set it back afterwards.
+
+In 2v30+ the `usage` parameter can be used to specify what we're resetting graphics for.
+This is mainly for use with Bangle.js. As introduced, the only allowed options are:
+
+* `undefined` (the default) - reset everything, and set fg/bg to standard theme values
+* `"widget"` - as normal, but set fg/bg to the theme values for widgets
+* Any other value will be treated as `undefined`
 */
-JsVar *jswrap_graphics_reset(JsVar *parent) {
+JsVar *jswrap_graphics_reset(JsVar *parent, JsVar *usage) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 #ifndef SAVE_ON_FLASH
   // If we had a custom font, remove it.
@@ -1014,7 +1024,15 @@ JsVar *jswrap_graphics_reset(JsVar *parent) {
 #endif
   // properly reset state
   graphicsStructResetState(&gfx);
-  graphicsSetVar(&gfx); // gfx data changed because modified area
+#ifdef GRAPHICS_THEME
+  if (jsvIsString(usage)) { // special states for specific usages
+    if (jsvIsStringEqual(usage, "widget")) {
+      gfx.data.fgColor = graphicsTheme.fgW;
+      gfx.data.bgColor = graphicsTheme.bgW;
+    }
+  }
+#endif
+  graphicsSetVar(&gfx); // gfx data changed because modified state
   // reset font, which will unreference any custom fonts stored inside the instance
   return jswrap_graphics_setFontSizeX(parent, 1+JSGRAPHICS_FONTSIZE_4X6, false);
 }
@@ -1033,7 +1051,7 @@ JsVar *jswrap_graphics_reset(JsVar *parent) {
 Clear the LCD with the Background Color
 */
 JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState) {
-  if (resetState) jsvUnLock(jswrap_graphics_reset(parent));
+  if (resetState) jsvUnLock(jswrap_graphics_reset(parent, NULL));
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsClear(&gfx);
   graphicsSetVar(&gfx); // gfx data changed because modified area
@@ -1735,7 +1753,7 @@ JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2
   graphicsToDeviceCoordinates(&gfx, &x2, &y2);
 #ifndef SAVE_ON_FLASH
 #ifdef USE_LCD_ST7789_8BIT
-  if (gfx.data.type!=JSGRAPHICSTYPE_ST7789_8BIT) {
+  if (gfx.data.type!=JSGRAPHICSTYPE_ST7789_8BIT) { // ST7789 has more screen buffer available offscreen, so we allow clip rect to be set outside the screen bounds
 #endif
     if (x1<0) x1=0;
     if (y1<0) y1=0;
@@ -1756,6 +1774,38 @@ JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2
   gfx.data.clipRect.y2 = (unsigned short)y2;
   graphicsSetVar(&gfx);
 #endif
+  return jsvLockAgain(parent);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setOffset",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_setOffset",
+  "params" : [
+    ["x","int","X offset"],
+    ["y","int","Y offset"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+[2v30+] Sets the offset for subsequent drawing operations. For example:
+
+```
+g.drawString("Hello", 50, 100); // Draws at 50,100
+g.setOffset(10, 20);
+g.drawString("Hello", 40, 80); // Also draws at 50,100
+```
+
+The offset will be reset to 0 if `g.reset()` is called, or if `g.setOffset()` is called again
+(subsequent calls to g.setOffset() are not additive).
+*/
+JsVar *jswrap_graphics_setOffset(JsVar *parent, int x, int y) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  gfx.data.offsetX = (short)x;
+  gfx.data.offsetY = (short)y;
+  graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
 }
 
@@ -1871,8 +1921,8 @@ JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar
   height = height&255;
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, bitmap);
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, width);
-  jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height));
-  jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar));
+  jsvObjectSetIntChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, height);
+  jsvObjectSetIntChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, firstChar);
   gfx.data.fontSize = (unsigned short)((unsigned)scale + fontType);
   graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
@@ -2460,12 +2510,12 @@ JsVar* jswrap_graphics_stringMetrics(JsVar *parent, JsVar *var) {
   JsVar *o = jsvNewObject();
   if (o) {
     _jswrap_graphics_stringMetrics(&gfx, var, -1, &metrics);
-    jsvObjectSetChildAndUnLock(o, "width", jsvNewFromInteger(metrics.stringWidth));
-    jsvObjectSetChildAndUnLock(o, "height", jsvNewFromInteger(metrics.stringHeight));
-    jsvObjectSetChildAndUnLock(o, "unrenderableChars", jsvNewFromBool(metrics.unrenderableChars));
+    jsvObjectSetIntChild(o, "width", metrics.stringWidth);
+    jsvObjectSetIntChild(o, "height", metrics.stringHeight);
+    jsvObjectSetBoolChild(o, "unrenderableChars", metrics.unrenderableChars);
 #ifndef SAVE_ON_FLASH
-    jsvObjectSetChildAndUnLock(o, "imageCount", jsvNewFromInteger(metrics.imageCount));
-    jsvObjectSetChildAndUnLock(o, "maxImageHeight", jsvNewFromInteger(metrics.maxImageHeight));
+    jsvObjectSetIntChild(o, "imageCount", metrics.imageCount);
+    jsvObjectSetIntChild(o, "maxImageHeight", metrics.maxImageHeight);
 #endif
   }
   return o;
@@ -2716,7 +2766,7 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
   const int FONTS = 0;
   JswFindFontFont FONT[0] = {
 #else
-#ifdef BANGLEJS2
+#if defined(BANGLEJS2) || defined(BANGLEJS3)
   const int FONTS = 6;
   JswFindFontFont FONT[6] = {
     {"28", 28, 1, jswrap_graphics_setFont28},
@@ -2805,9 +2855,9 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
   // TODO: trim width if not wrapping?
   jsvUnLock3(text, newline, finalLines);
   jsvObjectSetChildAndUnLock(result, "text", finalText);
-  jsvObjectSetChildAndUnLock(result, "font", jsvNewFromString(fontName));
-  jsvObjectSetChildAndUnLock(result, "w", jsvNewFromInteger(stringMetrics.stringWidth));
-  jsvObjectSetChildAndUnLock(result, "h", jsvNewFromInteger(stringMetrics.stringHeight));
+  jsvObjectSetStringChild(result, "font", fontName);
+  jsvObjectSetIntChild(result, "w", stringMetrics.stringWidth);
+  jsvObjectSetIntChild(result, "h", stringMetrics.stringHeight);
   return result;
 }
 #endif
@@ -3546,12 +3596,12 @@ JsVar *jswrap_graphics_imageMetrics(JsVar *parent, JsVar *var) {
   _jswrap_graphics_freeImageInfo(&img);
   JsVar *o = jsvNewObject();
   if (o) {
-    jsvObjectSetChildAndUnLock(o, "width", jsvNewFromInteger(img.width));
-    jsvObjectSetChildAndUnLock(o, "height", jsvNewFromInteger(img.height));
-    jsvObjectSetChildAndUnLock(o, "bpp", jsvNewFromInteger(img.bpp));
-    jsvObjectSetChildAndUnLock(o, "transparent", jsvNewFromBool(img.isTransparent));
+    jsvObjectSetIntChild(o, "width", img.width);
+    jsvObjectSetIntChild(o, "height", img.height);
+    jsvObjectSetIntChild(o, "bpp", img.bpp);
+    jsvObjectSetBoolChild(o, "transparent", img.isTransparent);
     int frames = bufferLen / img.bitmapLength;
-    if (frames>1) jsvObjectSetChildAndUnLock(o, "frames", jsvNewFromInteger(frames));
+    if (frames>1) jsvObjectSetIntChild(o, "frames", frames);
   }
   return o;
 }
@@ -4096,10 +4146,8 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *options) {
     imgType = jsvObjectGetChildIfExists(options, "type");
     ox = jsvObjectGetIntegerChild(options, "x"); // default 0
     oy = jsvObjectGetIntegerChild(options, "y"); // default 0
-    int i = jsvObjectGetIntegerChild(options, "w");
-    if (i) w = i;
-    i = jsvObjectGetIntegerChild(options, "h");
-    if (i) h = i;
+    w = jsvObjectGetIntegerChildOr(options, "w", w);
+    h = jsvObjectGetIntegerChildOr(options, "h", h);
   } else imgType = jsvLockAgainSafe(options);
   if (jsvIsUndefined(imgType) || jsvIsStringEqual(imgType,"object"))
     isObject = true;
@@ -4133,9 +4181,9 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *options) {
   if (isObject) {
     img = jsvNewObject();
     if (!img) return 0;
-    jsvObjectSetChildAndUnLock(img,"width",jsvNewFromInteger(w));
-    jsvObjectSetChildAndUnLock(img,"height",jsvNewFromInteger(h));
-    if (bpp!=1) jsvObjectSetChildAndUnLock(img,"bpp",jsvNewFromInteger(bpp));
+    jsvObjectSetIntChild(img,"width", w);
+    jsvObjectSetIntChild(img,"height", h);
+    if (bpp!=1) jsvObjectSetIntChild(img,"bpp", bpp);
     /* IF we have an arraybuffer of the right form then
     we can return the original buffer directly */
     if (gfx.data.type == JSGRAPHICSTYPE_ARRAYBUFFER &&
@@ -4147,7 +4195,7 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *options) {
       return img;
     }
     if (transparent>=0)
-      jsvObjectSetChildAndUnLock(img,"transparent",jsvNewFromInteger(transparent));
+      jsvObjectSetIntChild(img,"transparent", transparent);
     if (palette) jsvObjectSetChild(img,"palette",palette);
   } else {
 
@@ -4243,10 +4291,10 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
   if (gfx.data.modMinX <= gfx.data.modMaxX) { // do we have a rect?
     obj = jsvNewObject();
     if (obj) {
-      jsvObjectSetChildAndUnLock(obj, "x1", jsvNewFromInteger(gfx.data.modMinX));
-      jsvObjectSetChildAndUnLock(obj, "y1", jsvNewFromInteger(gfx.data.modMinY));
-      jsvObjectSetChildAndUnLock(obj, "x2", jsvNewFromInteger(gfx.data.modMaxX));
-      jsvObjectSetChildAndUnLock(obj, "y2", jsvNewFromInteger(gfx.data.modMaxY));
+      jsvObjectSetIntChild(obj, "x1", gfx.data.modMinX);
+      jsvObjectSetIntChild(obj, "y1", gfx.data.modMinY);
+      jsvObjectSetIntChild(obj, "x2", gfx.data.modMaxX);
+      jsvObjectSetIntChild(obj, "y2", gfx.data.modMaxY);
     }
   }
   if (reset) {
@@ -4882,6 +4930,8 @@ type Theme = {
   bg2: number;
   fgH: number;
   bgH: number;
+  fgW: number;
+  bgW: number;
   dark: boolean;
 };
 */
@@ -4904,6 +4954,8 @@ Returns an object of the form:
   bg2 : 0x0007,  // accented background colour
   fgH : 0xFFFF,  // highlighted foreground colour
   bgH : 0x02F7,  // highlighted background colour
+  fgW : 0xFFFF,  // [2v30+] widget foreground colour
+  bgW : 0x02F7,  // [2v30+] widget background colour
   dark : true,  // Is background dark (e.g. foreground should be a light colour)
 }
 ```
@@ -4921,13 +4973,15 @@ JsVar *jswrap_graphics_theme(JsVar *parent) {
   NOT_USED(parent);
 #ifdef GRAPHICS_THEME
   JsVar *o = jsvNewObject();
-  jsvObjectSetChildAndUnLock(o,"fg",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.fg));
-  jsvObjectSetChildAndUnLock(o,"bg",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.bg));
-  jsvObjectSetChildAndUnLock(o,"fg2",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.fg2));
-  jsvObjectSetChildAndUnLock(o,"bg2",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.bg2));
-  jsvObjectSetChildAndUnLock(o,"fgH",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.fgH));
-  jsvObjectSetChildAndUnLock(o,"bgH",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.bgH));
-  jsvObjectSetChildAndUnLock(o,"dark",jsvNewFromBool((JsVarInt)(uint32_t)graphicsTheme.dark));
+  jsvObjectSetIntChild(o,"fg", (JsVarInt)(uint32_t)graphicsTheme.fg);
+  jsvObjectSetIntChild(o,"bg", (JsVarInt)(uint32_t)graphicsTheme.bg);
+  jsvObjectSetIntChild(o,"fg2", (JsVarInt)(uint32_t)graphicsTheme.fg2);
+  jsvObjectSetIntChild(o,"bg2", (JsVarInt)(uint32_t)graphicsTheme.bg2);
+  jsvObjectSetIntChild(o,"fgH", (JsVarInt)(uint32_t)graphicsTheme.fgH);
+  jsvObjectSetIntChild(o,"bgH", (JsVarInt)(uint32_t)graphicsTheme.bgH);
+  jsvObjectSetIntChild(o,"fgW", (JsVarInt)(uint32_t)graphicsTheme.fgW);
+  jsvObjectSetIntChild(o,"bgW", (JsVarInt)(uint32_t)graphicsTheme.bgW);
+  jsvObjectSetBoolChild(o,"dark", (JsVarInt)(uint32_t)graphicsTheme.dark);
   return o;
 #else
   return 0;
@@ -4992,6 +5046,16 @@ JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme) {
       graphicsTheme.bgH = jswrap_graphics_toColor(parent, v,0,0);
       jsvUnLock(v);
     }
+    v = jsvObjectGetChildIfExists(theme, "fgW");
+    if (v) {
+      graphicsTheme.fgW = jswrap_graphics_toColor(parent, v,0,0);
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChildIfExists(theme, "bgW");
+    if (v) {
+      graphicsTheme.bgW = jswrap_graphics_toColor(parent, v,0,0);
+      jsvUnLock(v);
+    }
     v = jsvObjectGetChildIfExists(theme, "dark");
     if (v) graphicsTheme.dark = jsvGetBoolAndUnLock(v);
   }
@@ -5003,7 +5067,7 @@ JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "filter",
-  "#if" : "defined(BANGLEJS2) || defined(LINUX)",
+  "#if" : "defined(BANGLEJS2) || defined(BANGLEJS3) || defined(LINUX)",
   "generate" : "jswrap_graphics_filter",
   "params" : [
     ["filter","JsVar","An array of filter params between -128 and 127 (2D arrays should be unwrapped)"],

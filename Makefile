@@ -654,7 +654,7 @@ ifeq ($(USE_BLUETOOTH),1)
   DEFINES += -DBLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
-  SOURCES += libs/bluetooth/bluetooth_utils.c
+  SOURCES += libs/bluetooth/bluetooth_utils.c libs/bluetooth/bluetooth_common.c
 endif
 
 ifeq ($(USE_CRYPTO),1)
@@ -703,12 +703,6 @@ ifeq ($(USE_NFC),1)
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 endif
 
-ifeq ($(USE_WIO_LTE),1)
-  INCLUDE += -I$(ROOT)/libs/wio_lte
-  WRAPPERSOURCES += libs/wio_lte/jswrap_wio_lte.c
-  SOURCES += targets/stm32/stm32_ws2812b_driver.c
-endif
-
 ifeq ($(USE_TENSORFLOW),1)
 include make/misc/tensorflow.make
 endif
@@ -727,6 +721,8 @@ endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF AB
 
 all: 	 proj
 # =========================================================================
+PININFOFILE=$(GENDIR)/jspininfo
+
 ifneq ($(FAMILY),)
 include make/family/$(FAMILY).make
 endif
@@ -737,7 +733,6 @@ ifdef USB
 DEFINES += -DUSB
 endif
 
-PININFOFILE=$(GENDIR)/jspininfo
 SOURCES += $(PININFOFILE).c
 WRAPPERSOURCES += $(ESPRUINO_WRAPPERSOURCES)
 SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
@@ -829,14 +824,14 @@ docs:
 	$(Q)python scripts/build_docs.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 	@echo functions.html created
 
-$(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
+$(WRAPPERFILE): boards/$(BOARD).py scripts/build_jswrapper.py scripts/common.py $(WRAPPERSOURCES)
 	@echo ================================== Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
 	$(Q)$(PYTHON) scripts/build_jswrapper.py $(WRAPPERSOURCES) $(JSMODULESOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
 
 ifdef PININFOFILE
-$(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
+$(PININFOFILE).c $(PININFOFILE).h: boards/$(BOARD).py scripts/build_pininfo.py scripts/pinutils.py
 	@echo ================================== Generating pin info
 	$(Q)$(PYTHON) scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
@@ -906,10 +901,14 @@ else ifdef ESP32_IDF4
 include make/targets/ESP32_IDF4.make
 else ifdef ESP32
 include make/targets/ESP32.make
+else ifeq ($(FAMILY),RP2XXX)
+# build rules come from make/family/RP2XXX.make (delegated to the Pico SDK)
 else ifdef ESP8266
 include make/targets/ESP8266.make
 else ifdef ESPR_EMBED
 include make/targets/EMBED.make
+else ifdef ZEPHYR
+include make/targets/ZEPHYR.make
 else # ARM/etc, so generate bin, etc ---------------------------
 include make/targets/ARM.make
 endif	    # ---------------------------------------------------

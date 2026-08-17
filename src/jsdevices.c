@@ -11,12 +11,14 @@
  * Common low-level device handling (Events, IO buffers)
  * ----------------------------------------------------------------------------
  */
+#include "jsutils.h"
 #include "jsdevices.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
 #ifdef BLUETOOTH
 #include "bluetooth.h"
+#include "bluetooth_common.h"
 #endif
 
 #ifdef LINUX
@@ -428,6 +430,14 @@ bool jshHasTransmitData() {
   return txHead != txTail;
 }
 
+/** Returns the number of bytes currently used in the transmit buffer */
+int jshGetTransmitBufferUsage() {
+  if (txHead > txTail)
+    return (TXBUFFERMASK+1) - (txHead - txTail);
+  else
+    return txTail - txHead;
+}
+
 /**
  * flag that the buffer has overflowed.
  */
@@ -472,7 +482,7 @@ bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, unsigne
 
 /// Push a Custom IO event into the ioBuffer (designed to be called from IRQ), returns true on success, Calls jshHadEvent();
 bool CALLED_FROM_INTERRUPT jshPushCustomEvent(IOCustomEventFlags customFlags) {
-  jshPushEvent(EV_CUSTOM, (uint8_t*)&customFlags, sizeof(customFlags));
+  return jshPushEvent(EV_CUSTOM, (uint8_t*)&customFlags, sizeof(customFlags));
 }
 
 /// Try and handle events in the IRQ itself. true if handled and shouldn't go in queue
@@ -488,7 +498,7 @@ static bool jshPushIOCharEventsHandler(IOEventFlags channel, char *data, unsigne
   return handled;
 }
 
-void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
+void jshPushIOCharEvents(IOEventFlags channel, const char *data, unsigned int count) {
   // See if we need to handle this in the IRQ
   if (jshPushIOCharEventsHandler(channel, data, count)) return;
   // See if we can add this onto an existing event

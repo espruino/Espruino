@@ -22,15 +22,15 @@ right `BOARD.py` file. To build for `boards/PUCKJS.py` use `BOARD=PUCKJS RELEASE
 
 ## Super Easy GitHub method
 
-GitHub now automatically builds Espruino for the most popular targets. 
+GitHub now automatically builds Espruino for the most popular targets.
 
 Simply go to `https://github.com/espruino/Espruino/actions`, click on the build you're interested in,
 then scroll down to the `Artefacts` heading. Just click on an artefact (for instance `PUCKJS`) to download
 a zip **containing** the files.
 
 To perform a DFU update on an nRF52 device, you need to unzip the `BOARDNAME.zip` file and
-then **the zip file inside that** called `espruino_2vXX.YY_boardname.zip` is the one you 
-need to use for the firmware updates. **On MacOS it may not be immediately apparent that 
+then **the zip file inside that** called `espruino_2vXX.YY_boardname.zip` is the one you
+need to use for the firmware updates. **On MacOS it may not be immediately apparent that
 the thing in `BOARDNAME.zip` named `espruino_2vXX.YY_boardname` is another zip file, and not a folder.**
 
 If you fork the Espruino repository and make changes yourself you should be able
@@ -79,13 +79,15 @@ chmod +x espruino && sudo cp espruino /usr/local/bin
 
 #### for cross compilation to Puck.js
 
-Having successfully created an native OS Espruino, try a cross compilation.
+Having successfully created a native OS Espruino, try a cross compilation.
 
 ```bash
 sudo apt-get update
-sudo pip install nrfutil
 sudo apt-get install -y \
   lib32z1 lib32ncurses5
+wget -O scripts/nrfutil https://github.com/espruino/EspruinoBuildTools/raw/refs/heads/master/nrf52/nrfutil
+chmod a+x scripts/nrfutil
+scripts/nrfutil install nrf5sdk-tools
 wget https://launchpad.net/gcc-arm-embedded/5.0/5-2016-q3-update/+download/gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
 tar xjf gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
 sudo mv gcc-arm-none-eabi-5_4-2016q3 /usr/local
@@ -97,7 +99,7 @@ ls -l *puckjs*
 
 ## Under MacOS
 
-#### Create a self growing sparse image and mount 
+#### Create a self growing sparse image and mount
 
 ```
 mkdir ~/diskimages
@@ -120,15 +122,15 @@ hdiutil resize -size 15G ~/diskimages/Espruino.sparsebundle
 hdiutil attach ~/diskimages/Espruino.sparsebundle
 ```
 
-#### Create some directories on /Espruino 
+#### Create some directories on /Espruino
 
 ```
 mkdir /Espruino/{gcc,sdk,repos,tmp}
 
 /Espruino -+- gcc     GNU Compiler Collection for different processors
            +- sdk     Software Development Kits
-           +- repos   like Espruino EspruinoDocs ... 
-	   +- tmp     temporary files  
+           +- repos   like Espruino EspruinoDocs ...
+	   +- tmp     temporary files
 ```
 
 #### Install build and flash tools
@@ -143,12 +145,12 @@ brew upgrade stlink
 pip install esptool
 ```
 
-#### Get GNU Compiler Collection 
+#### Get GNU Compiler Collection
 
 ```
-# Espruino, Pico, PuckJS, EspruinoWifi 
+# Espruino, Pico, PuckJS, EspruinoWifi
 # gcc arm https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads
-curl -Ls https://goo.gl/42fcKX | tar -C gcc -xvzf - 
+curl -Ls https://goo.gl/42fcKX | tar -C gcc -xvzf -
 
 # xtensa gcc - pre buid from  https://github.com/MaBecker/esp8266
 curl -Ls https://github.com/MaBecker/esp8266/xtensa-lx106-elf-4.8.5.tgz | tar -C gcc -xvzf -
@@ -157,8 +159,8 @@ curl -Ls https://github.com/MaBecker/esp8266/xtensa-lx106-elf-4.8.5.tgz | tar -C
 #### Get SDK
 
 ```
-# ESP8266/esp8285 starting with 01  
-# espressif ESP8266 2.0 <- actual one 
+# ESP8266/esp8285 starting with 01
+# espressif ESP8266 2.0 <- actual one
 wget -P tmp  https://github.com/espressif/ESP8266_NONOS_SDK/archive/v2.0.0.zip
 unzip -d sdk tmp/v2.0.0.zip
 rm tmp/v2.0.0.zip
@@ -317,7 +319,7 @@ make clean && make $*
   that it's already running Espruino
 * You will also get an `espruino_2v0x_*_esp8266.tgz` archive, which contains everything you
   need to flash a module (except for esptool.py), including a README_flash.txt
-  
+
 ### for esp32
 On 64 bit linux:
 

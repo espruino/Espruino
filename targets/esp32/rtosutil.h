@@ -53,8 +53,6 @@ int task_indexByName(char *taskName); //returns index of task in task array by n
 TaskHandle_t task_handleByName(char *taskName); //returns handle of task by name
 int task_getCurrentIndex(); //returns index of actual task
 char *task_getCurrentName(); //returns name of actual task
-int task_init(TaskFunction_t taskCode, char *taskName,unsigned short stackDepth,UBaseType_t priority,BaseType_t coreId);
-//initializes a task, using nonstandard rtos api call xTaskCreatePinnedToCore
 void task_list(); //lists all entrys of task array usinf printf
 void task_Suspend(int idx); //suspends task given by index in task array
 void task_Resume(int idx); //resumes task given by index in task array

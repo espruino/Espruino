@@ -1,0 +1,34 @@
+board:
+  name: banglejs3
+  full_name: nRF54L15 DK
+  vendor: nordic
+  socs:
+    - name: nrf54l15
+runners:
+  run_once:
+    '--recover':
+      - runners:
+          - nrfjprog
+          - nrfutil
+        run: first
+        groups:
+          - boards:
+              - banglejs3/nrf54l15/cpuapp
+    '--erase':
+      - runners:
+          - nrfjprog
+          - jlink
+          - nrfutil
+        run: first
+        groups:
+          - boards:
+              - banglejs3/nrf54l15/cpuapp
+    '--reset':
+      - runners:
+          - nrfjprog
+          - jlink
+          - nrfutil
+        run: last
+        groups:
+          - boards:
+              - banglejs3/nrf54l15/cpuapp

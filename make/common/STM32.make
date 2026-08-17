@@ -37,7 +37,7 @@ proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
 
 flash: $(PROJ_NAME).bin
 ifdef USE_DFU
-	sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
+	sudo dfu-util -d 0483:df11 -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
 else ifeq ($(BOARD),OLIMEXINO_STM32_BOOTLOADER) 
 	@echo Olimexino Serial bootloader
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
@@ -46,14 +46,7 @@ else ifdef NUCLEO
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else
 	@echo "-- ST-Link flash: reset the target, then immediately press any key to proceed";
-	@if read -n 1 -s && st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS); then \
-		echo "ST-Link flashed OK"; \
-	else \
-		echo "-- J-Link flash"; \
-		echo "USB\nconnect\nloadfile $(PROJ_NAME).bin $(BASEADDRESS)\nexit" > JLinkCommands.txt; \
-		JLinkExe -device $(CHIP) -if SWD -speed 4000 -CommandFile JLinkCommands.txt; \
-		rm JLinkCommands.txt; \
-	fi
+	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
 endif
 
 serialflash: all

@@ -1,0 +1,895 @@
+/*
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * Platform Specific part of Hardware interface Layer
+ * ----------------------------------------------------------------------------
+ */
+/*
+Notes:
+
+JshSysTime is treated as in microseconds (jshGetTimeFromMilliseconds/jshGetMillisecondsFromTime/jshUtilTimerReschedule)
+
+*/
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+
+#include "platform_config.h"
+#include "jshardware.h"
+#include "jsutils.h"
+#include "jsparse.h"
+#include "jsinteractive.h"
+#include "jstimer.h"
+#include "bluetooth.h"
+#include <time.h>
+
+#include <zephyr/kernel.h>
+#include <zephyr/arch/cpu.h>
+#include <zephyr/arch/arm/exception.h> /* Defines z_arch_esf_t for ARM Cortex-M */
+//#include <zephyr/logging/log.h>
+#include <zephyr/drivers/uart.h>
+#include <zephyr/drivers/spi.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/rtc.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/drivers/adc.h>
+#include <zephyr/drivers/counter.h>
+#include <zephyr/drivers/pwm.h>
+#include <zephyr/pm/device.h>
+#include <jesd216.h> // ext flash
+
+#include <nrfx.h>
+#include <hal/nrf_gpio.h>
+
+#ifdef BANGLEJS3
+#define ESPR_HAS_PWM 1
+#endif
+
+
+#define FLASH_UNITARY_WRITE_SIZE 4
+#define FAKE_FLASH_BLOCKSIZE 4096
+
+#if DT_HAS_COMPAT_STATUS_OKAY(jedec_spi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(jedec_spi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(jedec_mspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(jedec_mspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(nordic_qspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(nordic_qspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(st_stm32_qspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(st_stm32_qspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(st_stm32_ospi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(st_stm32_ospi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(st_stm32_xspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(st_stm32_xspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(nxp_s32_qspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(nxp_s32_qspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(adi_max32_spixf_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(adi_max32_spixf_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(nxp_imx_flexspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(nxp_imx_flexspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(renesas_ra_ospi_b_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(renesas_ra_ospi_b_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(renesas_ra_qspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(renesas_ra_qspi_nor)
+#elif DT_HAS_COMPAT_STATUS_OKAY(renesas_rz_qspi_xspi)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(renesas_rz_qspi_xspi)
+#elif DT_HAS_COMPAT_STATUS_OKAY(renesas_rz_qspi_spibsc)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(renesas_rz_qspi_spibsc)
+#elif DT_HAS_COMPAT_STATUS_OKAY(sifli_sf32lb_mpi_qspi_nor)
+#define FLASH_NODE DT_COMPAT_GET_ANY_STATUS_OKAY(sifli_sf32lb_mpi_qspi_nor)
+#else
+#error Unsupported flash driver
+#define FLASH_NODE DT_INVALID_NODE
+#endif
+
+// Variable to store the main thread's ID
+k_tid_t main_thread_id;
+
+// Get the device binding for the console UART (usually "zephyr,console")
+const struct device *serial1_dev = DEVICE_DT_GET(DT_NODELABEL(uart20)); // was using DT_CHOSEN(zephyr_console)
+#if ESPR_USART_COUNT>1
+const struct device *serial2_dev = DEVICE_DT_GET(DT_NODELABEL(uart21));
+#endif
+#if ESPR_SPI_COUNT>0
+const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi30));
+#endif
+const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
+const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
+const struct device *qspi_dev = DEVICE_DT_GET(DT_NODELABEL(sqspi)); // for extflash
+const struct device *utiltimer_dev = DEVICE_DT_GET(DT_NODELABEL(timer00));
+const struct device *adc_dev = DEVICE_DT_GET(DT_NODELABEL(adc));
+#if ESPR_HAS_PWM
+const struct device *pwm_dev = DEVICE_DT_GET(DT_NODELABEL(pwm20));
+#endif
+volatile bool extflashEnabled = false;
+
+#if ESPR_SPI_COUNT>0
+struct spi_config spi1_config = {
+        .frequency = 4000000U, // 4 MHz - works - 8Mhz sends data too fast for PY32 to output it at the moment
+        //.frequency = 5333333U, // 5.3 MHz - magic number that seems to be allowed
+        .operation = SPI_OP_MODE_MASTER |   // Master mode
+                     SPI_WORD_SET(8) |      // 8-bit words
+                     SPI_TRANSFER_MSB     // Send MSB first
+                     /*SPI_MODE_SET(0)*/,
+        .slave     = 0,                     // Target index
+        .cs        = { .gpio = { .port = NULL } }
+    };
+#endif
+// ----------------------------------------------------------------------------
+Pin eventFlagsToPin[ESPR_EXTI_COUNT];
+static struct gpio_callback eventData[ESPR_EXTI_COUNT]; // used for handling zephyr events
+
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+/// Last period (1000000000/frequency) used for pwm
+uint32_t pwmPeriod;
+/// Current state of each pin
+JshPinFunction pinStates[JSH_PIN_COUNT];
+// ----------------------------------------------------------------------------
+
+
+const struct device *jshToZephyrPort(JsvPinInfoPort port) {
+  switch (port&JSH_PORT_MASK) {
+    case JSH_PORTA: return DEVICE_DT_GET(DT_NODELABEL(gpio0));
+    case JSH_PORTB: return DEVICE_DT_GET(DT_NODELABEL(gpio1));
+    case JSH_PORTC: return DEVICE_DT_GET(DT_NODELABEL(gpio2));
+    default: assert(0); return 0;
+  }
+}
+IOEventFlags jshDeviceToEventFlags(const struct device *dev) {
+  if (dev==serial1_dev) return EV_SERIAL1;
+#if ESPR_USART_COUNT>1
+  if (dev==serial2_dev) return EV_SERIAL2;
+#endif
+  assert(0);
+  return EV_NONE;
+}
+const struct device *jshEventFlagsToDevice(IOEventFlags dev) {
+  if (dev==EV_SERIAL1) return serial1_dev;
+#if ESPR_USART_COUNT>1
+  if (dev==EV_SERIAL2) return serial2_dev;
+#endif
+  assert(0);
+  return NULL;
+}
+
+void serial_cb(const struct device *dev, void *user_data) {
+  IOEventFlags espruinoDev = jshDeviceToEventFlags(dev);
+  if (espruinoDev==EV_NONE) return;
+  uint8_t c[32];
+  if (!uart_irq_update(dev)) return;
+
+  if (uart_irq_rx_ready(dev)) {
+    int chars = 0;
+    while ((chars = uart_fifo_read(dev, c, sizeof(c))) > 0) {
+      jshPushIOCharEvents(espruinoDev, c, chars);
+    }
+  }
+  if (uart_irq_tx_ready(dev)) {
+    int ch = jshGetCharToTransmit(espruinoDev);
+    if (ch >= 0) {
+      // Send the next byte
+      c[0] = ch;
+      uart_fifo_fill(dev, c, 1);
+    } else {
+      // No more data to send, disable the TX interrupt
+      uart_irq_tx_disable(dev);
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+void jshResetPeripherals() {
+  BITFIELD_CLEAR(jshPinSoftPWM);
+}
+
+
+void jshInit() {
+  memset(pinStates, 0, sizeof(pinStates));
+  for (int i=0;i<ESPR_EXTI_COUNT;i++)
+    eventFlagsToPin[i] = PIN_UNDEFINED;
+#if JSH_PORTV_COUNT>0
+  jshVirtualPinInitialise();
+#endif
+  main_thread_id = k_current_get();
+  if (!device_is_ready(serial1_dev)) return jsWarn("serial1 not ready");
+  uart_irq_callback_set(serial1_dev, serial_cb);
+  uart_irq_rx_enable(serial1_dev);
+#if ESPR_USART_COUNT>1
+  if (!device_is_ready(serial2_dev)) return jsWarn("serial2 not ready");
+  uart_irq_callback_set(serial2_dev, serial_cb);
+  uart_irq_rx_enable(serial2_dev);
+#endif
+
+  /* Update CMSIS core clock variable */
+  //SystemCoreClockUpdate();
+  //jsiConsolePrintf("CPU SystemCoreClock: %d MHz\n", SystemCoreClock / 1000000);
+
+#if ESPR_SPI_COUNT>0
+  // SPI 1
+  if (!device_is_ready(spi1_dev)) {
+    jsWarn("spi30 not ready\n");
+  }
+#endif
+  // set up flow control/pins/etc
+  jshInitDevices();
+  // reset LCD/etc
+  jshReset();
+#if ESPR_USART_COUNT>1
+  // disable Serial 2 initially
+  jshUSARTUnSetup(EV_SERIAL2);
+#endif
+#if ESPR_SPI_COUNT>0
+  // disable SPI1 (LCD) initially as we start it only when we want to update the LCD
+  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI
+#endif
+#if ESPR_HAS_PWM
+  pm_device_action_run(pwm_dev, PM_DEVICE_ACTION_SUSPEND); // stop PWM by default
+#endif
+
+  // Ext flash
+  if (!device_is_ready(extflash_dev)) {
+    jsiConsolePrintf("%s: device not ready\n", extflash_dev->name);
+    return;
+  }
+  /*uint8_t id[3];
+	int err = flash_read_jedec_id(extflash_dev, id);
+	if (err == 0) {
+		printf("jedec-id = [%02x %02x %02x];\n",
+		       id[0], id[1], id[2]);
+	} else {
+		printf("JEDEC ID read failed: %d\n", err);
+	}*/
+  // Bluetooth!
+  jsble_init();
+}
+
+void jshReset() {
+  jshResetDevices();
+  jshResetPeripherals();
+}
+
+void jshKill() {
+}
+
+void jshIdle() {
+  // FIXME jsiOneSecondAfterStartup();
+}
+
+void jshBusyIdle() {
+}
+
+// ----------------------------------------------------------------------------
+
+int jshGetSerialNumber(unsigned char *data, int maxChars) {
+  long initialSerial = 0;
+  long long serial = 0xDEADDEADDEADDEADL;
+  memcpy(&data[0], &initialSerial, 4);
+  memcpy(&data[4], &serial, 8);
+  return 12;
+}
+
+
+
+// ----------------------------------------------------------------------------
+
+void jshHadEvent() {
+  jshHadEventDuringSleep = true;
+  k_wakeup(main_thread_id);
+}
+
+void jshInterruptOff() {
+}
+
+void jshInterruptOn() {
+}
+
+/// Are we currently in an interrupt?
+bool jshIsInInterrupt() {
+  return k_is_in_isr(); // or check if we're in the IO handling thread?
+}
+
+void jshDelayMicroseconds(int microsec) {
+  k_usleep(microsec);
+}
+
+static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
+  if (pinStates[pin]==func) return;
+  // disconnect existing peripheral (if there was one)
+#if ESPR_HAS_PWM
+  if (JSH_PINFUNCTION_IS_TIMER(pinStates[pin]) && !JSH_PINFUNCTION_IS_TIMER(func)) {
+    // if no PWM needed, turn it off
+    bool pwmOn = false;
+    for (int i=0;i<JSH_PIN_COUNT;i++)
+      if (i!=pin && JSH_PINFUNCTION_IS_TIMER(pinStates[i]))
+        pwmOn = true;
+    if (!pwmOn) {
+      jsiConsolePrintf("PWM off\n");
+      pm_device_action_run(pwm_dev, PM_DEVICE_ACTION_SUSPEND);
+    }
+  }
+#endif
+  // connect new peripheral
+  pinStates[pin] = func;
+}
+
+void jshPinSetState(Pin pin, JshPinState state) {
+  const JshPinInfo *p = &pinInfo[pin];
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
+  // If this was set to be some kind of AF (USART, etc), reset it.
+  jshPinSetFunction(pin, JSH_NOTHING);
+
+#if JSH_PORTV_COUNT>0
+  // ignore virtual ports (eg. pins on an IO Expander)
+  if ((p->port & JSH_PORT_MASK)==JSH_PORTV) return jshVirtualPinSetState(pin, state);
+#endif
+  gpio_flags_t flags = GPIO_DISCONNECTED;
+  switch (state) {
+    case JSHPINSTATE_UNDEFINED: flags = GPIO_DISCONNECTED; break;
+    case JSHPINSTATE_GPIO_OUT: flags = GPIO_OUTPUT; break;
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN: flags = GPIO_OUTPUT|GPIO_OPEN_DRAIN; break;
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP: flags = GPIO_OUTPUT|GPIO_OPEN_DRAIN|GPIO_PULL_UP; break;
+    case JSHPINSTATE_GPIO_IN: flags = GPIO_INPUT; break;
+    case JSHPINSTATE_GPIO_IN_PULLUP: flags = GPIO_INPUT|GPIO_PULL_UP; break;
+    case JSHPINSTATE_GPIO_IN_PULLDOWN: flags = GPIO_INPUT|GPIO_PULL_DOWN; break;
+    case JSHPINSTATE_ADC_IN: flags = GPIO_INPUT; break;
+    case JSHPINSTATE_AF_OUT: flags = GPIO_OUTPUT; break;
+    case JSHPINSTATE_AF_OUT_OPENDRAIN: flags = GPIO_OUTPUT|GPIO_OPEN_DRAIN; break;
+    case JSHPINSTATE_USART_IN: flags = GPIO_INPUT; break;
+    case JSHPINSTATE_USART_OUT: flags = GPIO_OUTPUT; break;
+    default: assert(0);
+  }
+  // GPIO_LINE_DRIVE_STRENGTH_HIGH is an option too
+  gpio_pin_configure(jshToZephyrPort(p->port), p->pin, flags);
+}
+
+JshPinState jshPinGetState(Pin pin) {
+  const JshPinInfo *p = &pinInfo[pin];
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((p->port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinGetState(pin);
+#endif
+  gpio_flags_t flags;
+  gpio_pin_get_config(jshToZephyrPort(p->port), p->pin, &flags);
+  JshPinState on = jshPinGetValue(pin) ? JSHPINSTATE_PIN_IS_ON : 0;
+  if (flags==GPIO_DISCONNECTED) return on|JSHPINSTATE_ADC_IN;
+  if (flags&GPIO_OUTPUT) {
+    if ((flags&(GPIO_OPEN_DRAIN|GPIO_PULL_UP)) == (GPIO_OPEN_DRAIN|GPIO_PULL_UP)) return on|JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP;
+    if (flags&GPIO_OPEN_DRAIN) return on|JSHPINSTATE_GPIO_OUT_OPENDRAIN;
+    return on|JSHPINSTATE_GPIO_OUT;
+  }
+  if (flags&GPIO_INPUT) {
+    if (flags&GPIO_PULL_UP) return on|JSHPINSTATE_GPIO_IN_PULLUP;
+    if (flags&GPIO_PULL_DOWN) return on|JSHPINSTATE_GPIO_IN_PULLDOWN;
+    return on|JSHPINSTATE_GPIO_IN;
+  }
+  return JSHPINSTATE_UNDEFINED;
+}
+
+void jshPinSetValue(Pin pin, bool value) {
+  const JshPinInfo *p = &pinInfo[pin];
+  if (p->port & JSH_PIN_NEGATED) value=!value;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((p->port & JSH_PORT_MASK)==JSH_PORTV)
+    return jshVirtualPinSetValue(pin, value);
+#endif
+  gpio_pin_set_raw(jshToZephyrPort(p->port), p->pin, value);
+  /*int mask = 1 << p->pin; // direct?
+  NRF_GPIO_Type *ports[] = { NRF_P0, NRF_P1, NRF_P2 };
+  NRF_GPIO_Type *port = ports[(p->port & JSH_PORT_MASK) - JSH_PORTA];
+  if (value) port->OUTSET = mask;
+  else port->OUTCLR = mask;*/
+}
+
+bool jshPinGetValue(Pin pin) {
+  const JshPinInfo *p = &pinInfo[pin];
+  bool value;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((p->port & JSH_PORT_MASK)==JSH_PORTV)
+    value = jshVirtualPinGetValue(pin);
+  else
+#endif
+  value = gpio_pin_get_raw(jshToZephyrPort(p->port), p->pin);
+  if (p->port & JSH_PIN_NEGATED) value=!value;
+  return value;
+}
+
+bool jshIsDeviceInitialised(IOEventFlags device) { return true; }
+
+bool jshIsUSBSERIALConnected() {
+  return true;
+}
+
+JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
+  return (JsSysTime)(ms*1000);
+}
+
+JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
+  return ((JsVarFloat)time)/1000;
+}
+
+JsSysTime jshGetSystemTime() {
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  return (ts.tv_sec*1000000UL) + (ts.tv_nsec/1000);
+}
+
+void jshSetSystemTime(JsSysTime time) {
+  struct timespec ts;
+  ts.tv_sec = time / 1000000;
+  ts.tv_nsec = (time % 1000000) * 1000;
+  clock_settime(CLOCK_REALTIME, &ts);
+}
+
+// ----------------------------------------------------------------------------
+
+JsVarFloat jshPinAnalog(Pin pin) {
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
+  const JshPinInfo *p = &pinInfo[pin];
+  int err;
+  uint16_t sample_buffer;
+
+  const int ADC_CHANNEL_ID = 0;
+  const int ADC_REF_INTERNAL_MV = 600; // mv
+  const int ADC_GAIN = ADC_GAIN_1_4;
+  const int ADC_RESOLUTION = 12;
+
+  if (!device_is_ready(adc_dev)) {
+      jsiConsolePrintf("ADC device %s is not ready", adc_dev->name);
+      return 0;
+  }
+
+  struct adc_channel_cfg channel_cfg = {
+      .gain             = ADC_GAIN,
+      .reference        = ADC_REF_INTERNAL,
+      .acquisition_time = ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 3), // or ADC_ACQ_TIME_DEFAULT,
+      .channel_id       = ADC_CHANNEL_ID,
+      .input_positive   = p->analog & JSH_MASK_ANALOG_CH,
+  };
+
+  err = adc_channel_setup(adc_dev, &channel_cfg);
+  if (err < 0) {
+      jsiConsolePrintf("Failed to setup ADC channel (%d)", err);
+      return 0;
+  }
+
+  struct adc_sequence sequence = {
+      .channels    = BIT(ADC_CHANNEL_ID),
+      .buffer      = &sample_buffer,
+      .buffer_size = sizeof(sample_buffer),
+      .resolution  = ADC_RESOLUTION,
+  };
+
+  err = adc_read(adc_dev, &sequence);
+  if (err < 0) {
+    jsiConsolePrintf("ADC read failed (%d)", err);
+    return 0;
+  }
+  int32_t val_uv = (int32_t)sample_buffer;
+  err = adc_raw_to_microvolts(ADC_REF_INTERNAL_MV, ADC_GAIN, ADC_RESOLUTION, &val_uv);
+  return val_uv/1000000.0f;
+}
+
+int jshPinAnalogFast(Pin pin) {
+  const JshPinInfo *p = &pinInfo[pin];
+  int err;
+  uint16_t sample_buffer;
+
+  const int ADC_CHANNEL_ID = 0;
+  const int ADC_GAIN = ADC_GAIN_1_4;
+  const int ADC_RESOLUTION = 12;
+
+  struct adc_channel_cfg channel_cfg = {
+      .gain             = ADC_GAIN,
+      .reference        = ADC_REF_INTERNAL,
+      .acquisition_time = ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 3), // or ADC_ACQ_TIME_DEFAULT,
+      .channel_id       = ADC_CHANNEL_ID,
+      .input_positive   = p->analog & JSH_MASK_ANALOG_CH,
+  };
+
+  err = adc_channel_setup(adc_dev, &channel_cfg);
+  if (err < 0) {
+      jsiConsolePrintf("Failed to setup ADC channel (%d)", err);
+      return 0;
+  }
+
+  struct adc_sequence sequence = {
+      .channels    = BIT(ADC_CHANNEL_ID),
+      .buffer      = &sample_buffer,
+      .buffer_size = sizeof(sample_buffer),
+      .resolution  = ADC_RESOLUTION,
+  };
+
+  err = adc_read(adc_dev, &sequence);
+  if (err < 0) {
+    jsiConsolePrintf("ADC read failed (%d)", err);
+    return 0;
+  }
+  return ((int32_t)sample_buffer) << (16-ADC_RESOLUTION);
+}
+
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0,
+  if (value>1) value=1;
+  if (value<0) value=0;
+#if ESPR_HAS_PWM
+  // Try and use existing pin function
+  JshPinFunction func = pinInfo[pin].functions[0];
+  /* we set the bit field here so that if the user changes the pin state
+   * later on, we can get rid of the IRQs */
+  if ((flags & JSAOF_FORCE_SOFTWARE) ||
+      ((flags & JSAOF_ALLOW_SOFTWARE) && !func)) {
+    if (!jshGetPinStateIsManual(pin)) {
+      BITFIELD_SET(jshPinSoftPWM, pin, 0);
+      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+    }
+    BITFIELD_SET(jshPinSoftPWM, pin, 1);
+    if (freq<=0) freq=50;
+    jstPinPWM(freq, value, pin);
+    return JSH_NOTHING;
+  }
+
+  if (!func) {
+    jsWarn("No pwm for %p\n");
+    return JSH_NOTHING;
+  }
+
+  // period/pulse width in nanoseconds
+  int channel = pinStates[pin]>>JSH_SHIFT_INFO;
+  pwmPeriod = (uint32_t)(1000000000.0/freq);
+  uint32_t pulse = (uint32_t)(pwmPeriod*value);
+  pwm_flags_t pwmFlags = 0; // see PWM_CAPTURE_FLAGS
+  int ret = pwm_set(pwm_dev, channel, pwmPeriod, pulse, pwmFlags); // stops pwm here
+  if (ret < 0) {
+      jsWarn("Failed to set PWM pulse: %d\n", ret);
+      return 0;
+  }
+  jshPinSetFunction(pin, func);
+  return func;
+#else
+  return 0;
+#endif
+}
+
+void jshSetOutputValue(JshPinFunction func, int value) {
+#if ESPR_HAS_PWM
+  int channel = func>>JSH_SHIFT_INFO;
+  uint32_t pulse = (uint32_t)((((uint64_t)pwmPeriod)*(uint64_t)value) >> 16);
+  pwm_flags_t pwmFlags = 0; // see PWM_CAPTURE_FLAGS
+  pwm_set(pwm_dev, channel, pwmPeriod, pulse, pwmFlags); // stops pwm here
+#endif
+}
+
+bool jshCanWatch(Pin pin) {
+  return true;
+}
+
+IOEventFlags jshGetEventFlagsForPin(Pin pin) {
+  for (int i=0;i<ESPR_EXTI_COUNT;i++)
+    if (eventFlagsToPin[i]==pin)
+      return EV_EXTI0+i;
+  return EV_NONE;
+}
+
+static void jshPinWatchCallback(const struct device *gpio_dev, struct gpio_callback *cb, uint32_t pins) {
+  //jsiConsolePrintf("Pin changed state! Bitmask: 0x%x\n", pins);
+  for (int i=0;i<ESPR_EXTI_COUNT;i++)
+    if (&eventData[i]==cb)
+      return jshPushIOWatchEvent(EV_EXTI0+i);
+}
+
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
+  const JshPinInfo *p = &pinInfo[pin];
+  if (shouldWatch) {
+    for (int i=0;i<ESPR_EXTI_COUNT;i++) {
+      if (eventFlagsToPin[i]==PIN_UNDEFINED) {
+        eventFlagsToPin[i]=pin;
+        if ((p->port & JSH_PORT_MASK)!=JSH_PORTV) {
+          const struct device *gpio_dev = jshToZephyrPort(p->port);
+          gpio_init_callback(&eventData[i], jshPinWatchCallback, BIT(p->pin));
+          gpio_add_callback(gpio_dev, &eventData[i]);
+          gpio_flags_t irqflags = GPIO_INT_EDGE_BOTH;
+          if (flags&JSPW_HIGH_SPEED) irqflags |= GPIO_INT_EDGE_BOTH;
+          else irqflags |= GPIO_INT_LEVEL_LOW|GPIO_INT_LEVEL_HIGH;
+          int ret = gpio_pin_interrupt_configure(gpio_dev, p->pin, irqflags);
+          if (ret < 0) {
+              jsiConsolePrintf("Failed to configure interrupt: %d\n", ret);
+              return 0;
+          }
+        }
+        return EV_EXTI0+i;
+      }
+    }
+  } else {
+    for (int i=0;i<ESPR_EXTI_COUNT;i++) {
+      if (eventFlagsToPin[i]==pin) {
+        if ((p->port & JSH_PORT_MASK)!=JSH_PORTV) {
+          const struct device *gpio_dev = jshToZephyrPort(p->port);
+          gpio_pin_interrupt_configure(gpio_dev, p->pin, GPIO_INT_DISABLE);
+          gpio_remove_callback(gpio_dev, &eventData[i]);
+        }
+        eventFlagsToPin[i]=PIN_UNDEFINED;
+      }
+    }
+  }
+  return EV_NONE;
+}
+
+bool jshGetWatchedPinState(IOEventFlags device) {
+  return jshPinGetValue(eventFlagsToPin[device-EV_EXTI0]);
+}
+
+bool jshIsEventForPin(IOEventFlags eventFlags, Pin pin) {
+  return IOEVENTFLAGS_GETTYPE(eventFlags) == jshGetEventFlagsForPin(pin);
+}
+
+void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  const struct device *dev = jshEventFlagsToDevice(device);
+  if (!dev) return;
+  pm_device_action_run(dev, PM_DEVICE_ACTION_RESUME);
+}
+
+void jshUSARTUnSetup(IOEventFlags device) {
+  const struct device *dev = jshEventFlagsToDevice(device);
+  if (!dev) return;
+  pm_device_action_run(dev, PM_DEVICE_ACTION_SUSPEND);
+}
+
+/** Kick a device into action (if required). For instance we may need
+ * to set up interrupts */
+void jshUSARTKick(IOEventFlags device) {
+  if (device == EV_SERIAL1)
+    uart_irq_tx_enable(serial1_dev); // kick IRQ for transmission
+#if ESPR_USART_COUNT>1
+  if (device == EV_SERIAL2)
+    uart_irq_tx_enable(serial2_dev); // kick IRQ for transmission
+#endif
+
+  if (device == EV_BLUETOOTH) {
+    // FIXME: should ideally do this before packet TX
+    void nus_transmit_string();
+    nus_transmit_string();
+  }
+}
+
+void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
+}
+
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+#if ESPR_SPI_COUNT>0
+  struct spi_buf tx_buf = { .buf = tx, .len = count  };
+  struct spi_buf rx_buf = { .buf = rx, .len = count  };
+  struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
+  struct spi_buf_set rx_set = { .buffers = &rx_buf, .count = 1 };
+  int err;
+  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_RESUME); // restart SPI
+  if (rx) err = spi_transceive(spi1_dev, &spi1_config, &tx_set, &rx_set);
+  else err = spi_write(spi1_dev, &spi1_config, &tx_set);
+  if (err < 0) {
+      // Handle SPI bus runtime or hardware failure
+      jsWarn("SPI err %d\n",err);
+      return false;
+  }
+  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI when done
+
+  // FIXME use spi_transceive_cb for async writes (and use CONFIG_SPI_ASYNC=y)
+  if (callback) callback();
+#endif
+  return true;
+}
+
+/** Send data through the given SPI device (if data>=0), and return the result
+ * of the previous send (or -1). If data<0, no data is sent and the function
+ * waits for data to be returned */
+int jshSPISend(IOEventFlags device, int data) {
+  if (data<0) return 0; // it was blocking
+  uint8_t buf = data;
+  jshSPISendMany(device, &buf, &buf, 1, NULL);
+  return buf;
+}
+
+/** Send 16 bit data through the given SPI device. */
+void jshSPISend16(IOEventFlags device, int data) {
+}
+
+/** Set whether to send 16 bits or 8 over SPI */
+void jshSPISet16(IOEventFlags device, bool is16) {
+}
+
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+}
+
+/** Wait until SPI send is finished, */
+void jshSPIWait(IOEventFlags device) {
+}
+
+void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
+}
+
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
+}
+
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
+}
+
+/// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
+bool jshSleep(JsSysTime timeUntilWake) {
+  JsVarFloat t = jshGetMillisecondsFromTime(timeUntilWake)*1000;
+  if (t>0x7FFFFFFF) t=0x7FFFFFFF;
+
+  if (extflashEnabled) { // FIXME: do we sleep flash if timeUntilWake < ???
+    pm_device_action_run(extflash_dev, PM_DEVICE_ACTION_SUSPEND);
+    pm_device_action_run(qspi_dev, PM_DEVICE_ACTION_SUSPEND);
+    extflashEnabled = false;
+  }
+
+  k_usleep((uint32_t)t);
+  return true;
+}
+
+void jshUtilTimerCallback(const struct device *dev,
+                               uint8_t chan_id,
+                               uint32_t ticks,
+                               void *user_data) {
+  jstUtilTimerInterruptHandler();
+}
+
+void jshUtilTimerDisable() {
+  counter_stop(utiltimer_dev);
+}
+
+void jshUtilTimerReschedule(JsSysTime period) {
+  uint32_t ticks = counter_us_to_ticks(utiltimer_dev, period);
+  struct counter_alarm_cfg alarm_cfg = {
+      .callback = jshUtilTimerCallback,
+      .ticks = ticks,
+      .user_data = NULL,
+      .flags = 0, /* Relative alarm (fires after delay_us from now) */
+  };
+
+  /* Set channel 0 alarm */
+  int ret = counter_set_channel_alarm(utiltimer_dev, 0, &alarm_cfg);
+  if (ret != 0) {
+      jsWarn("Failed to set alarm: %d\n", ret);
+      return;
+  }
+}
+
+void jshUtilTimerStart(JsSysTime period) {
+  jshUtilTimerReschedule(period);
+  counter_start(utiltimer_dev);
+}
+
+JshPinFunction jshGetCurrentPinFunction(Pin pin) {
+  return JSH_NOTHING;
+}
+
+void jshEnableWatchDog(JsVarFloat timeout) {
+}
+
+void jshKickWatchDog() {
+}
+
+JsVarFloat jshReadTemperature() { return NAN; };
+JsVarFloat jshReadVRef()  { return NAN; };
+unsigned int jshGetRandomNumber() { return rand(); }
+
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
+  if (addr<FLASH_START) return false;
+  *startAddr = (uint32_t)(floor(addr / FAKE_FLASH_BLOCKSIZE) * FAKE_FLASH_BLOCKSIZE);
+  *pageSize = FAKE_FLASH_BLOCKSIZE;
+  return true;
+}
+JsVar *jshFlashGetFree() {
+  JsVar *jsFreeFlash = jsvNewEmptyArray();
+  return jsFreeFlash;
+}
+const struct device *jshFlashGetDevice(uint32_t *addr) {
+  const struct device *flash = intflash_dev;
+  if (*addr >= SPIFLASH_BASE && *addr < (SPIFLASH_BASE+SPIFLASH_LENGTH)) {
+    *addr -= SPIFLASH_BASE;
+    flash = extflash_dev;
+    if (!extflashEnabled) {
+      pm_device_action_run(qspi_dev, PM_DEVICE_ACTION_RESUME);
+      pm_device_action_run(extflash_dev, PM_DEVICE_ACTION_RESUME);
+      extflashEnabled = true;
+    }
+  }
+  return flash;
+}
+
+void jshFlashErasePage(uint32_t addr) {
+  const struct device *flash = jshFlashGetDevice(&addr);
+  if (!flash) return;
+  int err = flash_erase(flash, addr, FAKE_FLASH_BLOCKSIZE);
+  if (err) jsWarn("flash_erase err %d",err);
+}
+bool jshFlashErasePages(uint32_t addr, uint32_t byteLength) {
+  const struct device *flash = jshFlashGetDevice(&addr);
+  if (!flash) return false;
+  int err = flash_erase(flash, addr, byteLength);
+  if (err) jsWarn("flash_erase err %d",err);
+  return err!=0;
+}
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+  const struct device *flash = jshFlashGetDevice(&addr);
+  if (!flash) return;
+  int err = flash_read(flash, addr, buf, len);
+  if (err) jsWarn("flash_read err %d at 0x%08x",err, addr);
+}
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+  const struct device *flash = jshFlashGetDevice(&addr);
+  if (!flash) return;
+  int err = flash_write(flash, addr, buf, len);
+  if (err) jsWarn("flash_write err %d",err);
+}
+
+// Just pass data through, since we can access flash at the same address we wrote it
+size_t jshFlashGetMemMapAddress(size_t addr) {
+  // don't allow flash to be memory mapped
+  if (addr>=FLASH_START && addr<FLASH_START+FLASH_TOTAL)
+    return 0;
+  // don't allow ext flash to be memory mapped until we get XIP enabled (how??)
+  if (addr>=SPIFLASH_BASE && addr<SPIFLASH_BASE+SPIFLASH_LENGTH)
+    return 0;
+  return addr;
+}
+
+unsigned int jshSetSystemClock(JsVar *options) {
+  return 0;
+}
+
+/// Perform a proper hard-reboot of the device
+void jshReboot() {
+  jsExceptionHere(JSET_ERROR, "Not implemented");
+}
+
+/* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
+void jsvGetProcessorPowerUsage(JsVar *devices) {
+  const struct device *devs;
+  size_t count = z_device_get_all_static(&devs);
+  for (size_t i = 0; i < count; i++) {
+    const struct device *dev = &devs[i];
+    enum pm_device_state state;
+
+    // Skip devices that don't support PM or fail state check
+    if (pm_device_state_get(dev, &state) != 0) {
+        continue;
+    }
+
+    // Print devices that are NOT suspended or off
+    if (state==PM_DEVICE_STATE_ACTIVE)
+      jsvObjectSetIntChild(devices,  dev->name, 1);
+    else {
+      const char *s = "?";
+      if (state == PM_DEVICE_STATE_SUSPENDED) s = "suspended";
+      if (state == PM_DEVICE_STATE_SUSPENDING) s = "suspending";
+      if (state == PM_DEVICE_STATE_OFF) s = "off";
+      jsvObjectSetStringChild(devices,  dev->name, s);
+    }
+  }
+  // check if PWM is being used
+  bool pwmOn = false;
+  for (int i=0;i<JSH_PIN_COUNT;i++)
+    if (JSH_PINFUNCTION_IS_TIMER(pinStates[i]))
+      pwmOn = true;
+  if (pwmOn)
+    jsvObjectSetIntChild(devices, "PWM", 200);
+}

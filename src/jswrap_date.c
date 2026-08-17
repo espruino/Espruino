@@ -157,6 +157,7 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
 
 // this needs to be called just before a TimeInDay is used -- unless the TimeInDay timezone has been determined by other means.
 void setCorrectTimeZone(TimeInDay *td) {
+  td->zone = 0; // jsdGetEffectiveTimeZone uses td->zone
   td->zone = jsdGetEffectiveTimeZone(fromTimeInDay(td),true,&(td->is_dst));
 }
 
@@ -406,7 +407,7 @@ JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue) {
     return 0.0;
   }
   if (date)
-    jsvObjectSetChildAndUnLock(date, "ms", jsvNewFromFloat(timeValue));
+    jsvObjectSetFloatChild(date, "ms", timeValue);
   return timeValue;
 }
 
@@ -514,6 +515,119 @@ The year, e.g. 2014
  */
 int jswrap_date_getFullYear(JsVar *parent) {
   return getCalendarDateFromDateVar(parent, false/*system timezone*/).year;
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "getUTCHours",
+  "generate" : "jswrap_date_getUTCHours",
+  "return" : ["int32",""]
+}
+0..23
+ */
+int jswrap_date_getUTCHours(JsVar *parent) {
+  return getTimeFromDateVar(parent, true/*UTC*/).hour;
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "getUTCMinutes",
+  "generate" : "jswrap_date_getUTCMinutes",
+  "return" : ["int32",""]
+}
+0..59
+ */
+int jswrap_date_getUTCMinutes(JsVar *parent) {
+  return getTimeFromDateVar(parent, true/*UTC*/).min;
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "getUTCSeconds",
+  "generate" : "jswrap_date_getUTCSeconds",
+  "return" : ["int32",""]
+}
+0..59
+ */
+int jswrap_date_getUTCSeconds(JsVar *parent) {
+  return getTimeFromDateVar(parent, true/*UTC*/).sec;
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "getUTCMilliseconds",
+  "generate" : "jswrap_date_getUTCMilliseconds",
+  "return" : ["int32",""]
+}
+0..999
+ */
+int jswrap_date_getUTCMilliseconds(JsVar *parent) {
+  return getTimeFromDateVar(parent, true/*UTC*/).ms;
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "getUTCDay",
+  "generate" : "jswrap_date_getUTCDay",
+  "return" : ["int32",""]
+}
+Day of the week (0=sunday, 1=monday, etc)
+ */
+int jswrap_date_getUTCDay(JsVar *parent) {
+  return getCalendarDateFromDateVar(parent, true/*UTC*/).dow;
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "getUTCDate",
+  "generate" : "jswrap_date_getUTCDate",
+  "return" : ["int32",""]
+}
+Day of the month 1..31
+ */
+int jswrap_date_getUTCDate(JsVar *parent) {
+  return getCalendarDateFromDateVar(parent, true/*UTC*/).day;
+}
+
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "getUTCMonth",
+  "generate" : "jswrap_date_getUTCMonth",
+  "return" : ["int32",""]
+}
+Month of the year 0..11
+ */
+int jswrap_date_getUTCMonth(JsVar *parent) {
+  return getCalendarDateFromDateVar(parent, true/*UTC*/).month;
+}
+
+/*JSON{
+  "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Date",
+  "name" : "getUTCFullYear",
+  "generate" : "jswrap_date_getUTCFullYear",
+  "return" : ["int32",""]
+}
+The year, e.g. 2014
+ */
+int jswrap_date_getUTCFullYear(JsVar *parent) {
+  return getCalendarDateFromDateVar(parent, true/*UTC*/).year;
 }
 
 

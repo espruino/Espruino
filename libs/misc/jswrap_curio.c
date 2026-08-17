@@ -30,8 +30,8 @@
 JsVar *jswrap_curio_q() {
   JsVar *o = jspNewObject(0, "Qwiic");
   if (!o) return 0;
-  jsvObjectSetChildAndUnLock(o, "sda", jsvNewFromPin(CURIO_QWIIC_D));
-  jsvObjectSetChildAndUnLock(o, "scl", jsvNewFromPin(CURIO_QWIIC_C));
+  jsvObjectSetPinChild(o, "sda", CURIO_QWIIC_D);
+  jsvObjectSetPinChild(o, "scl", CURIO_QWIIC_C);
   return o;
 }
 

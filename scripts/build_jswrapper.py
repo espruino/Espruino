@@ -206,6 +206,7 @@ def codeOutSymbolTable(builtin):
   # output tables
   listSymbols = []
   listChars = ""
+  listCharItems = []
   strLen = 0
   for sym in builtin["functions"]:
     symName = sym["name"];
@@ -214,6 +215,10 @@ def codeOutSymbolTable(builtin):
       continue # don't include libraries on global namespace
     if "generate" in sym:
       listSymbols.append("JSWSYMPTR_ENTRY("+", ".join([str(strLen), getArgumentSpecifier(sym), "(void*)"+sym["generate"]])+")")
+      if symName in listCharItems:
+        print("ERROR: duplicate symbol "+symName+" in symbol table for jswSymbols_"+codeName)
+        exit(1)
+      listCharItems.append(symName);
       listChars = listChars + symName + "\\0";
       strLen = strLen + len(symName) + 1
     else:
@@ -379,15 +384,15 @@ for jsondata in jsondatas:
       print(common.as_c_string(js)+"\n")
       FATAL_ERROR("generate_js function doesn't end in })")
 
-    fnMatch = re.match(r"^\((function|\252)\(([^\)]*)\)", js);
+    fnMatch = re.match(r"^\((function|\252)\(([^\)]*)\)( *){", js);
 
     if fnMatch:
-      fnKeyword, fnArgs = fnMatch.groups()
-      fnCode = js[len(fnKeyword)+len(fnArgs)+4:-2]
+      fnKeyword, fnArgs, fnWhitespace = fnMatch.groups()
+      fnCode = js[len(fnKeyword)+len(fnArgs)+4+len(fnWhitespace):-2].strip()
       statement = "jspExecuteJSFunctionCode("+common.as_c_string(fnArgs)+", "+common.as_c_string(fnCode)+", "+str(len(fnCode))
     else:
       print(common.as_c_string(js)+"\n")
-      FATAL_ERROR("generate_js function not in the correct format")
+      FATAL_ERROR("generate_js function not in the correct format ("+jsondata["generate"]+")")
 
     if hasThis(jsondata): statement = statement + ", parent"
     else: statement = statement + ", NULL"
@@ -431,7 +436,7 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];
     int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[JSWSYMPTR_OFFSET(sym)]);
     if (cmp==0) {
-      unsigned short functionSpec = sym->functionSpec;
+      unsigned short functionSpec = READ_FLASH_UINT16(&sym->functionSpec);
       if ((functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
         return jsnCallFunction(JSWSYMPTR_FUNCTION_PTR(sym), functionSpec, parent, 0, 0);
       return jsvNewNativeFunction(JSWSYMPTR_FUNCTION_PTR(sym), functionSpec);
@@ -707,7 +712,7 @@ codeOut('bool jswIdle() {')
 codeOut('  bool wasBusy = false;')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="idle":
-    codeOut("  if ("+jsondata["generate"]+"()) wasBusy = true;")
+    codeOut("  wasBusy |= "+jsondata["generate"]+"();")
 codeOut('  return wasBusy;')
 codeOut('}')
 

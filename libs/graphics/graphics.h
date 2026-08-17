@@ -114,6 +114,7 @@ typedef struct {
   unsigned int fgColor, bgColor; ///< current foreground and background colors
   unsigned short fontSize; ///< See JSGRAPHICS_FONTSIZE_ constants
   short cursorX, cursorY; ///< current cursor positions
+  short offsetX, offsetY; ///< offset to apply to all coordinates
 #ifndef SAVE_ON_FLASH
   unsigned char fontAlignX : 2;
   unsigned char fontAlignY : 2;
@@ -152,6 +153,8 @@ typedef struct {
   JsGraphicsThemeColor bg2; ///< Accented Background
   JsGraphicsThemeColor fgH; ///< Foreground when highlighted
   JsGraphicsThemeColor bgH; ///< Background when highlighted
+  JsGraphicsThemeColor fgW; ///< Widget foreground colour
+  JsGraphicsThemeColor bgW; ///< Widget background colour
   bool dark; ///< Is background dark (eg. foreground should be a light colour)
 } PACKED_FLAGS JsGraphicsTheme;
 
@@ -229,6 +232,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); ///< each p
 /// Scroll the graphics device (in user coords). X>0 = to right, Y >0 = down
 void graphicsScroll(JsGraphics *gfx, int xdir, int ydir);
 
+void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str); ///< Low level simple string draw
 void graphicsSplash(JsGraphics *gfx); ///< splash screen
 
 void graphicsIdle(); ///< called when idling

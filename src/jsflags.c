@@ -37,7 +37,7 @@ JsVar *jsfGetFlags() {
  const char *p = jsFlagNames;
  JsFlags flag = 1;
  while (*p) {
-   jsvObjectSetChildAndUnLock(o, p, jsvNewFromInteger(jsfGetFlag(flag)?1:0));
+   jsvObjectSetIntChild(o, p, jsfGetFlag(flag)?1:0);
    p += strlen(p)+1;
    flag<<=1;
  }

@@ -178,7 +178,11 @@ DRESULT disk_ioctl (
   case GET_SECTOR_COUNT : {  // Get number of sectors on the disk (DWORD)
     SD_CardInfo SDCardInfo;
     SD_GetCardInfo(&SDCardInfo);
-    *(DWORD*)buff = SDCardInfo.CardCapacity>>9;
+    if (SDCardInfo.SD_csd.CSDStruct == 1) {  // CSD v2 (SDHC/SDXC)
+      *(DWORD*)buff = (DWORD)((SDCardInfo.SD_csd.DeviceSize + 1) * 1024);
+    } else {                                 // CSD v1 (SDSC)
+      *(DWORD*)buff = SDCardInfo.CardCapacity>>9;
+    }
     res = RES_OK;
   } break;
 

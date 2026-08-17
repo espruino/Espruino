@@ -94,6 +94,8 @@ else: # NOT LINUX
     flash_page_size = 2*1024
   if board.chip["family"]=="STM32F4":
     flash_page_size = 128*1024
+  if board.chip["family"]=="STM32F7":
+    flash_page_size = 128*1024
   if board.chip["family"]=="NRF51":
     flash_page_size = 1024
   if board.chip["family"]=="NRF52":
@@ -102,6 +104,8 @@ else: # NOT LINUX
     flash_page_size = 4*1024
   if board.chip["family"]=="STM32L4":
     flash_page_size = 128*1024
+  if board.chip["family"]=="RP2XXX":
+    flash_page_size = 4*1024
   flash_saved_code_pages = round((flash_needed+flash_page_size-1)/flash_page_size + 0.5) #Needs to be a full page, so we're rounding up
   # F4 has different page sizes in different places
   total_flash = board.chip["flash"]*1024
@@ -214,6 +218,9 @@ elif board.chip["family"]=="STM32L4":
   codeOut('#include "stm32l4xx_ll_bus.h"')
   codeOut('#include "stm32l4xx_ll_rcc.h"')
   codeOut('#include "stm32l4xx_ll_adc.h"')
+elif board.chip["family"]=="STM32F7":
+  board.chip["class"]="STM32_LL"
+  codeOut('#include "stm32f7xx.h"')
 elif board.chip["family"]=="NRF51":
   board.chip["class"]="NRF51"
   linker_etext_var = "__etext";
@@ -236,17 +243,21 @@ elif board.chip["family"]=="AVR":
   board.chip["class"]="AVR"
 elif board.chip["family"]=="ESP8266":
   board.chip["class"]="ESP8266"
-elif board.chip["family"]=="ESP32" or board.chip["family"]=="ESP32_IDF4":
+elif board.chip["family"]=="ESP32" or board.chip["family"]=="ESP32_IDF4" or board.chip["family"]=="ESP32_IDF5":
   board.chip["class"]="ESP32"
   exti_count = 40
-elif board.chip["family"]=="ESP32" or board.chip["family"]=="ESP32_IDF5":
-  board.chip["class"]="ESP32"
-  exti_count = 40
+elif board.chip["family"]=="RP2XXX":
+  board.chip["class"]="RP2XXX"
+  linker_etext_var = "__flash_binary_end" # linker symbols come from the Pico SDK linker script
+  exti_count = 30
+  codeOut("void NVIC_SystemReset(void);")
 elif board.chip["family"]=="SAMD":
   board.chip["class"]="SAMD"
   codeOut('#include "targetlibs/samd/include/due_sam3x.init.h"')
 elif board.chip["family"]=="EMBED":
   board.chip["class"]="EMBED"
+elif board.chip["family"]=="ZEPHYR":
+  board.chip["class"]="ZEPHYR"
 else:
   die('Unknown chip family '+board.chip["family"])
 
@@ -300,8 +311,10 @@ else:
     codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
   if board.chip["family"]=="ESP8266":
     codeOut("#define FLASH_START                     "+hex(0x0))
-  elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
+  elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51" or board.chip["family"]=="ZEPHYR":
     codeOut("#define FLASH_START                     "+hex(0x0))
+  elif board.chip["family"]=="RP2XXX":
+    codeOut("#define FLASH_START                     "+hex(0x10000000)) # flash is memory-mapped (XIP) here on both
   elif board.chip["class"]=="EFM32":
     codeOut("#define FLASH_START                     FLASH_BASE // FLASH_BASE defined in em_device.h")
   else:
@@ -432,10 +445,11 @@ if "LCD" in board.devices:
       codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
     if "pin_reset" in board.devices["LCD"]:
       codeOutDevicePin("LCD", "pin_reset", "LCD_RESET")
-  if board.devices["LCD"]["controller"]=="ssd1306" or board.devices["LCD"]["controller"]=="st7567" or board.devices["LCD"]["controller"]=="st7789v" or board.devices["LCD"]["controller"]=="st7735" or board.devices["LCD"]["controller"]=="gc9a01":
+  if "pin_rst" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_rst", "LCD_SPI_RST")
-  if board.devices["LCD"]["controller"]=="LPM013M126":
+  if "pin_disp" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_disp", "LCD_DISP")
+  if "pin_extcomin" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_extcomin", "LCD_EXTCOMIN")
   if "pin_cs" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_cs", "LCD_SPI_CS")
@@ -447,6 +461,8 @@ if "LCD" in board.devices:
     codeOutDevicePin("LCD", "pin_sck", "LCD_SPI_SCK")
   if "pin_dc" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_dc", "LCD_SPI_DC")
+  if "pin_irq" in board.devices["LCD"]:
+    codeOutDevicePin("LCD", "pin_irq", "LCD_SPI_IRQ")
   if "spi_device" in board.devices["LCD"]:
     codeOut("#define LCD_SPI_DEVICE "+board.devices["LCD"]["spi_device"])
   if "pin_tearing" in board.devices["LCD"]:
@@ -540,6 +556,7 @@ if "PRESSURE" in board.devices:
 
 if "TOUCH" in board.devices:
   codeOut("#define TOUCH_DEVICE \""+board.devices["TOUCH"]["device"].upper()+"\"")
+  codeOut("#define TOUCH_DEVICE_"+board.devices["TOUCH"]["device"].upper()+" 1")
   if "addr" in board.devices["TOUCH"]:
     codeOut("#define TOUCH_ADDR "+str(board.devices["TOUCH"]["addr"]))
   codeOutDevicePins("TOUCH", "TOUCH")

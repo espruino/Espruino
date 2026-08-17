@@ -586,7 +586,7 @@ bool jsfBankCompact(uint32_t startAddress, bool showMessage) {
 
   if (showMessage) {
     // On watches that support overlays, show a message over the screen warning that we're compacting and it may take some time
-#ifdef BANGLEJS_Q3
+#if defined(BANGLEJS_Q3) || defined(BANGLEJS3)
     jsvUnLock(jspEvaluate("Bangle.setLCDOverlay(Graphics.createArrayBuffer(160,44,1,{msb:true}).drawRect(0,0,159,43).drawRect(1,1,158,42).setFont('12x20').setFontAlign(0,0).drawString('Please Wait',80,14).setColor('#888').setFont('6x8').drawString('STORAGE COMPACTION\\nIN PROGRESS...',80,32),8,66);g.flip();",true));
 #endif
 #ifdef DICKENS
@@ -613,7 +613,7 @@ bool jsfBankCompact(uint32_t startAddress, bool showMessage) {
     } else
       jsDebug(DBG_INFO,"Not enough memory to compact anything\n");
   }
-#if defined(BANGLEJS_Q3) || defined(DICKENS)
+#if defined(BANGLEJS_Q3) || defined(BANGLEJS3) || defined(DICKENS)
   // if we added the compact message, take it off
   jsvUnLock(jspEvaluate("Bangle.setLCDOverlay();g.flip();",true));
 #endif

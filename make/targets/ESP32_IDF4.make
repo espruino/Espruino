@@ -8,7 +8,7 @@ ifeq ($(CHIP),ESP32C3)
 	SDKCONFIG = sdkconfig_c3
 	FMW_BIN_NAME = espruino-esp32c3
 	PORT ?= /dev/ttyACM0
-else 
+else
 	ifeq ($(CHIP),ESP32)
 		SDKCONFIG = sdkconfig.defaults
 		FMW_BIN_NAME = espruino-esp32
@@ -80,3 +80,12 @@ flash: $(PROJ_NAME).bin
 flashmonitor: $(PROJ_NAME).bin
 	cd $(BINDIR) && idf.py flash -p $(PORT)
 	cd $(BINDIR) && idf.py monitor -p $(PORT)
+
+openocd: $(PROJ_NAME).bin
+	@echo "ESP32C3 only. Now run '...make gdb' in a new window"
+	cd $(BINDIR) && idf.py openocd --openocd-commands "-f board/esp32c3-builtin.cfg -c 'gdb_memory_map disable'"
+
+gdb: $(PROJ_NAME).bin
+	@echo "ESP32C3 only. Ensure '...make openocd' was run first in another window"
+	cd $(BINDIR) && OPENOCD_COMMANDS="-f board/esp32c3-builtin.cfg" idf.py gdb
+

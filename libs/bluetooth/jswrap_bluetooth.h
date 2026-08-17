@@ -93,9 +93,11 @@ void jswrap_ble_disconnect();
 void jswrap_ble_sleep();
 void jswrap_ble_wake();
 void jswrap_ble_restart(JsVar *callback);
-void jswrap_ble_eraseBonds();
+void jswrap_ble_eraseBonds(bool hard);
+void jswrap_ble_getAddress_binary(uint32_t *result, bool current);
 JsVar *jswrap_ble_getAddress(bool current);
 void jswrap_ble_setAddress(JsVar *address);
+JsVar *jswrap_ble_getAdvertisingName();
 JsVar *jswrap_ble_resolveAddress(JsVar *address);
 
 /// Used by bluetooth.c internally when it needs to set up advertising at first
@@ -103,8 +105,14 @@ JsVar *jswrap_ble_getCurrentAdvertisingData();
 
 JsVarFloat jswrap_ble_getBattery();
 void jswrap_ble_setAdvertising(JsVar *data, JsVar *options);
+size_t _jswrap_ble_getAdvertisingDataRaw(uint8_t *advdata, JsVar *data, JsVar *options, bool isForSetAdvertising);
+JsVar *_jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options, bool isForSetAdvertising);
 JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options);
+
 void jswrap_ble_setScanResponse(JsVar *data);
+/// Get scan response (returns the length). data must be ESPR_MAX_ADVERTISEMENT_DATA long
+size_t _jswrap_ble_getScanResponse(uint8_t *advdata);
+
 void jswrap_ble_setServices(JsVar *data, JsVar *options);
 void jswrap_ble_updateServices(JsVar *data);
 void jswrap_ble_setScan(JsVar *callback, JsVar *options);

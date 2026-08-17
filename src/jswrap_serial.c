@@ -22,6 +22,7 @@
 #endif
 #ifdef BLUETOOTH
 #include "jswrap_bluetooth.h"
+#include "bluetooth_common.h"
 #endif
 
 /*JSON{
@@ -323,7 +324,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   }
 
   // Set baud rate in object, so we can initialise it on startup
-  jsvObjectSetChildAndUnLock(parent, USART_BAUDRATE_NAME, jsvNewFromInteger(inf.baudRate));
+  jsvObjectSetIntChild(parent, USART_BAUDRATE_NAME, inf.baudRate);
   // Do the same for options
   if (options)
     jsvObjectSetChildAndUnLock(parent, DEVICE_OPTIONS_NAME, options);

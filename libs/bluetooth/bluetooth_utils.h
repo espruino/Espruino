@@ -12,6 +12,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifndef BLUETOOTH_UTILS_H
+#define BLUETOOTH_UTILS_H
+
 #include "jsvar.h"
 #include "bluetooth.h"
 #if PEER_MANAGER_ENABLED
@@ -41,7 +44,6 @@
 #define BLE_NAME_AMS                    "BLE_AMS"
 #define BLE_NAME_CTS                    "BLE_CTS"
 #endif
-
 typedef enum {
   BLE_FLAGS_NONE = 0,
   BLE_FLAGS_LOW_POWER = 1
@@ -87,6 +89,9 @@ void bleGetWriteEventName(char *eventName, uint16_t handle);
 /// Look up the characteristic's handle from the UUID. returns BLE_GATT_HANDLE_INVALID if not found
 uint16_t bleGetGATTHandle(ble_uuid_t char_uuid);
 
+/// Get the Bluetooth Device Name - name should be at least 32 bytes long
+size_t jsbleGetDeviceName(char *name);
+
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
 
@@ -96,3 +101,5 @@ void jsble_queue_pending(BLEPending blep, uint16_t data);
 /* Handler for common event types (between nRF52/ESP32). Called first
  * from ESP32/nRF52 jsble_exec_pending function */
 bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *buffer, size_t bufferLen);
+
+#endif // BLUETOOTH_UTILS_H

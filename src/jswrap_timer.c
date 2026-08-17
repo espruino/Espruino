@@ -34,7 +34,7 @@ This replaces `E.dumpTimers()` and `Pin.writeAtTime`
 */
 volatile bool runningInterruptingJS = false;
 
-static void jswrap_timer_queue_interrupt_js(JsSysTime time, void* userdata) {
+void jswrap_timer_queue_interrupt_js(JsSysTime time, void* userdata) {
   uint8_t timerIdx = (uint8_t)(size_t)userdata;
   // if we were already running interrupting JS, don't interrupt it to run more!
   if (!runningInterruptingJS) {
@@ -129,7 +129,8 @@ Returns:
   ptr : int, // (for EXEC) pointer to the function being executed
   userdata : int, // (for EXEC) userdata pointer
   buffer : JsVar, // (for WR8/WR16/RD8/RD16) the buffer being used
-  buffer2 : JsVar // (for WR8/WR16/RD8/RD16) the second buffer being used (if any)
+  buffer2 : JsVar, // (for WR8/WR16/RD8/RD16) the second buffer being used (if any)
+  finished : true // If the timer task has finished but hasn't yet been cleared up
 }
 ```
 
@@ -146,15 +147,15 @@ JsVar *jswrap_timer_get(int id) {
   jshInterruptOn();
   if (task.type == UET_NONE) return 0;
   JsVar *obj = jsvNewObject();
-  jsvObjectSetChildAndUnLock(obj, "id", jsvNewFromInteger(id));
+  jsvObjectSetIntChild(obj, "id", id);
   const char *typeStr = NULL;
-  switch (task.type) {
+  switch (task.type & UET_TYPE_MASK) {
   case UET_NONE: assert(0); break;
   case UET_WAKEUP : typeStr="WKUP"; break;
   case UET_SET :
     typeStr="SET";
 #ifndef SAVE_ON_FLASH
-    jsvObjectSetChildAndUnLock(obj, "value", jsvNewFromInteger(task.data.set.value));
+    jsvObjectSetIntChild(obj, "value", task.data.set.value);
 #endif
     break;
 #ifndef SAVE_ON_FLASH
@@ -177,8 +178,8 @@ JsVar *jswrap_timer_get(int id) {
         jsvUnLock(timerFns);
       }
     } else {
-      jsvObjectSetChildAndUnLock(obj, "ptr", jsvNewFromInteger((size_t)task.data.execute.fn));
-      jsvObjectSetChildAndUnLock(obj, "userdata", jsvNewFromInteger((size_t)task.data.execute.userdata));
+      jsvObjectSetIntChild(obj, "ptr", (size_t)task.data.execute.fn);
+      jsvObjectSetIntChild(obj, "userdata", (size_t)task.data.execute.userdata);
     }
 #endif
     break;
@@ -201,14 +202,16 @@ JsVar *jswrap_timer_get(int id) {
 #endif
 #ifdef ESPR_USE_STEPPER_TIMER
   if (task.type == UET_STEP) {
-    jsvObjectSetChildAndUnLock(obj, "steps", jsvNewFromInteger(task.data.step.steps));
-    jsvObjectSetChildAndUnLock(obj, "stepIdx", jsvNewFromInteger(task.data.step.pIndex));
+    jsvObjectSetIntChild(obj, "steps", task.data.step.steps);
+    jsvObjectSetIntChild(obj, "stepIdx", task.data.step.pIndex);
   }
 #endif
+  if (task.type & UET_FINISHED)
+    jsvObjectSetBoolChild(obj, "finished", 1);
   jsvObjectSetChildAndUnLock(obj, "type", typeStr ? jsvNewFromString(typeStr) : jsvNewFromInteger(task.type));
-  jsvObjectSetChildAndUnLock(obj, "time", jsvNewFromFloat(jshGetMillisecondsFromTime(task.time)));
+  jsvObjectSetFloatChild(obj, "time", jshGetMillisecondsFromTime(task.time));
   if (task.repeatInterval)
-    jsvObjectSetChildAndUnLock(obj, "interval", jsvNewFromFloat(jshGetMillisecondsFromTime(task.repeatInterval)));
+    jsvObjectSetFloatChild(obj, "interval", jshGetMillisecondsFromTime(task.repeatInterval));
   return obj;
 }
 
@@ -273,7 +276,9 @@ int jswrap_timer_add(JsVar *timer) {
   JsVarFloat time=0, interval=0;
   JsVar *type = 0, *fn = 0;
   int value=0,ptr=0,userdata=0;
-  Pin pins[UTILTIMERTASK_PIN_COUNT] = {PIN_UNDEFINED, PIN_UNDEFINED, PIN_UNDEFINED, PIN_UNDEFINED};
+  Pin pins[UTILTIMERTASK_PIN_COUNT];
+  for (int i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
+    pins[i] = PIN_UNDEFINED;
   jsvConfigObject configs[] = {
       {"type", JSV_STRING_0, &type},
       {"time", JSV_FLOAT, &time},

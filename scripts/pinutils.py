@@ -28,13 +28,13 @@ for i in range(1, 3):
   ALLOWED_FUNCTIONS["DAC_OUT"+str(i)] = "JSH_DAC|JSH_DAC_CH"+str(i);
   ALLOWED_FUNCTIONS["DAC1_OUT"+str(i)] = "JSH_DAC|JSH_DAC_CH"+str(i);
   ALLOWED_FUNCTIONS["DAC2_OUT"+str(i)] = "JSH_DAC|JSH_DAC_CH"+str(i);
-for i in range(1, 7):
+for i in range(1, 9):
   ALLOWED_FUNCTIONS["USART"+str(i)+"_TX"] = "JSH_USART"+str(i)+"|JSH_USART_TX";
   ALLOWED_FUNCTIONS["USART"+str(i)+"_RX"] = "JSH_USART"+str(i)+"|JSH_USART_RX";
   ALLOWED_FUNCTIONS["USART"+str(i)+"_CK"] = "JSH_USART"+str(i)+"|JSH_USART_CK";
   ALLOWED_FUNCTIONS["UART"+str(i)+"_TX"] = "JSH_USART"+str(i)+"|JSH_USART_TX";
   ALLOWED_FUNCTIONS["UART"+str(i)+"_RX"] = "JSH_USART"+str(i)+"|JSH_USART_RX";
-for i in range(1, 5):
+for i in range(1, 7):
   ALLOWED_FUNCTIONS["SPI"+str(i)+"_SCK"] = "JSH_SPI"+str(i)+"|JSH_SPI_SCK";
   ALLOWED_FUNCTIONS["SPI"+str(i)+"_MISO"] = "JSH_SPI"+str(i)+"|JSH_SPI_MISO";
   ALLOWED_FUNCTIONS["SPI"+str(i)+"_MOSI"] = "JSH_SPI"+str(i)+"|JSH_SPI_MOSI";
@@ -310,6 +310,14 @@ def get_device_util_timer(board):
 #define UTIL_TIMER_IRQn TIM7_IRQn
 #define UTIL_TIMER_IRQHandler TIM7_IRQHandler
 #define UTIL_TIMER_APB1 RCC_APB1Periph_TIM7
+"""}
+  if (board.chip["family"]=="STM32F7"):
+    return { 'timer' : "TIM5", 'defines' : """
+// Used by various pins, but always with other options
+#define UTIL_TIMER TIM5
+#define UTIL_TIMER_IRQn TIM5_IRQn
+#define UTIL_TIMER_IRQHandler TIM5_IRQHandler
+#define UTIL_TIMER_APB1 LL_APB1_GRP1_PERIPH_TIM5
 """}
   return False
   

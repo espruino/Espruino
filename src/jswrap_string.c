@@ -290,7 +290,7 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
 #ifndef SAVE_ON_FLASH
   // Use RegExp if one is passed in
   if (jsvIsInstanceOf(subStr, "RegExp")) {
-    jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
+    jsvObjectSetIntChild(subStr, "lastIndex", 0);
     JsVar *match;
     match = jswrap_regexp_exec(subStr, parent);
     if (!jswrap_regexp_hasFlag(subStr,'g')) {
@@ -309,11 +309,11 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
       jsvArrayPushAndUnLock(array, matchStr);
       // search again
       jsvUnLock(match);
-      jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(last + (len?0:1)));
+      jsvObjectSetIntChild(subStr, "lastIndex", last + (len?0:1));
       match = jswrap_regexp_exec(subStr, parent);
     }
     jsvUnLock(match);
-    jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
+    jsvObjectSetIntChild(subStr, "lastIndex", 0);
     return array;
   }
 #endif
@@ -329,7 +329,7 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
       }
 
       jsvArrayPush(array, subStr);
-      jsvObjectSetChildAndUnLock(array, "index", jsvNewFromInteger(idx));
+      jsvObjectSetIntChild(array, "index", idx);
       jsvObjectSetChildAndUnLock(array, "input", subStr);
       return array;
   }
@@ -347,7 +347,7 @@ static JsVar *_jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSub
       replace = jsvLockAgain(newSubStr);
     else
       replace = jsvAsString(newSubStr);
-    jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
+    jsvObjectSetIntChild(subStr, "lastIndex", 0);
     bool global = jswrap_regexp_hasFlag(subStr,'g');
     if (replaceAll) global = true;
     JsVar *newStr = jsvNewFromEmptyString();
@@ -405,7 +405,7 @@ static JsVar *_jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSub
       jsvUnLock(match);
       match = 0;
       if (global) {
-        jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(lastIndex + (len?0:1)));
+        jsvObjectSetIntChild(subStr, "lastIndex", lastIndex + (len?0:1));
         match = jswrap_regexp_exec(subStr, str);
       }
     }
@@ -414,7 +414,7 @@ static JsVar *_jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSub
     jsvUnLock3(match,replace,str);
     // reset lastIndex if global
     if (global)
-      jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
+      jsvObjectSetIntChild(subStr, "lastIndex", 0);
     return newStr;
   }
 #endif
@@ -573,7 +573,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   if (jsvIsInstanceOf(split, "RegExp")) {
     int last = 0;
     JsVar *match;
-    jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
+    jsvObjectSetIntChild(split, "lastIndex", 0);
     match = jswrap_regexp_exec(split, parent);
     while (match && !jsvIsNull(match)) {
       // get info about match
@@ -586,11 +586,11 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
       last = idx+len;
       // search again
       jsvUnLock(match);
-      jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(last));
+      jsvObjectSetIntChild(split, "lastIndex", last);
       match = jswrap_regexp_exec(split, parent);
     }
     jsvUnLock(match);
-    jsvObjectSetChildAndUnLock(split, "lastIndex", jsvNewFromInteger(0));
+    jsvObjectSetIntChild(split, "lastIndex", 0);
     // add remaining string after last match
     if (last <= (int)jsvGetStringLength(parent))
       jsvArrayPushAndUnLock(array, jsvNewFromStringVar(parent, (size_t)last, JSVAPPENDSTRINGVAR_MAXLENGTH));

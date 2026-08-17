@@ -19,6 +19,7 @@
 #include "BLE/esp32_bluetooth_utils.h"
 
 #include "bluetooth_utils.h"
+#include "bluetooth_common.h"
 #include "jswrap_bluetooth.h"
 
 #include "jsvar.h"
@@ -47,7 +48,7 @@ void gattc_reset() {
     ret = esp_ble_gattc_app_unregister((esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if);
     if(ret) jsWarn("could not unregister GATTC(%d)\n",ret);
   }
-  m_central_conn_handles[0] = BLE_GATT_HANDLE_INVALID;
+  m_central_conn_handles[0] = BLE_CONN_HANDLE_INVALID;
 }
 
 void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
@@ -147,7 +148,7 @@ void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
       break;
 
     case ESP_GATTC_DISCONNECT_EVT:
-      m_central_conn_handles[0] = BLE_GATT_HANDLE_INVALID;
+      m_central_conn_handles[0] = BLE_CONN_HANDLE_INVALID;
       jsble_queue_pending(BLEP_CENTRAL_DISCONNECTED, p_data->disconnect.reason);
       break;
     default: break;
@@ -271,18 +272,18 @@ void gattc_getCharacteristics(JsVar *service, ble_uuid_t char_uuid){
         ble_uuid_t ble_uuid;
         espbtuuid_TO_bleuuid(char_elem_result[i].uuid, &ble_uuid);
         jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(ble_uuid));
-        jsvObjectSetChildAndUnLock(o,"handle_value",jsvNewFromInteger(char_elem_result[i].char_handle));
+        jsvObjectSetIntChild(o,"handle_value", char_elem_result[i].char_handle);
         if (cccd_handle != INVALID_HANDLE)
-          jsvObjectSetChildAndUnLock(o,"handle_cccd",jsvNewFromInteger(cccd_handle));
+          jsvObjectSetIntChild(o,"handle_cccd", cccd_handle);
         JsVar *p = jsvNewObject();
         if(p){
-          jsvObjectSetChildAndUnLock(p,"broadcast",jsvNewFromBool(char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_BROADCAST));
-          jsvObjectSetChildAndUnLock(p,"read",jsvNewFromBool(char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_READ));
-          jsvObjectSetChildAndUnLock(p,"writeWithoutResponse",jsvNewFromBool(char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_WRITE_NR));
-          jsvObjectSetChildAndUnLock(p,"write",jsvNewFromBool(char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_WRITE));
-          jsvObjectSetChildAndUnLock(p,"notify",jsvNewFromBool(char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_NOTIFY));
-          jsvObjectSetChildAndUnLock(p,"indicate",jsvNewFromBool(char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_INDICATE));
-          jsvObjectSetChildAndUnLock(p,"authenticatedSignedWrites",jsvNewFromBool(char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_AUTH));
+          jsvObjectSetBoolChild(p,"broadcast", char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_BROADCAST);
+          jsvObjectSetBoolChild(p,"read", char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_READ);
+          jsvObjectSetBoolChild(p,"writeWithoutResponse", char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_WRITE_NR);
+          jsvObjectSetBoolChild(p,"write", char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_WRITE);
+          jsvObjectSetBoolChild(p,"notify", char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_NOTIFY);
+          jsvObjectSetBoolChild(p,"indicate", char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_INDICATE);
+          jsvObjectSetBoolChild(p,"authenticatedSignedWrites", char_elem_result[i].properties & ESP_GATT_CHAR_PROP_BIT_AUTH);
           jsvObjectSetChildAndUnLock(o,"properties",p);
         }
         //jsiConsolePrintf("gattc_getCharacteristics %j\n", o);

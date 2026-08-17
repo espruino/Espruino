@@ -1,0 +1,215 @@
+/*
+ * Copyright (c) 2024 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
+/* WiFi UART*/
+&pinctrl {
+	/omit-if-no-ref/ uart21_default: uart21_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 2, 8)>;
+		};
+
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 2, 7)>;
+			bias-pull-up;
+		};
+	};
+
+	/omit-if-no-ref/ uart21_sleep: uart21_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_RX, 2, 7)>;
+			low-power-enable;
+		};
+
+		group2 {
+			psels = <NRF_PSEL(UART_TX, 2, 8)>;
+			low-power-enable;
+			bias-pull-down; /* WiFi is off, so this ends up being low? */
+		};
+	};
+};
+&uart21 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart21_default>;
+	pinctrl-1 = <&uart21_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+/* PWM for speaker/vibration */
+&pinctrl {
+    pwm20_default: pwm20_default {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 1, 8)>, // speaker
+	            <NRF_PSEL(PWM_OUT1, 2, 6)>; // vibrate
+        };
+    };
+
+    pwm20_sleep: pwm20_sleep {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 1, 8)>,
+	            <NRF_PSEL(PWM_OUT1, 2, 6)>;
+            low-power-enable;
+        };
+    };
+};
+
+/* Enable PWM peripheral */
+&pwm20 {
+    status = "okay";
+    pinctrl-0 = <&pwm20_default>;
+    pinctrl-1 = <&pwm20_sleep>;
+    pinctrl-names = "default", "sleep";
+};
+
+/* Software QSPI using the FLPR */
+&pinctrl {
+	sqspi_default: sqspi_default {
+		group1 {
+			psels = <NRF_PSEL(SDP_MSPI_SCK, 2, 1)>,
+				<NRF_PSEL(SDP_MSPI_CS0, 2, 5)>,
+				<NRF_PSEL(SDP_MSPI_DQ0, 2, 2)>;
+			nordic,drive-mode = <NRF_DRIVE_E0E1>;
+		};
+
+		group2 {
+			psels = <NRF_PSEL(SDP_MSPI_DQ1, 2, 4)>,
+				<NRF_PSEL(SDP_MSPI_DQ2, 2, 3)>,
+				<NRF_PSEL(SDP_MSPI_DQ3, 2, 0)>;
+			nordic,drive-mode = <NRF_DRIVE_E0E1>;
+			bias-pull-up;
+		};
+	};
+
+	sqspi_sleep: sqspi_sleep {
+		group1 {
+			low-power-enable;
+			psels = <NRF_PSEL(SDP_MSPI_SCK, 2, 1)>,
+				<NRF_PSEL(SDP_MSPI_CS0, 2, 5)>,
+				<NRF_PSEL(SDP_MSPI_DQ0, 2, 2)>,
+				<NRF_PSEL(SDP_MSPI_DQ1, 2, 4)>,
+				<NRF_PSEL(SDP_MSPI_DQ2, 2, 3)>,
+				<NRF_PSEL(SDP_MSPI_DQ3, 2, 0)>;
+		};
+	};
+};
+
+&cpuflpr_vpr {
+	pinctrl-0 = <&sqspi_default>;
+	pinctrl-1 = <&sqspi_sleep>;
+	pinctrl-names = "default", "sleep";
+	interrupts = <76 NRF_DEFAULT_IRQ_PRIORITY>;
+	status = "okay";
+};
+
+/ {
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		softperipheral_ram: memory@2003c000 {
+			reg = <0x2003c000 0x4000>;
+			ranges = <0 0x2003c000 0x4000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			sqspi: sqspi@3b40 {
+				compatible = "nordic,nrf-sqspi";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x3b40 0x200>;
+				status = "okay";
+				zephyr,pm-device-runtime-auto;
+			};
+		};
+	};
+ 	zephyr,user {
+		/* Reference our external flash node */
+		ext-flash = &extflash;
+	};
+};
+
+/*
+PH0: ff00 rev 1.6: 16 DW @ 30
+Summary of BFP content:
+DTR Clocking supported
+Addressing: 3- or 4-Byte
+4-KiBy erase: uniform
+Support QSPI XIP
+Support 1-1-1
+Support 1-1-2: instr 3Bh, 0 mode clocks, 8 waits
+Support 1-1-4: instr 6Bh, 0 mode clocks, 8 waits
+Support 1-2-2: instr BBh, 4 mode clocks, 0 waits
+Support 1-4-4: instr EBh, 2 mode clocks, 4 waits
+Support 4-4-4: instr EBh, 2 mode clocks, 6 waits
+Flash density: 67108864 bytes
+ET1: instr 20h for 4096 By; typ 80 ms, max 2560 ms
+ET2: instr 52h for 32768 By; typ 400 ms, max 12800 ms
+ET3: instr D8h for 65536 By; typ 640 ms, max 20480 ms
+Chip erase: typ 60928 ms, max 365568 ms
+Byte program: type 32 + 3 * B us, max 192 + 18 * B us
+Page program: typ 320 us, max 1920 us
+Page program size: 256 By
+Suspend: 75h ; Resume: 7Ah
+DPD: Enter B9h, exit ABh ; delay 64000 ns ; poll 0x3d
+HOLD or RESET Disable: unsupported
+QER: 4
+0-4-4 Mode methods: entry 0xd ; exit 0x2d
+4-4-4 Mode sequences: enable 0x01 ; disable 0x9
+4-byte addressing support: enter 0xa5, exit 0x3e5
+Soft Reset and Rescue Sequence support: 0x10
+Status Register 1 support: 0x68
+size = <536870912>; // bits
+sfdp-bfp = [
+        e5 20 fb ff  ff ff ff 1f  44 eb 08 6b  08 3b 80 bb
+        fe ff ff ff  ff ff 00 ff  ff ff 46 eb  0c 20 0f 52
+        10 d8 00 ff  4f c2 11 ff  82 e4 14 62  a8 cc 68 46
+        7a 75 7a 75  f7 c7 d5 5c  19 b6 4d ff  e8 50 f9 a5
+        ];
+PH1: ff0b rev 1.0: 3 DW @ 90
+sfdp-ff0b = [
+        00 36 50 16  9f f9 77 64  d9 c8 ff ff
+        ];
+PH2: ff84 rev 1.0: 2 DW @ c0
+sfdp-ff84 = [
+        ff 8f f0 ff  21 5c dc ff
+        ];
+jedec-id = [0b 65 1a];
+*/
+
+&sqspi {
+	extflash: extflash@0 {
+		// our part is the XTX XT25W512BWSIGA
+		compatible = "mxicy,mx25r", "jedec,mspi-nor";
+		status = "okay";
+		reg = <0>;
+		jedec-id = [0b 65 1a];
+		quad-enable-requirements = "S2B1v1";
+		/* Basic Flash Parameter Table (BFPT) 9-word / 36-byte array for 64Mbit NOR */
+		sfdp-bfp = [
+			e5 20 fb ff  ff ff ff 1f  44 eb 08 6b  08 3b 80 bb
+			fe ff ff ff  ff ff 00 ff  ff ff 46 eb  0c 20 0f 52
+			10 d8 00 ff  4f c2 11 ff  82 e4 14 62  a8 cc 68 46
+			7a 75 7a 75  f7 c7 d5 5c  19 b6 4d ff  e8 50 f9 a5
+		];
+		size = <536870912>; /* 512 Mbit / 64 MB */
+		has-dpd;
+		t-enter-dpd = <10000>;
+		t-exit-dpd = <35000>;
+		t-reset-pulse = <10000>;
+		t-reset-recovery = <35000>;
+
+		mspi-max-frequency = <DT_FREQ_M(8)>; // 16+ doesn't work
+		//mspi-io-mode = "MSPI_IO_MODE_QUAD_1_4_4"; // works for reads, but not writes
+		mspi-io-mode = "MSPI_IO_MODE_QUAD_1_1_4";
+		//mspi-io-mode = "MSPI_IO_MODE_SINGLE"; // fallback
+		mspi-data-rate = "MSPI_DATA_RATE_SINGLE";
+		mspi-hardware-ce-num = <1>;
+		mspi-cpp-mode = "MSPI_CPP_MODE_0";
+		mspi-endian = "MSPI_BIG_ENDIAN";
+		mspi-ce-polarity = "MSPI_CE_ACTIVE_LOW";
+	};
+};

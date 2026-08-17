@@ -180,11 +180,11 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
 JsVar *nmea_to_jsVar(NMEAFixInfo *gpsFix) {
   JsVar *o = jsvNewObject();
   if (o) {
-    jsvObjectSetChildAndUnLock(o, "lat", jsvNewFromFloat(gpsFix->lat));
-    jsvObjectSetChildAndUnLock(o, "lon", jsvNewFromFloat(gpsFix->lon));
-    jsvObjectSetChildAndUnLock(o, "alt", jsvNewFromFloat(gpsFix->alt));
-    jsvObjectSetChildAndUnLock(o, "speed", jsvNewFromFloat(gpsFix->speed));
-    jsvObjectSetChildAndUnLock(o, "course", jsvNewFromFloat(gpsFix->course));
+    jsvObjectSetFloatChild(o, "lat", gpsFix->lat);
+    jsvObjectSetFloatChild(o, "lon", gpsFix->lon);
+    jsvObjectSetFloatChild(o, "alt", gpsFix->alt);
+    jsvObjectSetFloatChild(o, "speed", gpsFix->speed);
+    jsvObjectSetFloatChild(o, "course", gpsFix->course);
     if (gpsFix->day) {
       CalendarDate date;
       date.day = gpsFix->day;
@@ -201,9 +201,9 @@ JsVar *nmea_to_jsVar(NMEAFixInfo *gpsFix) {
     } else {
       jsvObjectSetChildAndUnLock(o, "time", 0);
     }
-    jsvObjectSetChildAndUnLock(o, "satellites", jsvNewFromInteger(gpsFix->satellites));
-    jsvObjectSetChildAndUnLock(o, "fix", jsvNewFromInteger(gpsFix->quality));
-    jsvObjectSetChildAndUnLock(o, "hdop", jsvNewFromFloat(gpsFix->hdop));
+    jsvObjectSetIntChild(o, "satellites", gpsFix->satellites);
+    jsvObjectSetIntChild(o, "fix", gpsFix->quality);
+    jsvObjectSetFloatChild(o, "hdop", gpsFix->hdop);
   }
   return o;
 }

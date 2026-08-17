@@ -64,8 +64,8 @@ JsVar *jswrap_flash_getPage(int addr) {
     return 0;
   JsVar *obj = jsvNewObject();
   if (!obj) return 0;
-  jsvObjectSetChildAndUnLock(obj, "addr", jsvNewFromInteger((JsVarInt)pageStart));
-  jsvObjectSetChildAndUnLock(obj, "length", jsvNewFromInteger((JsVarInt)pageLength));
+  jsvObjectSetIntChild(obj, "addr", (JsVarInt)pageStart);
+  jsvObjectSetIntChild(obj, "length", (JsVarInt)pageLength);
   return obj;
 }
 

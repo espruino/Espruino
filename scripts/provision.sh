@@ -45,6 +45,7 @@ if [ "$BOARDNAME" = "ALL" ]; then
   PROVISION_STM32F1=1
   PROVISION_STM32F4=1
   PROVISION_STM32L4=1
+  PROVISION_RP2XXX=1
   PROVISION_RASPBERRYPI=1
   PROVISION_EMSCRIPTEN=1
   PROVISION_EMSCRIPTEN2=1
@@ -182,26 +183,11 @@ if [ "$PROVISION_NRF52" = "1" ]; then
     echo "===== NRF52"
     if ! type nrfutil 2> /dev/null > /dev/null; then
       #echo Installing nrfutil
-      #sudo pip install --ignore-installed nrfutil nrfutil
-      # --ignore-installed is used because pip 10 fails because PyYAML was already installed by the system
-
-      # we need pipx and python 3.9 to allow us to run nrfutil under a python that's not the current version
-      if pipx --version 2>/dev/null; then
-        echo pipx installed
-      else
-        echo Installing pipx 
-        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y pipx
-      fi
-      # we need python3.9 for nrfutil
-      if python3.9 --version 2>/dev/null; then
-        echo Python 3.9 installed
-      else
-        echo Installing python3.9
-        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python3.9
-      fi
-      # Because nrfutil doesn't support the latest version of python! Yay!
+      # nrfutil keeps changing and having different syntax. Absolute nightmare
       echo Installing nrfutil
-      sudo pipx install nrfutil --python "$(which python3.9)" || cat /opt/pipx/logs/*
+      wget -O scripts/nrfutil https://github.com/espruino/EspruinoBuildTools/raw/refs/heads/master/nrf52/nrfutil
+      chmod a+x scripts/nrfutil
+      scripts/nrfutil install nrf5sdk-tools
     fi
     ARM=1
 
@@ -273,12 +259,79 @@ if [ "$PROVISION_STM32L4" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
+if [ "$PROVISION_STM32F7" = "1" ]; then
+    ARM=1
+fi
+#--------------------------------------------------------------------------------
 if [ "$PROVISION_EFM32GG" = "1" ]; then
     ARM=1
 fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_SAMD" = "1" ]; then
     ARM=1
+fi
+#--------------------------------------------------------------------------------
+if [ "$PROVISION_RP2XXX" = "1" ]; then
+    echo "===== RP2XXX"
+    ARM=1
+    RP2_SDK_VERSION="2.1.1"
+    RP2_PICOTOOL_INSTALL="$(pwd)/picotool-install"
+
+    if cmake --version >/dev/null 2>&1; then
+      echo "cmake installed"
+    else
+      echo "Installing cmake"
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y cmake
+    fi
+
+    if ninja --version >/dev/null 2>&1; then
+      echo "ninja installed"
+    else
+      echo "Installing ninja-build"
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y ninja-build
+    fi
+
+    # RP2040 and RP2350 share this one checkout, so make sure it's the version we expect
+    if [ ! -d "pico-sdk" ]; then
+      echo "Installing pico-sdk $RP2_SDK_VERSION"
+      git clone --depth=1 -b "$RP2_SDK_VERSION" https://github.com/raspberrypi/pico-sdk.git
+      RP2_SDK_UPDATED=1
+    elif [ "$(git -C pico-sdk describe --tags --exact-match HEAD 2>/dev/null)" = "$RP2_SDK_VERSION" ]; then
+      echo "pico-sdk $RP2_SDK_VERSION found"
+    else
+      echo "pico-sdk is not $RP2_SDK_VERSION - switching"
+      git -C pico-sdk fetch --depth=1 origin "refs/tags/$RP2_SDK_VERSION:refs/tags/$RP2_SDK_VERSION"
+      git -C pico-sdk checkout "$RP2_SDK_VERSION"
+      RP2_SDK_UPDATED=1
+    fi
+
+    # TinyUSB is a submodule and the clone above is shallow, so fetch it explicitly
+    if [ "$RP2_SDK_UPDATED" = "1" ] || [ ! -f "pico-sdk/lib/tinyusb/src/tusb.h" ]; then
+      echo "Initialising pico-sdk TinyUSB submodule"
+      git -C pico-sdk submodule update --init --depth=1 lib/tinyusb
+    fi
+
+    if [ ! -x "$RP2_PICOTOOL_INSTALL/picotool/picotool" ]; then
+      echo "Installing host picotool"
+      if [ ! -d "picotool-src" ]; then
+        git clone --depth=1 -b "$RP2_SDK_VERSION" https://github.com/raspberrypi/picotool.git picotool-src
+      fi
+      cmake -S picotool-src -B picotool-src/build \
+        -DPICO_SDK_PATH="$(pwd)/pico-sdk" \
+        -DPICOTOOL_NO_LIBUSB=1 \
+        -DPICOTOOL_FLAT_INSTALL=1 \
+        -DCMAKE_INSTALL_PREFIX="$RP2_PICOTOOL_INSTALL"
+      cmake --build picotool-src/build
+      cmake --install picotool-src/build
+    else
+      echo "host picotool installation found"
+    fi
+
+    export PICO_SDK_PATH="$(pwd)/pico-sdk"
+    export picotool_DIR="$RP2_PICOTOOL_INSTALL/picotool"
+    export PATH="$RP2_PICOTOOL_INSTALL/picotool:$PATH"
+    echo "PICO_SDK_PATH=$PICO_SDK_PATH"
+    echo "picotool_DIR=$picotool_DIR"
 fi
 #--------------------------------------------------------------------------------
 

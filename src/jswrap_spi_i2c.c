@@ -121,7 +121,7 @@ those based on `nRF52` chips can have SPI on any pins, so don't have specific
 markings.
 
 The SPI `mode` is between 0 and 3 - see
-http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Clock_polarity_and_phase
+https://en.wikipedia.org/wiki/Serial_Peripheral_Interface#Mode_numbers
 
 On STM32F1-based parts, you cannot mix AF and non-AF pins (SPI pins are usually
 grouped on the chip - and you can't mix pins from two groups). Espruino will not
@@ -660,7 +660,8 @@ void _jswrap_i2c_writeTo(JsVar *parent, IOEventFlags device, int address, bool s
       inf.started = jsvObjectGetBoolChild(parent, "started");
       jsi2cWrite(&inf, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
     }
-    jsvUnLock2(jsvObjectSetChild(parent, "started", jsvNewFromBool(inf.started)), options);
+    jsvObjectSetBoolChild(parent, "started", inf.started);
+    jsvUnLock(options);
 #endif
   }
 }
@@ -712,7 +713,8 @@ JsVar *_jswrap_i2c_readFrom(JsVar *parent, IOEventFlags device, int address,  bo
       inf.started = jsvObjectGetBoolChild(parent, "started");
       jsi2cRead(&inf, (unsigned char)address, nBytes, buf, sendStop);
     }
-    jsvUnLock2(jsvObjectSetChild(parent, "started", jsvNewFromBool(inf.started)), options);
+    jsvObjectSetBoolChild(parent, "started", inf.started);
+    jsvUnLock(options);
 #endif
   } else return 0;
 

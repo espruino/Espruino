@@ -285,20 +285,20 @@ JsVar *jswrap_pin_getInfo(
   char buf[2];
   buf[0] = (char)('A'+(inf->port-JSH_PORTA));
   buf[1] = 0;
-  jsvObjectSetChildAndUnLock(obj, "port", jsvNewFromString(buf));
-  jsvObjectSetChildAndUnLock(obj, "num", jsvNewFromInteger(inf->pin-JSH_PIN0));
+  jsvObjectSetStringChild(obj, "port", buf);
+  jsvObjectSetIntChild(obj, "num", inf->pin-JSH_PIN0);
   if (inf->port&JSH_PIN_NEGATED)
-    jsvObjectSetChildAndUnLock(obj, "negated", jsvNewFromBool(true));
+    jsvObjectSetBoolChild(obj, "negated", true);
   JshPinState state = jshPinGetState(pin);
   jsvObjectSetChildAndUnLock(obj, "mode", jshGetPinStateString(state));
-  jsvObjectSetChildAndUnLock(obj, "output", jsvNewFromInteger((state&JSHPINSTATE_PIN_IS_ON)?1:0));
+  jsvObjectSetIntChild(obj, "output", (state&JSHPINSTATE_PIN_IS_ON)?1:0);
 
 #ifdef STM32
   volatile uint32_t *addr;
   addr = jshGetPinAddress(pin, JSGPAF_INPUT);
-  if (addr) jsvObjectSetChildAndUnLock(obj, "in_addr", jsvNewFromInteger((JsVarInt)addr));
+  if (addr) jsvObjectSetIntChild(obj, "in_addr", (JsVarInt)addr);
   addr = jshGetPinAddress(pin, JSGPAF_OUTPUT);
-  if (addr) jsvObjectSetChildAndUnLock(obj, "out_addr", jsvNewFromInteger((JsVarInt)addr));
+  if (addr) jsvObjectSetIntChild(obj, "out_addr", (JsVarInt)addr);
 #endif
   // ADC
   if (inf->analog) {
@@ -312,8 +312,8 @@ JsVar *jswrap_pin_getInfo(
             jsvArrayPushAndUnLock(arr, jsvNewFromInteger(1+i));
         jsvObjectSetChildAndUnLock(an, "ADCs", arr);
       }
-      jsvObjectSetChildAndUnLock(an, "channel", jsvNewFromInteger(inf->analog & JSH_MASK_ANALOG_CH));
-      jsvObjectSetChildAndUnLock(obj, "channel", jsvNewFromInteger(inf->analog & JSH_MASK_ANALOG_CH)); // for backwards compatibility with 2v22 and earlier
+      jsvObjectSetIntChild(an, "channel", inf->analog & JSH_MASK_ANALOG_CH);
+      jsvObjectSetIntChild(obj, "channel", inf->analog & JSH_MASK_ANALOG_CH); // for backwards compatibility with 2v22 and earlier
       jsvObjectSetChildAndUnLock(obj, "analog", an);
     }
   }
@@ -326,8 +326,8 @@ JsVar *jswrap_pin_getInfo(
         if (func) {
           char buf[16];
           jshPinFunctionToString(inf->functions[i], JSPFTS_TYPE, buf, sizeof(buf));
-          jsvObjectSetChildAndUnLock(func, "type", jsvNewFromString(buf));
-          jsvObjectSetChildAndUnLock(func, "af", jsvNewFromInteger(inf->functions[i] & JSH_MASK_AF));
+          jsvObjectSetStringChild(func, "type", buf);
+          jsvObjectSetIntChild(func, "af", inf->functions[i] & JSH_MASK_AF);
 
           jshPinFunctionToString(inf->functions[i], JSPFTS_DEVICE|JSPFTS_DEVICE_NUMBER, buf, sizeof(buf));
           jsvObjectSetChildAndUnLock(funcs, buf, func);

@@ -25,16 +25,28 @@
 #include "esp_heap_caps.h"
 #include "esp_ota_ops.h"
 
-#include "driver/rtc_io.h"
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+#include "hal/usb_serial_jtag_ll.h"
+#include "driver/usb_serial_jtag.h"
+#include "rtosutil.h"
+#endif
 
 #ifdef BLUETOOTH
 #include "BLE/esp32_bluetooth_utils.h"
 #endif
 #include "jshardwareESP32.h"
+#include "jshardwareSpi.h"
 
-#include "jsutils.h"
-#include "jsinteractive.h"
-#include "jsparse.h"
+#ifndef ESP_IDF_VERSION_MAJOR
+#define ESP_IDF_VERSION_MAJOR 3
+#endif
+
+#ifndef ESP_ERR_SLEEP_REJECT
+#define ESP_ERR_SLEEP_REJECT ESP_ERR_INVALID_STATE
+#endif
+#ifndef ESP_ERR_SLEEP_TOO_SHORT_SLEEP_DURATION
+#define ESP_ERR_SLEEP_TOO_SHORT_SLEEP_DURATION ESP_ERR_INVALID_ARG
+#endif
 
 /*JSON{
   "type": "class",
@@ -74,6 +86,29 @@ void jswrap_ESP32_reboot() {
   jshReboot();
 } // End of jswrap_ESP32_reboot
 
+static bool esp32IsValidDeepSleepWakeupPin(Pin pin) {
+  gpio_num_t gpio = pinToESP32Pin(pin);
+  if (gpio < 0 || gpio >= GPIO_NUM_MAX) return false;
+#if ESP_IDF_VERSION_MAJOR >= 4
+  return esp_sleep_is_valid_wakeup_gpio(gpio);
+#else
+  switch (gpio) {
+    case GPIO_NUM_0: case GPIO_NUM_2: case GPIO_NUM_4:
+    case GPIO_NUM_12: case GPIO_NUM_13: case GPIO_NUM_14: case GPIO_NUM_15:
+    case GPIO_NUM_25: case GPIO_NUM_26: case GPIO_NUM_27:
+    case GPIO_NUM_32: case GPIO_NUM_33: case GPIO_NUM_34: case GPIO_NUM_35:
+    case GPIO_NUM_36: case GPIO_NUM_37: case GPIO_NUM_39:
+      return true;
+    default:
+      return false;
+  }
+#endif
+}
+
+static uint64_t esp32DeepSleepGpioMask(Pin pin) {
+  return 1ULL << pinToESP32Pin(pin);
+}
+
 
 /*JSON{
   "type"     : "staticmethod",
@@ -102,18 +137,18 @@ void jswrap_ESP32_deepSleep(int us) {
   ]
 }
 Put device in deepsleep state until interrupted by pin "pin".
-Eligible pin numbers are restricted to those [GPIOs designated
-as RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
+On ESP32-C3, valid wakeup pins are GPIO 0–5 (e.g. `D3` for the power button).
+On other ESP32 variants, pins must be [RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
 */
 void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
-  if (!rtc_gpio_is_valid_gpio(pin)) {
+  if (!esp32IsValidDeepSleepWakeupPin(pin)) {
     jsExceptionHere(JSET_ERROR, "Invalid pin");
     return;
   }
 #ifdef CONFIG_IDF_TARGET_ESP32C3
-  esp_deep_sleep_enable_gpio_wakeup(1<<pin, level);
+  esp_deep_sleep_enable_gpio_wakeup(esp32DeepSleepGpioMask(pin), level);
 #else
-  esp_sleep_enable_ext0_wakeup(pin, level);
+  esp_sleep_enable_ext0_wakeup(pinToESP32Pin(pin), level);
 #endif
   esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepSleep_ext0
@@ -136,8 +171,8 @@ Valid modes are:
 * `0: ESP_EXT1_WAKEUP_ALL_LOW` - all nominated pins must be set LOW to trigger wakeup
 * `1: ESP_EXT1_WAKEUP_ANY_HIGH` - any of nominated pins set HIGH will trigger wakeup
 
-Eligible pin numbers are restricted to those [GPIOs designated
-as RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
+On ESP32-C3, valid wakeup pins are GPIO 0–5.
+On other ESP32 variants, pins must be [RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
 */
 void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
   uint64_t pinSum = 0;
@@ -146,12 +181,12 @@ void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
     jsvIteratorNew(&it, pinVar, JSIF_DEFINED_ARRAY_ElEMENTS);
     while (jsvIteratorHasElement(&it)) {
       Pin pin = jshGetPinFromVarAndUnLock(jsvIteratorGetValue(&it));
-      if (!rtc_gpio_is_valid_gpio(pin)) {
+      if (!esp32IsValidDeepSleepWakeupPin(pin)) {
         jsvIteratorFree(&it);
         jsExceptionHere(JSET_ERROR, "Invalid pin");
         return;
       }
-      pinSum += 1<<pin;
+      pinSum |= esp32DeepSleepGpioMask(pin);
 
       jsvIteratorNext(&it);
     }
@@ -160,11 +195,11 @@ void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
     // We really expected an array of pins but
     // handle case of a single pin anyway
     Pin pin = jshGetPinFromVar(pinVar);
-    if (!rtc_gpio_is_valid_gpio(pin)) {
+    if (!esp32IsValidDeepSleepWakeupPin(pin)) {
       jsExceptionHere(JSET_ERROR, "Invalid pin");
       return;
     }
-    pinSum = 1<<pin;
+    pinSum = esp32DeepSleepGpioMask(pin);
   }
 
   if ((mode < 0) || (mode > 1)) {
@@ -197,11 +232,106 @@ Possible causes include:
 * `4: ESP_SLEEP_WAKEUP_TIMER` - Wakeup caused by timer
 * `5: ESP_SLEEP_WAKEUP_TOUCHPAD` - Wakeup caused by touchpad
 * `6: ESP_SLEEP_WAKEUP_ULP` - Wakeup caused by ULP program
+* `7: ESP_SLEEP_WAKEUP_GPIO` - Wakeup caused by GPIO (light sleep only)
+* `8: ESP_SLEEP_WAKEUP_UART` - Wakeup caused by UART (light sleep only)
 
 */
 int jswrap_ESP32_getWakeupCause() {
   return esp_sleep_get_wakeup_cause();
 } // End of jswrap_ESP32_getWakeupCause
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef" : "ESP32",
+  "name"     : "getWakeupPin",
+  "generate" : "jswrap_ESP32_getWakeupPin",
+  "return"   : ["pin", "The Pin that caused the ESP32's wakeup from sleep, or undefined"]
+}
+Returns the pin responsible for the wakeup, or `undefined` if none.
+*/
+Pin jswrap_ESP32_getWakeupPin() {
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+  uint64_t wakeup_pin_mask = esp_sleep_get_gpio_wakeup_status();
+  if (wakeup_pin_mask != 0) {
+    return __builtin_ffsll(wakeup_pin_mask) - 1; // Calculate the GPIO number from the bitmask
+  }
+#else
+  esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+  if (cause == ESP_SLEEP_WAKEUP_EXT1) { // Returns a bitmask of pins that triggered EXT1 wakeup
+    uint64_t wakeup_pin_mask = esp_sleep_get_ext1_wakeup_status();
+    if (wakeup_pin_mask != 0) {
+        return __builtin_ffsll(wakeup_pin_mask) - 1; // Calculate the GPIO number from the bitmask
+    }
+  }
+#endif
+  return PIN_UNDEFINED;
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef"    : "ESP32",
+  "name"     : "lightSleep",
+  "generate" : "jswrap_ESP32_lightSleep",
+  "params"   : [ ["ms", "int", "Sleep time in milliseconds"] ]
+}
+Enter light sleep for approximately `ms` milliseconds, then resume execution
+here. Unlike deep sleep, RAM and JS state are preserved.
+
+On boards with USB Serial/JTAG console, the USB link drops during sleep;
+reconnect the cable or reopen the serial port. Avoid tools that reset the
+chip on connect (DTR toggle) if you need to verify RAM was preserved.
+
+Stopping WiFi/BLE with `ESP32.enableWifi(false)` and `ESP32.enableBLE(false)`
+before sleeping reduces power draw significantly.
+*/
+void jswrap_ESP32_lightSleep(JsVarInt ms) {
+  if (ms <= 0) return;
+
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+  // ConsoleTask (priority 20) outruns the Espruino task and keeps calling
+  // usb_serial_jtag_read_bytes while USJ pads are gated in light sleep,
+  // which can fault and reset the chip. Pause it for the sleep window.
+  TaskHandle_t uartTaskHandle = xTaskGetHandle("uartTask");
+  if (uartTaskHandle) vTaskSuspend(uartTaskHandle);
+  vTaskDelay(1); // let ConsoleTask finish its current read slice
+  usb_serial_jtag_ll_txfifo_flush();
+  usb_serial_jtag_driver_uninstall();
+#endif
+
+  esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+  esp_err_t err = esp_sleep_enable_timer_wakeup((uint64_t)ms * 1000ULL);
+  if (err != ESP_OK) {
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+    usb_serial_jtag_driver_config_t usb_cfg = {.tx_buffer_size = 128, .rx_buffer_size = 128};
+    usb_serial_jtag_driver_install(&usb_cfg);
+    if (uartTaskHandle) vTaskResume(uartTaskHandle);
+#endif
+    jsExceptionHere(JSET_ERROR, "lightSleep: %d", err);
+    return;
+  }
+
+  err = esp_light_sleep_start();
+
+  /* jsiIdle advances timers using (now - jsiLastIdleTime). While we blocked
+   * here the clock jumped but jsiLastIdleTime did not — the next idle pass
+   * would subtract the full sleep from every setInterval/setTimeout, often
+   * re-firing them in a tight loop until the watchdog resets. */
+  jsiLastIdleTime = jshGetSystemTime();
+
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+  usb_serial_jtag_driver_config_t usb_cfg = {.tx_buffer_size = 128, .rx_buffer_size = 128};
+  usb_serial_jtag_driver_install(&usb_cfg);
+  if (uartTaskHandle) vTaskResume(uartTaskHandle);
+#endif
+
+  if (err != ESP_OK &&
+      err != ESP_ERR_SLEEP_TOO_SHORT_SLEEP_DURATION &&
+      err != ESP_ERR_SLEEP_REJECT) {
+    jsExceptionHere(JSET_ERROR, "lightSleep: %d", err);
+  }
+}
 
 
 /*JSON{
@@ -226,11 +356,11 @@ JsVar *jswrap_ESP32_getState() {
   // Create a new variable and populate it with the properties of the ESP32 that we
   // wish to return.
   JsVar *esp32State = jsvNewObject();
-  jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString(esp_get_idf_version()));
-  jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(esp_get_free_heap_size()));
-  jsvObjectSetChildAndUnLock(esp32State, "BLE",          jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)));
-  jsvObjectSetChildAndUnLock(esp32State, "Wifi",         jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)));
-  jsvObjectSetChildAndUnLock(esp32State, "minHeap",      jsvNewFromInteger(heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT)));
+  jsvObjectSetStringChild(esp32State, "sdkVersion", (esp_get_idf_version));
+  jsvObjectSetIntChild(esp32State, "freeHeap", esp_get_free_heap_size());
+  jsvObjectSetBoolChild(esp32State, "BLE", ESP32_Get_NVS_Status(ESP_NETWORK_BLE));
+  jsvObjectSetBoolChild(esp32State, "Wifi", ESP32_Get_NVS_Status(ESP_NETWORK_WIFI));
+  jsvObjectSetIntChild(esp32State, "minHeap", heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
   return esp32State;
 } // End of jswrap_ESP32_getState
 

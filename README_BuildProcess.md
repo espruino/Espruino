@@ -108,7 +108,7 @@ These contain:
 
 #### info.makefile definitions
 
-This is a partial list of definitions that can be added in a `BOARD.py` file's `info.build.makefile` array, eg: `'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\''`
+This is a partial list of definitions that can be added in a `BOARD.py` file's `info.build.makefile` array, eg: `'DEFINES+=-DBLUETOOTH_NAME_PREFIX="Puck.js"'`
 
 * `BLUETOOTH_NAME_PREFIX="..."` - NRF52 only: Make the Bluetooth LE device's name `BLUETOOTH_NAME_PREFIX` followed by the last 2 bytes of the MAC address.
 * `BLUETOOTH_ADVERTISING_INTERVAL=375` - set the default Bluetooth advertising interval (default 375)
@@ -123,10 +123,6 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `JSVAR_MALLOC` - Allocate space for variables at jsvInit time, rather than statically
 * `JSVAR_FORCE_16_BYTE` - Force 16 byte JsVars (rather than packing bits to get JsVar size down to the minimum possible)
 * `USE_FONT_6X8=1` - Also include in a 6x8 fixed width bitmap font
-* `ESPR_DCDC_ENABLE=1` - On NRF52 use the built-in DCDC converter (requires external hardware)
-* `ESPR_DCDC_HV_ENABLE=1` - On NRF52840 use the built-in high-voltage (REG0) DCDC converter (requires external hardware)
-* `ESPR_REGOUT0_1_8V=1` - On NRF52830/40 set the REG0 VCC voltage to 1.8v (the default is 3.3v)
-* `ESPR_LSE_ENABLE` - On NRF52 use an external 32kHz Low Speed External crystal on D0/D1
 * `ESPR_NO_LOADING_SCREEN` - Bangle.js, don't show a 'loading' screen when loading a new app
 * `ESPR_BOOTLOADER_SPIFLASH` - Allow bootloader to flash direct from a file in SPI flash storage
 * `ESPR_BANGLE_UNISTROKE` - Build in 'unistroke' touch gesture recognition
@@ -136,24 +132,14 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_JSVAR_FLASH_BUFFER_SIZE=32` - The buffer size in bytes we use when executing/iterating over data in external flash memory (default 16). Should be set based on benchmarks.
 * `ESPR_FS_LARGE_WRITE_BUFFER` - When using FS library, should we allocate a 1kb buffer on the stack for writes? It can be ~3x faster but then allocating 1k can be dangerous without checking
 * `ESPR_PBF_FONTS` - Enable support for loading and displaying Pebble-style PBF font files with `g.setFontPBF`
-* `ESPR_BLUETOOTH_ANCS` - Enable Apple ANCS(notification), AMS and CTS support
 * `ESPR_USE_STEPPER_TIMER` - add builtin `Stepper` class to handle higher speed stepper handling
-* `ESPR_RTC_INITIALISE_TICKS` - STM32: how many systicks do we wait for the LSE to initialise. Usually 2s, so the default of 10 is fine for 84Mhz. Higher clocks need higher values here
-* `ESPR_RTC_ALWAYS_TRY_LSE` - STM32: If we boot and RTC is initialised but using LSI, try again at starting LSE
-* `ESPR_DELAY_MULTIPLIER` - STM32: At boot Espruino works out how many iterations are needed to produce a set time period of delay. You can hard-code this for a faster boot
-* `ESPR_MIN_WFI_TIME_MS` - STM32: default 0.1ms, but if set, Espruino won't enter __WFI sleep unless the next setInterval is more than this number of milliseconds away
 * `ESPR_GRAPHICS_SELF_INIT` - Should the Graphics library instantiate itself with its own `g` instance?
-* `ESPR_LCD_MANUAL_BACKLIGHT` - STM32/FSMC: Don't turn the backlight on and leave code to do this manually
 * `ESPR_DISABLE_KICKWATCHDOG_PIN=BTN1_PININDEX` - If this pin is 1, skip kickWatchdog calls (which would eventually force a reboot if WDT enabled)
 * `ESPR_TERMNINAL_NO_SCROLL` - disable scrolling in the onscreen terminal (once we get to the end, we just clear the screen and start at the top)
-* `ESPR_HAS_BOOTLOADER_UF2` - nRF5x: Allow entering UF2 bootloader mode by calling E.rebootToDFU()
-* `ESPR_BLE_PRIVATE_ADDRESS_SUPPORT` - NRF52: Enable support for using a random private BLE address, that automatically changes at a set interval. See the `privacy` option that can be passed to `NRF.setSecurity()`.
 * `ESPR_FS_MKFS` - Add support for require("fs").mkfs for formatting disks
 * `ESPR_FS_GETFREE` - Add support for require("fs").getFree in the filesystem library
 * `ESPR_TEST_ON_FIRST_RUN` - on Jolt.js/Puck.js, run the self-test the very first time the board boots up (this is not the default since 2v27)
 * `ESPR_FS_PREPEND_PATH=""` - add something to the path when accessing files using 'fs' - eg on a linux build you might add `'sdcard'` to look for files in that directory
-* `ESPR_USE_USB_SERIAL_JTAG` - On ESP32 This supports the case where the USB connector on the board is wired directly to the D+ and D- pins. If the board uses a USB-to-UART converter, do not use the define so the UART console is used. This is introduced to fix issue #2609 and replaces the previous method using the `USB_CDC` identifier.
-
 
 There are some specifically that are useful for cutting a few bytes out of the build:
 
@@ -187,6 +173,34 @@ These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 * `ESPR_NO_PROMISES` - Don't include promise-handling functions
 * `ESPR_NO_PRETOKENISE` - Don't include code to pretokenise functions marked with `"ram"` - code pretokenised in the IDE can still be executed
 * `ESPR_NO_PASSWORD` - Disable password protection on the console (E.setPassword/E.lockConsole)
+
+These are used for NRF52:
+
+* `-DI2C_SLAVE -DTWIS_ENABLED=1 -DTWIS0_ENABLED=1` - enables I2C slave support
+* `ESPR_DCDC_ENABLE=1` - On NRF52 use the built-in DCDC converter (requires external hardware)
+* `ESPR_DCDC_HV_ENABLE=1` - On NRF52840 use the built-in high-voltage (REG0) DCDC converter (requires external hardware)
+* `ESPR_REGOUT0_1_8V=1` - On NRF52830/40 set the REG0 VCC voltage to 1.8v (the default is 3.3v)
+* `ESPR_LSE_ENABLE` - On NRF52 use an external 32kHz Low Speed External crystal on D0/D1
+* `ESPR_BLUETOOTH_ANCS` - Enable Apple ANCS(notification), AMS and CTS support
+* `ESPR_HAS_BOOTLOADER_UF2` - nRF5x: Allow entering UF2 bootloader mode by calling E.rebootToDFU()
+* `ESPR_BLE_PRIVATE_ADDRESS_SUPPORT` - NRF52: Enable support for using a random private BLE address, that automatically changes at a set interval. See the `privacy` option that can be passed to `NRF.setSecurity()`.
+
+
+These are used for ESP32:
+
+* `ESP_STACK_SIZE=25000` - the stack size allocated for the Espruino task
+* `ESP_HEAP_SIZE=40000` - how much free heap to leave (ESP32 builds change the amount of variables depending on free RAM, but leave enough heap eg for HTTPS)
+* `ESPR_USE_USB_SERIAL_JTAG` - On ESP32 This supports the case where the USB connector on the board is wired directly to the D+ and D- pins. If the board uses a USB-to-UART converter, do not use the define so the UART console is used. This is introduced to fix issue #2609 and replaces the previous method using the `USB_CDC` identifier.
+
+
+These are used for STM32:
+
+* `ESPR_RTC_INITIALISE_TICKS` - STM32: how many systicks do we wait for the LSE to initialise. Usually 2s, so the default of 10 is fine for 84Mhz. Higher clocks need higher values here
+* `ESPR_RTC_ALWAYS_TRY_LSE` - STM32: If we boot and RTC is initialised but using LSI, try again at starting LSE
+* `ESPR_DELAY_MULTIPLIER` - STM32: At boot Espruino works out how many iterations are needed to produce a set time period of delay. You can hard-code this for a faster boot
+* `ESPR_MIN_WFI_TIME_MS` - STM32: default 0.1ms, but if set, Espruino won't enter __WFI sleep unless the next setInterval is more than this number of milliseconds away
+* `ESPR_LCD_MANUAL_BACKLIGHT` - STM32/FSMC: Don't turn the backlight on and leave code to do this manually
+
 
 
 ### chip

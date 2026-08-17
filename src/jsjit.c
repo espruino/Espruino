@@ -146,6 +146,28 @@ NO_INLINE void _jsxArrayNewElement(JsVar *array, uint32_t index, JsVar *value) {
 NO_INLINE JsVar *_jsxGetThis() {
   return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.root );
 }
+
+// Called before function is called in `new Foo(...)` - sets up a 'this' to be used in the call
+NO_INLINE JsVar *_jsxConstructorStart(JsVar *funcName) {
+  JsVar *thisObj = jsvNewObject();
+  if (!thisObj) return 0; // out of memory
+  // Make sure the function has a 'prototype' var
+  JsVar *func = jsvSkipName(funcName);
+  JsVar *prototypeName = jsvFindOrAddChildFromString(func, JSPARSE_PROTOTYPE_VAR);
+  jspEnsureIsPrototype(func, prototypeName); // make sure it's an object
+  jsvAddNamedChildAndUnLock(thisObj, jsvSkipNameAndUnLock(prototypeName), JSPARSE_INHERITS_VAR);
+  jsvUnLock(func);
+  return jsvLockAgain(thisObj); // object gets used twice (this for function, and possible return value)
+}
+
+// Called after function is called in `new Foo(...)` - if the function returned a value, use that, otherwise use 'thisObj'
+NO_INLINE JsVar *_jsxConstructorEnd(JsVar *returnVal, JsVar *thisObj) {
+  if (returnVal) {
+    jsvUnLock(thisObj);
+    thisObj = returnVal;
+  }
+  return thisObj;
+}
 // ----------------------------------------------------------------------------
 
 /// Pop a var off the stack - we assume vars on the stack are locked
@@ -626,14 +648,22 @@ bool jsjFactorMember(JsVar *builtin) {
 }
 
 void jsjFactorFunctionCall() {
+  bool isConstructor = false;
+  int regObject; // for constructors, this reg contains the object
+  if (lex->tk==LEX_R_NEW) {
+    JSP_ASSERT_MATCH(LEX_R_NEW);
+    isConstructor = true;
+  }
   JsVar *builtin = jsjFactor();
   bool parentOnStack = jsjFactorMember(builtin);
   jsvUnLock(builtin);
   // FIXME: what about 'new'?
 
-  while (lex->tk=='(' /*|| (isConstructor && JSP_SHOULD_EXECUTE))*/ && JSJ_PARSING) {
+  while ((lex->tk=='(' || isConstructor) && JSJ_PARSING) {
     /* Right now, the parent (if parentOnStack) is on the stack,
-     follow by the function...
+     followed by the function...
+
+     <top of stack> [funcParent], funcName, <rest of stack>
 
      NOW PARSE OUR ARGUMENTS
 
@@ -645,6 +675,25 @@ void jsjFactorFunctionCall() {
      from the stack pointer, save it, and then instead of pushing onto the stack we could
      just write direct to the correct address.
      */
+    if (isConstructor) {
+      if (jit->phase == JSJP_EMIT) {
+        DEBUG_JIT_EMIT("; CONSTRUCTOR\n");
+        if (parentOnStack) jsjPopAndUnLock(); // ignore any previous parent
+        int regFnName = jsjcClaimFreeReg();
+        jsjPopAsVar(regFnName); // function name now in regFnName
+        // create a new 'this' - which is an object with prototype of the Function
+        jsjcMov(0, regFnName);
+        jsjcCall(_jsxConstructorStart); // _jsxConstructorStart(funcName) => funcParent
+        regObject = jsjcClaimFreeReg();
+        jsjcMov(regObject, 0); // regObject = funcParent
+        jsjcPush(regFnName, JSJVT_JSVAR); // funcName
+        jsjcPush(0, JSJVT_JSVAR); // push funcParent
+        jsjcReturnFreeReg(regFnName);
+        //  <top of stack> funcParent, funcName, <rest of stack>
+      }
+      parentOnStack = true;
+    }
+
     int argCount = 0;
     JSP_MATCH('(');
     DEBUG_JIT_EMIT("; FUNCTION CALL arguments\n");
@@ -663,7 +712,7 @@ void jsjFactorFunctionCall() {
     JSP_MATCH(')');
     if (jit->phase == JSJP_EMIT) {
       // Stack looks like this now:
-      //  <top of stack> argN, ... arg2, arg1, funcName, [funcParent], <rest of stack>
+      //  <top of stack> argN, ... arg2, arg1, [funcParent], funcName, <rest of stack>
       DEBUG_JIT("; FUNCTION CALL argPtr\n");
       jsjcMov(7, JSJAR_SP); // r7 = argPtr
       jsjcPush(7, JSJVT_INT); // argPtr (5th arg - on stack)
@@ -680,10 +729,9 @@ void jsjFactorFunctionCall() {
         }
       }
       // Stack looks like this now:
-      //  <top of stack> arg1, arg2, ... argN, funcName, [funcParent], <rest of stack>
+      //  <top of stack> arg1, arg2, ... argN, [funcParent], funcName, <rest of stack>
       DEBUG_JIT("; FUNCTION CALL jspeFunctionCall\n");
       // Get function var and parent (r7 == SP)
-
       if (parentOnStack) { // parent
         jsjcLoadImm(0, 7, 4*(argCount+1)); // r0 = funcName
         jsjcLoadImm(1, 7, 4*(argCount));
@@ -697,11 +745,17 @@ void jsjFactorFunctionCall() {
       DEBUG_JIT("; FUNCTION CALL cleanup stack\n");
       jsjcAddSP(4*(2+argCount+(parentOnStack?1:0))); // pop off argPtr + all the arguments + funcName + parent
       parentOnStack = false;
-      jsjcPush(0, JSJVT_JSVAR); // push return value from jspeFunctionCall (FIXME: can we be sure this isn't a NAME so use JSJVT_JSVAR_NO_NAME? I think so)
+      if (isConstructor) {
+        jsjcMov(1, regObject); // r1 = thisObj
+        jsjcReturnFreeReg(regObject);
+        jsjcCall(_jsxConstructorEnd); // _jsxConstructorEnd(returnVal, thisObj) => returnVal
+      }
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // push return value from jspeFunctionCall
       DEBUG_JIT("; FUNCTION CALL end\n");
       // 'parent', 'funcName' and all args are unlocked by _jsjxFunctionCallAndUnLock
     }
     // Check for another '.'/etc after this function
+    isConstructor = false;
     parentOnStack = jsjFactorMember(NULL);
   }
   if ((jit->phase == JSJP_EMIT) && parentOnStack) {

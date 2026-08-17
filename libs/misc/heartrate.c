@@ -274,6 +274,8 @@ HRMFilter hrmFilter;
 // =========================================================
 
 HrmInfo hrmInfo;
+HrmSample hrmSamples[HRMSAMPLE_MAX];
+uint8_t hrmSampleCount;
 
 /// Initialise heart rate monitoring
 void hrm_init() {
@@ -356,7 +358,7 @@ bool hrm_new(int hrmValue, Vector3 *acc) {
   if (h<=-32768) h=-32768;
   if (h>32767) h=32767;
   hrmInfo.filtered2 = hrmInfo.filtered1;
-  hrmInfo.filtered1 = hrmInfo.filtered;  
+  hrmInfo.filtered1 = hrmInfo.filtered;
   hrmInfo.filtered = h;
 
   // check for step counter
@@ -375,7 +377,15 @@ bool hrm_new(int hrmValue, Vector3 *acc) {
     hrmInfo.avg = ((hrmInfo.avg*7) + h) >> 3;
   else // 20 = 50Hz, Bangle.js 1 default sample rate
     hrmInfo.avg = ((hrmInfo.avg*15) + h) >> 4;
-  
+
+  if (hrmSampleCount < HRMSAMPLE_MAX) {
+    HrmSample *sample = &hrmSamples[hrmSampleCount++];
+    sample->bpm10 = hrmInfo.bpm10; // 10x BPM
+    sample->confidence = hrmInfo.confidence; // 0..100%
+    sample->raw = hrmInfo.raw;
+    sample->avg = hrmInfo.avg; // average signal value, moving average
+    sample->filtered = hrmInfo.filtered;
+  }
 
   return hadBeat;
 }
@@ -396,5 +406,5 @@ void hrm_get_hrm_info(JsVar *o) {
 
 // Append extra information to an existing HRM-raw event object
 void hrm_get_hrm_raw_info(JsVar *o) {
-  jsvObjectSetChildAndUnLock(o,"isBeat",jsvNewFromBool(hrmInfo.isBeat));
+  jsvObjectSetBoolChild(o,"isBeat", hrmInfo.isBeat);
 }

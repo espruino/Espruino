@@ -1366,16 +1366,21 @@ JsVar *jswrap_espruino_memoryArea(int addr, int len) {
   ],
   "typescript" : "setBootCode(code: string, alwaysExec?: boolean): void;"
 }
-This writes JavaScript code into Espruino's flash memory, to be executed on
+This writes JavaScript code into Espruino's flash memory (`Storage`), to be executed on
 startup. It differs from `save()` in that `save()` saves the whole state of the
-interpreter, whereas this just saves JS code that is executed at boot.
+interpreter, whereas `E.setBootCode` just saves JS code that is executed at boot.
+See https://espruino.com/Saving for a full explanation.
 
 Code will be executed before `onInit()` and `E.on('init', ...)`.
 
-If `alwaysExec` is `true`, the code will be executed even after a call to
-`reset()`. This is useful if you're making something that you want to program,
-but you want some code that is always built in (for instance setting up a
-display or keyboard).
+If `alwaysExec` is `false`/`undefined`, the code will be written to a file named `.bootcde`
+in Storage and will be executed at startup or after `load()`, but not after a call to `reset()`.
+This is the same as the Web IDE's `To Flash` upload mode.
+
+If `alwaysExec` is `true`, the code is written to a file named `.bootrst` in Storage
+and will be executed even after a call to `reset()`. This is useful if you're making
+something that you want to program, but you want some code that is always built in
+(for instance setting up a display or keyboard).
 
 To remove boot code that has been saved previously, use `E.setBootCode("")`
 
@@ -2552,7 +2557,7 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 
 /*JSON{
   "type" : "staticmethod",
-  "#if" : "defined(PUCKJS) || defined(PIXLJS) || defined(BANGLEJS)",
+  "#if" : "defined(PUCKJS) || defined(PIXLJS) || defined(BANGLEJS) || defined(CUSTOM_GETBATTERY)",
   "class" : "E",
   "name" : "getBattery",
   "generate" : "jswrap_espruino_getBattery",
@@ -2752,15 +2757,15 @@ JsVar *jswrap_espruino_getPowerUsage() {
   jsvGetProcessorPowerUsage(devices); // CPU/etc
 #ifdef LED1_PININDEX
   if (jshPinGetState(LED1_PININDEX) & JSHPINSTATE_PIN_IS_ON)
-    jsvObjectSetChildAndUnLock(devices, "LED1", jsvNewFromInteger(8000));
+    jsvObjectSetIntChild(devices, "LED1", 8000);
 #endif
 #ifdef LED2_PININDEX
   if (jshPinGetState(LED2_PININDEX) & JSHPINSTATE_PIN_IS_ON)
-    jsvObjectSetChildAndUnLock(devices, "LED2", jsvNewFromInteger(8000));
+    jsvObjectSetIntChild(devices, "LED2", 8000);
 #endif
 #ifdef LED3_PININDEX
   if (jshPinGetState(LED3_PININDEX) & JSHPINSTATE_PIN_IS_ON)
-    jsvObjectSetChildAndUnLock(devices, "LED3", jsvNewFromInteger(8000));
+    jsvObjectSetIntChild(devices, "LED3", 8000);
 #endif
   // Get data from jswrap_ files
   jswGetPowerUsage(devices);
@@ -2769,14 +2774,15 @@ JsVar *jswrap_espruino_getPowerUsage() {
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, devices);
   while (jsvObjectIteratorHasValue(&it)) {
-    total += jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it));
+    JsVarFloat f = jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it));
+    if (isfinite(f)) total += f;
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
   // return object
   JsVar *usage = jsvNewObject();
   jsvObjectSetChildAndUnLock(usage, "device", devices);
-  jsvObjectSetChildAndUnLock(usage, "total", jsvNewFromFloat(total));
+  jsvObjectSetFloatChild(usage, "total", total);
   return usage;
 }
 

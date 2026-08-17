@@ -38,6 +38,10 @@ int jswrap_banglejs_isHRMOn();
 bool jswrap_banglejs_setGPSPower(bool isOn, JsVar *appId);
 int jswrap_banglejs_isGPSOn();
 JsVar *jswrap_banglejs_getGPSFix();
+
+bool jswrap_banglejs_setWiFiPower(bool isOn, JsVar *appId);
+int jswrap_banglejs_isWiFiOn();
+
 bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId);
 int jswrap_banglejs_isCompassOn();
 void jswrap_banglejs_resetCompass();
@@ -70,6 +74,7 @@ void jswrap_banglejs_beep_callback(); // internal use only
 JsVar *jswrap_banglejs_beep(int time, int freq);
 void jswrap_banglejs_buzz_callback(); // internal use only
 JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt);
+JsVar *jswrap_banglejs_haptic(JsVar* eventName);
 
 
 void jswrap_banglejs_off();
@@ -107,3 +112,6 @@ void jsbangle_exec_pending(uint8_t *data, int dataLen);
 void jsbangle_push_event(JsBangleEvent type, uint16_t value);
 
 void jswrap_banglejs_powerusage(JsVar *devices);
+
+// Called when we have an interrupt from the touchscreen
+void jswrap_banglejs_touchHandler(bool state, IOEventFlags flags);

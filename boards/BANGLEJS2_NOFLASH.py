@@ -61,10 +61,10 @@ info = {
      'DEFINES += -DSPIFLASH_READ2X', # Read SPI flash at 2x speed using MISO and MOSI for IO
      'DEFINES += -DESPR_JSVAR_FLASH_BUFFER_SIZE=32', # The buffer size we use when executing/iterating over data in flash memory (default 16). Should be set based on benchmarks.
      'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6', # Bangle.js accelerometer poll handler needs something else in queue size
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX="Bangle.js"',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DESPR_UNICODE_SUPPORT=1',
-     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
+     'DEFINES+=-DDUMP_IGNORE_VARIABLES="g\\0"',
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
      'DEFINES+=-DESPR_BATTERY_FULL_VOLTAGE=0.3144',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',
@@ -120,10 +120,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((245 - 89) * 4096), # Bootloader takes pages 248-255, FS takes 245-247
+    'address' : ((245 - 88) * 4096), # Bootloader takes pages 248-255, FS takes 245-247
     'page_size' : 4096,
-    'pages' : 89,
-    'flash_available' : 1024 - ((38 + 8 + 3 + 90)*4), # Softdevice uses 0x26=38 pages of flash, bootloader 8, FS 3, code 100. Each page is 4 kb.
+    'pages' : 88,
+    'flash_available' : 1024 - ((38 + 8 + 3 + 88)*4), # Softdevice uses 0x26=38 pages of flash, bootloader 8, FS 3, code 88. Each page is 4 kb.
   },
 };
 

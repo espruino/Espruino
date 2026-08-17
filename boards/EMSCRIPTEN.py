@@ -16,6 +16,7 @@
 import pinutils;
 info = {
  'name' : "Bangle.js emulator",
+ 'boardname' : "BANGLEJS",
  'default_console' : "EV_USBSERIAL",
  'variables' :  2500, # 0 = resizable variables, rather than fixed
  'binary_name' : 'emulator_banglejs1.js',
@@ -36,10 +37,10 @@ info = {
      'USE_DEBUGGER=0', # We can't use debugger in emulator as we're single-threaded and it uses IRQs on embedded to work
      'DEFINES += -DESPR_HWVERSION=1',
      'DEFINES += -DUSE_CALLFUNCTION_HACK', # required to handle calls properly
-     'DEFINES += -DBANGLEJS -DBANGLEJS_F18 -DEMULATED -DEMSCRIPTEN',
+     'DEFINES += -DBANGLEJS -DBANGLEJS1 -DBANGLEJS_F18 -DEMULATED -DEMSCRIPTEN',
      'DEFINES += -DSPIFLASH_BASE=0x8000000 -DSPIFLASH_LENGTH=4194304',
 #     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
-     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
+     'DEFINES+=-DDUMP_IGNORE_VARIABLES="g\\0"',
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS',
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',

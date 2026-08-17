@@ -1,0 +1,23 @@
+# Copyright (c) 2025 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: banglejs3/nrf54l15/cpuapp
+name: Bangle.js 3
+type: mcu
+arch: arm
+toolchain:
+  - gnuarmemb
+  - zephyr
+ram: 256
+flash: 1524
+supported:
+  - adc
+  - counter
+  - gpio
+  - i2c
+  - i2s
+  - pwm
+  - spi
+  - watchdog
+vendor: espruino
+sysbuild: true

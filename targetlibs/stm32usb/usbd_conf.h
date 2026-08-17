@@ -53,6 +53,10 @@
 #include "stm32l4xx.h"
 #include "stm32l4xx_hal.h"
 #endif
+#ifdef STM32F7
+#include "stm32f7xx.h"
+#include "stm32f7xx_hal.h"
+#endif
 
 /** @addtogroup USBD_OTG_DRIVER
   * @{

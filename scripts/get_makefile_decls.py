@@ -72,6 +72,8 @@ for lib in board.info["build"]["libraries"]:
 
 if "makefile" in board.info["build"]:
     for mfLine in board.info["build"]["makefile"]:
+        if mfLine.startswith("DEFINES") and mfLine.endswith("\""): # fix quoting for makefiles, specifically BLUETOOTH_NAME_PREFIX
+          mfLine = re.sub(r'"([^"]*)"', r'"\\"\1\\""', mfLine)
         print(mfLine)
 
 if 'USB' in board.devices:

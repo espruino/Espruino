@@ -40,7 +40,6 @@ void jspeBlock();
 void jspeBlockNoBrackets();
 JsVar *jspeStatement();
 JsVar *jspeFactor();
-void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 #ifndef ESPR_NO_ARROW_FN
 JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a);
 #endif
@@ -1166,8 +1165,6 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   if (a) {
     jsvUnLock(thisObj);
     thisObj = a;
-  } else {
-    jsvUnLock(a);
   }
   return thisObj;
 }
@@ -1291,6 +1288,17 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
     execInfo.currentClassConstructor = 0;
 #endif
 
+  if (parent && jsvGetRefs(parent)==0 && jsvIsBasicName(a) &&  !jsvIsNewChild(a) && !jsvGetFirstChild(a) ) {
+    /* #1916 - if we referenced a field that was undefined in an unreferenced object like ({a: undefined}).a
+    then we end up with a NAME datastructure the same as we get when accessing an undefined variable, and so we
+    get a ReferenceError when it is accessed. To work around this as a simple fix, we just remove the name
+    completely. So now `({a: undefined}).a=0` will still fail (but who does this?), but everything else will work.
+    If the object is referenced anywhere (eg. obj={a: undefined};obj.a) then this is not an issue. */
+    jsvUnLock(a);
+    a = NULL;
+    jsvUnLock(parent);
+    parent = NULL;
+  }
 #ifndef ESPR_NO_GET_SET
   /* If we've got something that we care about the parent of (eg. a getter/setter)
    * then we repackage it into a 'NewChild' name that references the parent before
@@ -2155,9 +2163,13 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
     rhs = jspeAssignmentExpression();
     rhs = jsvSkipNameAndUnLock(rhs); // ensure we get rid of any references on the RHS
 
-    if (JSP_SHOULD_EXECUTE && lhs) {
+    if (JSP_SHOULD_EXECUTE) {
       if (op=='=') {
-        jsvReplaceWithOrAddToRoot(lhs, rhs);
+        if (lhs) jsvReplaceWithOrAddToRoot(lhs, rhs);
+        else { // we only get here in the '({a: undefined}).a=5' case (#1916)
+          lhs = rhs;
+          rhs = NULL;
+        }
       } else {
         if (op==LEX_PLUSEQUAL) op='+';
         else if (op==LEX_MINUSEQUAL) op='-';
@@ -2174,8 +2186,8 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
           JsVar *currentValue = jsvSkipName(lhs);
           if (jsvIsBasicString(currentValue) && jsvGetRefs(currentValue)==1 && rhs!=currentValue) {
             /* A special case for string += where this is the only use of the string
-             * and we're not appending to ourselves. In this case we can do a
-             * simple append (rather than clone + append)*/
+            * and we're not appending to ourselves. In this case we can do a
+            * simple append (rather than clone + append)*/
             JsVar *str = jsvAsString(rhs);
             jsvAppendStringVarComplete(currentValue, str);
             jsvUnLock(str);
@@ -2186,8 +2198,11 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
         if (op) {
           /* Fallback which does a proper add */
           JsVar *res = jsvMathsOpSkipNames(lhs,rhs,op);
-          jsvReplaceWith(lhs, res);
-          jsvUnLock(res);
+          if (lhs) {
+            jsvReplaceWith(lhs, res);
+            jsvUnLock(res);
+          } else
+            lhs = res;
         }
       }
     }

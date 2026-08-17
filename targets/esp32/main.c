@@ -38,6 +38,10 @@
 
 uintptr_t espruino_stackHighPtr = 0;
 
+#ifndef ESP_HEAP_SIZE
+#define ESP_HEAP_SIZE 40000
+#endif
+
 #ifdef BLUETOOTH
 #include "libs/bluetooth/bluetooth.h"
 #include "BLE/esp32_gap_func.h"
@@ -90,8 +94,7 @@ extern void initialise_wifi(void);
 static void uartTask(void *data) {
   initConsole();
   while(1) {
-    consoleToEspruino();
-    serialToEspruino();
+    pollSerialDevices();
 #ifdef ESPR_USE_USB_SERIAL_JTAG
     /* Espruino writes console output outside stdio, so explicitly wait for the
     USB Serial/JTAG driver to drain any queued TX bytes. */
@@ -109,15 +112,15 @@ static void uartTask(void *data) {
 
 #include "esp_heap_caps.h"  // Required header
 void printHeapDebug(int i ) {
-  printf("%d DRAM Free: %6d | Largest: %6d | Min: %6d\n", 
+  printf("%d DRAM Free: %6d | Largest: %6d | Min: %6d\n",
          i,
          heap_caps_get_free_size(MALLOC_CAP_8BIT),
          heap_caps_get_largest_free_block(MALLOC_CAP_8BIT),
          heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
-  
+
   multi_heap_info_t info;
   heap_caps_get_info(&info, MALLOC_CAP_8BIT);
-  printf("%d Blocks: %d total (%d alloc, %d free)\n", 
+  printf("%d Blocks: %d total (%d alloc, %d free)\n",
          i, info.total_blocks, info.allocated_blocks, info.free_blocks);
 }
 
@@ -126,9 +129,9 @@ static void espruinoTask(void *data) {
   espruino_stackHighPtr = (uintptr_t)&heapVars; //Ignore the name, 'heapVars' is on the stack!
                         //I didn't use another variable becaue this function never ends so
                         //all variables declared here consume stack space that is never freed.
-  
+
   printHeapDebug(1);
-  
+
   PWMInit();
   RMTInit();
   initADC(1);
@@ -136,7 +139,7 @@ static void espruinoTask(void *data) {
   jshInit();     // Initialize the hardware
   jswHWInit();
 
-  heapVars = (esp_get_free_heap_size() - 40000) / sizeof(JsVar);  //calculate space for jsVars
+  heapVars = (esp_get_free_heap_size() - ESP_HEAP_SIZE) / sizeof(JsVar);  //calculate space for jsVars
 
   //Limit number of JsVars to maximum addressable. Can otherwise be
   //breached by builds with modules removed or boards using PSRAM.
@@ -157,17 +160,14 @@ static void espruinoTask(void *data) {
 #ifdef USE_NET
   if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_wifi_restore();
 #endif
-#ifdef BLUETOOTH
-  bluetooth_initDeviceName();
-#endif  
 #ifdef CONFIG_ESP_TASK_WDT_EN
   esp_task_wdt_add(NULL);
 #endif
   while(1) {
     jsiLoop();   // Perform the primary loop processing
     #ifdef CONFIG_ESP_TASK_WDT_EN
-      esp_task_wdt_reset();           
-      vTaskDelay(pdMS_TO_TICKS(TWDT_TICKS));
+      esp_task_wdt_reset();
+      vTaskDelay(pdMS_TO_TICKS(TWDT_TICKS)); // FIXME: shouldn't jshKickWatchdog kick this? And also, a 10ms delay in the idle loop is BAD for performance
    #endif
 #ifdef BLUETOOTH
     gatts_sendNUSNotificationIfNotEmpty();
@@ -185,12 +185,14 @@ int app_main(void)
 {
   esp_log_level_set("*", ESP_LOG_VERBOSE); // set all components to ERROR level - suppress Wifi Info
   esp_log_level_set("BT_BTM", ESP_LOG_NONE); // Kill "BT_BTM: BTM_GetSecurityFlags false" BLE errors
-
+#ifdef RELEASE
+  esp_log_level_set("wifi", ESP_LOG_WARN); //  remove `I wifi:...` info messages
+#endif
   esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      err = nvs_flash_init();
-    }
+  if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    err = nvs_flash_init();
+  }
 #ifdef BLUETOOTH
   jsble_init();
 #endif
@@ -215,14 +217,8 @@ int app_main(void)
   }
   esp_partition_iterator_release(it);
 
-#ifdef RTOS
-  queues_init();
-  tasks_init();
-  task_init(espruinoTask,"EspruinoTask", ESP_STACK_SIZE, 5, 0);
-  task_init(uartTask,"ConsoleTask",2200,20,0);
-#else
   xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", ESP_STACK_SIZE, NULL, 5, NULL, 0);
   xTaskCreatePinnedToCore(&uartTask,"uartTask",2200,NULL,20,NULL,0);
-#endif
+
   return 0;
 }

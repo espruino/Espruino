@@ -37,20 +37,20 @@ info = {
      'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
      'BLACKLIST=boards/BANGLEJS.blocklist', # force some stuff to be removed to save space
      'DEFINES += -DESPR_HWVERSION=1',
-     'DEFINES += -DBANGLEJS_F18',
+     'DEFINES += -DBANGLEJS1 -DBANGLEJS_F18',
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES += -DDFU_APP_DATA_RESERVED=0', # allow firmware updates right up to the amount of available flash
      'DEFINES+=-DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2c40', # set RAM base to match MTU
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX="Bangle.js"',
      'DEFINES+=-DBLUETOOTH_ADVERTISING_INTERVAL=200', # since we don't care as much about ~20uA battery usage, raise this to make getting a connection faster
      'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DESPR_UNICODE_SUPPORT=1',
      'DEFINES+=-DESPR_NO_SOFTWARE_SERIAL=1',
      'DEFINES+=-DESPR_NO_DUMP_STATE=1', # don't let dump() output current state - saves a lot of flash
-     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
+     'DEFINES+=-DDUMP_IGNORE_VARIABLES="g\\0"',
      'DEFINES+=-DSAVE_ON_FLASH_MATH',
      'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',

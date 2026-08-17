@@ -27,9 +27,9 @@
 #endif
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "2v28"
+#define JS_VERSION "2v29"
 #else
-#define JS_VERSION "2v28." BUILDNUMBER
+#define JS_VERSION "2v29." BUILDNUMBER
 #endif
 
 #ifndef JSUTILS_H
@@ -385,6 +385,9 @@ typedef int64_t JsSysTime;
 
 /// Put before functions that we always want inlined
 #if defined(__GNUC__) && !defined(__clang__)
+ #if defined(ZEPHYR)
+   #undef ALWAYS_INLINE // zephyr provides its own incompatible macro
+ #endif
  #if defined(LINK_TIME_OPTIMISATION) && !defined(SAVE_ON_FLASH) && !defined(DEBUG)
   #define ALWAYS_INLINE __attribute__ ((gnu_inline)) __attribute__((always_inline)) inline
  #else
@@ -438,8 +441,12 @@ typedef int64_t JsSysTime;
 #define NIBBLEFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
 */
 
-#if defined(NRF51_SERIES)
-  // Cortex-M0 does not support unaligned reads
+#if defined(NRF51_SERIES) || defined(RP2040)
+  // Cortex-M0/M0+ does not support unaligned reads
+  #define ESPR_NO_UNALIGNED_READS 1
+#endif
+
+#ifdef ESPR_NO_UNALIGNED_READS
   #define UNALIGNED_UINT16(addr) ((((uint16_t)*((uint8_t*)(addr)+1)) << 8) | (*(uint8_t*)(addr)))
 #else
   #define UNALIGNED_UINT16(addr) (*(uint16_t*)addr)

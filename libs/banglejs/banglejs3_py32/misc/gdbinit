@@ -1,0 +1,6 @@
+target extended-remote :3333
+file bin/banglejs3lcd.elf
+break main
+break HardFault_Handler
+#break jsAssertFail
+#break ble_app_error_handler

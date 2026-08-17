@@ -1187,6 +1187,7 @@ JsVar *jsvNewFromLongInteger(long long value) {
 
 #ifndef ESPR_EMBED
 JsVar *jsvNewFromPin(int pin) {
+  if (pin == PIN_UNDEFINED) return 0;
   JsVar *v = jsvNewFromInteger((JsVarInt)pin);
   if (v) {
     v->flags = (JsVarFlags)((v->flags & ~JSV_VARTYPEMASK) | JSV_PIN);
@@ -1238,6 +1239,10 @@ JsVar *jsvNewNativeString(char *ptr, size_t len) {
     len = JSV_NATIVE_STR_MAX_LENGTH;
   str->varData.nativeStr.ptr = ptr;
   str->varData.nativeStr.len = (JsVarDataNativeStrLength)len;
+  #ifdef FLASH_START
+  if (ptr >= FLASH_START && (ptr < FLASH_START+FLASH_TOTAL))
+    str->flags |= JSV_CONSTANT; // mark as constant so we can complain if someone tries to write (#1883)
+  #endif
   return str;
 }
 
@@ -1261,6 +1266,8 @@ JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero) {
   assert(arr->varData.arraybuffer.byteOffset == 0);
   if (lengthOrZero==0) lengthOrZero = (unsigned int)jsvGetStringLength(str);
   arr->varData.arraybuffer.length = (JsVarArrayBufferLength)lengthOrZero;
+  if (jsvIsConstant(str)) // mark as constant so we can complain if someone tries to write (#1883)
+    arr->flags |= JSV_CONSTANT;
   return arr;
 }
 
@@ -1819,6 +1826,7 @@ size_t jsvGetCharsOnLine(JsVar *v, size_t line) {
 If ignoredLines is set, this is the number of lines at the beginning we should ignore because the
 IDE might have added them automatically. */
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col, size_t *ignoredLines) {
+  // Note: this doesn't handle pretokenised code (eg a string with newlines in) - but pretokenisation removes whitespace so maybe it's not a problem
   size_t x = 1;
   size_t y = 1;
   size_t n = 0;
@@ -1864,6 +1872,7 @@ void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col, size_
 
 //  IN A STRING, get a character index from a line and column
 size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col) {
+  // Note: this doesn't handle pretokenised code (eg a string with newlines in) - but pretokenisation removes whitespace so maybe it's not a problem
   size_t x = 1;
   size_t y = 1;
   size_t n = 0;
@@ -2405,7 +2414,10 @@ void jsvReplaceWith(JsVar *dst, JsVar *src) {
   if (jsvIsArrayBufferName(dst)) {
     size_t idx = (size_t)jsvGetInteger(dst);
     JsVar *arrayBuffer = jsvLock(jsvGetFirstChild(dst));
-    jsvArrayBufferSet(arrayBuffer, idx, src);
+    if (jsvIsConstant(arrayBuffer))
+      jsExceptionHere(JSET_TYPEERROR, "Assignment to a constant");
+    else
+      jsvArrayBufferSet(arrayBuffer, idx, src);
     jsvUnLock(arrayBuffer);
     return;
   }
@@ -3016,6 +3028,15 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
   return name;
 }
 
+/// Compare the first 4 bytes of two strings
+static ALWAYS_INLINE bool jsvFastPrefixEqual(const char *a, const char *b) {
+#ifdef ESPR_NO_UNALIGNED_READS
+  if (sizeof(JsVar)&3) // JsVars aren't 32 bit aligned, so we can't do a word compare
+    return a[0]==b[0] && a[1]==b[1] && a[2]==b[2] && a[3]==b[3];
+#endif
+  return *(const int*)a == *(const int*)b;
+}
+
 JsVar *jsvFindChildFromString(JsVar *parent, const char *name) {
   /* Pull out first 4 bytes, and ensure that everything
    * is 0 padded so that we can do a nice speedy check. */
@@ -3046,7 +3067,7 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name) {
     while (childref) {
       // Don't Lock here, just use GetAddressOf - to try and speed up the finding
       JsVar *child = jsvGetAddressOf(childref);
-      if (*(int*)fastCheck==*(int*)child->varData.str && // speedy check of first 4 bytes
+      if (jsvFastPrefixEqual(fastCheck, child->varData.str) && // speedy check of first 4 bytes
           jsvIsStringEqual(child, name)) {
         // found it! unlock parent but leave child locked
         return jsvLockAgain(child);
@@ -3059,7 +3080,7 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name) {
       charsInName++;
     while (childref) {
       JsVar *child = jsvGetAddressOf(childref);
-      if (*(int*)fastCheck==*(int*)child->varData.str &&
+      if (jsvFastPrefixEqual(fastCheck, child->varData.str) &&
           !child->varData.ref.lastChild &&
           jsvGetCharactersInVar(child)==charsInName) { // no extra stringexts - so it really is that small
         // found it! unlock parent but leave child locked
@@ -3273,7 +3294,12 @@ bool jsvObjectGetBoolChild(JsVar *obj, const char *name) {
 
 /// Same as jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name))
 JsVarInt jsvObjectGetIntegerChild(JsVar *obj, const char *name) {
-  if (!obj) return 0;
+  return jsvObjectGetIntegerChildOr(obj, name, 0);
+}
+
+/// Same as jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name))
+JsVarInt jsvObjectGetIntegerChildOr(JsVar *obj, const char *name, JsVarInt defaultValue) {
+  if (!obj) return defaultValue;
   assert(jsvHasChildren(obj));
   /* We could call jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name)) here
   but if we're accessing a NAME_INT it involves creating a new JsVar just to get the value out */
@@ -3283,7 +3309,9 @@ JsVarInt jsvObjectGetIntegerChild(JsVar *obj, const char *name) {
     jsvUnLock(v);
     return vi;
   }
-  return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(v));
+  v = jsvSkipNameAndUnLock(v);
+  if (!v) return defaultValue;
+  return jsvGetIntegerAndUnLock(v);
 }
 
 /// Same as jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(obj, name))
@@ -3315,9 +3343,24 @@ JsVar *jsvObjectSetChildVar(JsVar *obj, JsVar *name, JsVar *child) {
   return child;
 }
 
+void jsvObjectSetIntChild(JsVar *obj, const char *name, JsVarInt value) {
+  jsvObjectSetChildAndUnLock(obj,name,jsvNewFromInteger(value));
+}
+void jsvObjectSetFloatChild(JsVar *obj, const char *name, JsVarFloat value) {
+  jsvObjectSetChildAndUnLock(obj,name,jsvNewFromFloat(value));
+}
+void jsvObjectSetBoolChild(JsVar *obj, const char *name, bool value) {
+  jsvObjectSetChildAndUnLock(obj,name,jsvNewFromBool(value));
+}
+void jsvObjectSetStringChild(JsVar *obj, const char *name, const char *value) {
+  jsvObjectSetChildAndUnLock(obj,name,jsvNewFromString(value));
+}
+void jsvObjectSetPinChild(JsVar *obj, const char *name, int value) {
+  jsvObjectSetChildAndUnLock(obj,name,jsvNewFromPin((Pin)value));
+}
+
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
-  jsvObjectSetChild(obj, name, child);
-  jsvUnLock(child);
+  jsvUnLock(jsvObjectSetChild(obj, name, child));
 }
 
 void jsvObjectRemoveChild(JsVar *obj, const char *name) {
@@ -4375,11 +4418,9 @@ static void _jsvDefragment_moveReferences(JsVarRef defragFromRef, JsVarRef defra
   for (JsVarRef vr=1;vr<=lastAllocated;vr++) {
     JsVar *v = _jsvGetAddressOf(vr);
     if ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
-      if (jsvIsFlatString(v)) {
-        // finding a hole of the right size is a pain - so let's just shift back
-        // find the last available item by searching forward (we can't just search back as we might hit a flat string)
+      if (jsvIsFlatString(v)) { // flat string -> doesn't contain references to other things
         vr += (unsigned int)jsvGetFlatStringBlocks(v); // skip forward
-      } else {
+      } else { // not a flat string
         if (jsvHasSingleChild(v) || jsvHasChildren(v))
           if (jsvGetFirstChild(v)==defragFromRef)
             jsvSetFirstChild(v,defragToRef);
@@ -4448,15 +4489,21 @@ void jsvDefragment() {
           bool isClear = false;
           while (!isClear && (defragFromRef > fsToRef+minMove)) {
             isClear = true;
-            // check area in fsToRef to see if it's clear
-            for (unsigned int i=0;i<blocksNeeded;i++) {
-              // TODO: what if we want to overlap with ourself?? would have to ensure we don't clear overlapping area
-              if ((_jsvGetAddressOf(fsToRef+i)->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
-                isClear = false; // it's not clear!
-                fsToRef += i; // jump to this used block
-                break;
-              }
+            if ((size_t)(jsvGetAddressOf(fsToRef+1))&3) {
+              // Only allow if the next block is aligned on a 4 byte boundary or not (https://github.com/espruino/Espruino/issues/2726)
+              isClear = false;
+              fsToRef++;
             }
+
+            if (isClear) // check area in fsToRef to see if it's clear
+              for (unsigned int i=0;i<blocksNeeded;i++) {
+                // TODO: what if we want to overlap with ourself?? would have to ensure we don't clear overlapping area
+                if ((_jsvGetAddressOf(fsToRef+i)->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
+                  isClear = false; // it's not clear!
+                  fsToRef += i; // jump to this used block
+                  break;
+                }
+              }
             // if it wasn't clear, try and jump to the next item
             if (!isClear) {
               JsVar *v = _jsvGetAddressOf(fsToRef);

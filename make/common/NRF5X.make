@@ -216,7 +216,6 @@ $(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_mutex.c
 endif
 endif
 TARGETSOURCES += \
-$(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_state.c \
@@ -300,7 +299,6 @@ ifdef NRF5X_SDK_12
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer_appsh.c
@@ -411,11 +409,11 @@ endif
 ifdef NRF5X_SDK_17
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/timer/drv_rtc.c \
-  $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer2.c 
+  $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer2.c
 else
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/timer/experimental/drv_rtc.c \
-  $(NRF5X_SDK_PATH)/components/libraries/timer/experimental/app_timer2.c 
+  $(NRF5X_SDK_PATH)/components/libraries/timer/experimental/app_timer2.c
 endif
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c \
@@ -536,7 +534,7 @@ $(PROJ_NAME).hex: $(PROJ_NAME).app_hex
   else
 	@echo Merging SoftDevice and Bootloader
 	@# build a DFU settings file we can merge in... family can be NRF52840 or NRF52
-	nrfutil settings generate --family $(BOOTLOADER_SETTINGS_FAMILY) --application $(PROJ_NAME).app_hex --app-boot-validation VALIDATE_GENERATED_CRC --application-version 0x01 --bootloader-version 0x01 --bl-settings-version 2 $(OBJDIR)/dfu_settings.hex
+	scripts/nrfutil nrf5sdk-tools settings generate --family $(BOOTLOADER_SETTINGS_FAMILY) --application $(PROJ_NAME).app_hex --app-boot-validation VALIDATE_GENERATED_CRC --application-version 0x01 --bootloader-version 0x01 --bl-settings-version 2 $(OBJDIR)/dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
 	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).app_hex $(OBJDIR)/dfu_settings.hex -o $(PROJ_NAME).hex
   endif
@@ -558,12 +556,12 @@ ifdef NRF5X_SDK_11 # SDK11 requires non-secure DFU that the adafruit tools suppo
 	@rm $(PROJ_NAME)_app.hex
 else
 	@echo Creating DFU ZIP
-	# nrfutil  pkg generate --help
+	# scripts/nrfutil nrf5sdk-tools pkg generate --help
 	@cp $(PROJ_NAME).app_hex $(PROJ_NAME)_app.hex
-ifdef BOOTLOADER	
-	nrfutil pkg generate $(PROJ_NAME).zip --bootloader $(PROJ_NAME)_app.hex $(DFU_BOOTLOADER_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
+ifdef BOOTLOADER
+	scripts/nrfutil nrf5sdk-tools pkg generate $(PROJ_NAME).zip --bootloader $(PROJ_NAME)_app.hex $(DFU_BOOTLOADER_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
 else
-	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
+	scripts/nrfutil nrf5sdk-tools pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
 endif
 	@rm $(PROJ_NAME)_app.hex
 endif

@@ -95,7 +95,7 @@ typedef enum {
 
     JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1, // probably this is 63
 
-    JSV_CONSTANT    = JSV_VARTYPEMASK+1, ///< to specify if this variable is a constant or not. Only used for NAMEs
+    JSV_CONSTANT    = JSV_VARTYPEMASK+1, ///< to specify if this variable is a constant or not. Used for NAMEs, but also NativeStrings in Flash and ArrayBuffers that reference those
     JSV_NATIVE      = JSV_CONSTANT<<1, ///< to specify if this is a function parameter
     JSV_GARBAGE_COLLECT = JSV_NATIVE<<1, ///< When garbage collecting, this flag is true IF we should GC!
     JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
@@ -717,10 +717,17 @@ JsVar *jsvObjectGetChildI(JsVar *obj, const char *name);
 bool jsvObjectGetBoolChild(JsVar *obj, const char *name);
 /// Same as jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name))
 JsVarInt jsvObjectGetIntegerChild(JsVar *obj, const char *name);
+/// Same as jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name)) but with a default value if the child doesn't exist
+JsVarInt jsvObjectGetIntegerChildOr(JsVar *obj, const char *name, JsVarInt defaultValue);
 /// Same as jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(obj, name))
 JsVarFloat jsvObjectGetFloatChild(JsVar *obj, const char *name);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
+void jsvObjectSetIntChild(JsVar *obj, const char *name, JsVarInt value);
+void jsvObjectSetFloatChild(JsVar *obj, const char *name, JsVarFloat value);
+void jsvObjectSetBoolChild(JsVar *obj, const char *name, bool value);
+void jsvObjectSetStringChild(JsVar *obj, const char *name, const char *value);
+void jsvObjectSetPinChild(JsVar *obj, const char *name, int value);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChildVar(JsVar *obj, JsVar *name, JsVar *child);
 /// Set the named child of an object, and unlock the child

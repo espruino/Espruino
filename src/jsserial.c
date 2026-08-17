@@ -222,7 +222,7 @@ bool jsserialEventCallbackInit(JsVar *parent, JshUSARTInfo *inf) {
 
   IOEventFlags exti = jshPinWatch(inf->pinRX, true, JSPW_HIGH_SPEED);
   if (exti) {
-    jsvObjectSetChildAndUnLock(parent, "exti", jsvNewFromInteger(exti));
+    jsvObjectSetIntChild(parent, "exti", exti);
     JsVar *list = jsserialGetSerialList(true);
     if (!list) return false;
     jsvSetArrayItem(list, exti, parent);

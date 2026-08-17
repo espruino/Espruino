@@ -78,38 +78,39 @@ void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, u
       graphicsSetPixelDevice(gfx,x,y, col);
 }
 
-void graphicsFallbackBlit(JsGraphics *gfx, int x1, int y1, int w, int h, int x2, int y2) {
-  for (int y=0;y<h;y++)
+static void graphicsFallbackBlitX(JsGraphics *gfx, int x1, int y1, int w, int x2, int y2) {
+  if (x1 >= x2) {
     for (int x=0;x<w;x++)
-      gfx->setPixel(gfx, (int)(x+x2),(int)(y+y2),
-        gfx->getPixel(gfx, (int)(x+x1),(int)(y+y1)));
-}
-
-void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto, int x1, int x2) {
-  int x;
-  if (xdir<=0) {
-    int w = x2+xdir;
-    for (x=x1;x<=w;x++)
-      gfx->setPixel(gfx, (int)x,(int)yto,
-          gfx->getPixel(gfx, (int)(x-xdir),(int)yfrom));
-  } else { // >0
-    for (x=x2-xdir;x>=x1;x--)
-      gfx->setPixel(gfx, (int)(x+xdir),(int)yto,
-          gfx->getPixel(gfx, (int)x,(int)yfrom));
+      gfx->setPixel(gfx, x+x2, y2,
+        gfx->getPixel(gfx, x+x1, y1));
+  } else {
+    for (int x=w-1;x>=0;x--)
+      gfx->setPixel(gfx, x+x2, y2,
+        gfx->getPixel(gfx, x+x1, y1));
   }
 }
 
+/// blit a WxH area of x1y1 to x2y2 - all guaranteed to be in range
+void graphicsFallbackBlit(JsGraphics *gfx, int x1, int y1, int w, int h, int x2, int y2) {
+  if (y1 >= y2) {
+    for (int y=0;y<h;y++)
+      graphicsFallbackBlitX(gfx, x1, y+y1, w, x2, y+y2);
+  } else {
+    for (int y=h-1;y>=0;y--)
+      graphicsFallbackBlitX(gfx, x1, y1, w, x2, y2);
+  }
+}
+
+/// scroll - leave unscrolled area undefined (all values guaranteed to be in range)
 void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
   if (xdir==0 && ydir==0) return;
-  int y;
-  if (ydir<=0) {
-    int h = y2+ydir;
-    for (y=y1;y<=h;y++)
-      graphicsFallbackScrollX(gfx, xdir, y-ydir, y, x1, x2);
-  } else { // >0
-    for (y=y2-ydir;y>=y1;y--)
-      graphicsFallbackScrollX(gfx, xdir, y, y+ydir, x1, x2);
-  }
+  #define MAX(a,b) ((a) > (b) ? (a) : (b))
+  #define MIN(a,b) ((a) < (b) ? (a) : (b))
+  graphicsFallbackBlit(gfx, x1-MIN(xdir,0), y1-MIN(ydir,0),
+    x2-(x1+abs(xdir)), y2-(y1+abs(xdir)), // width/height
+    x1+MAX(xdir,0), y1+MAX(ydir,0));
+  #undef MIN
+  #undef MAX
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -142,6 +143,8 @@ void graphicsStructResetState(JsGraphics *gfx) {
 #endif
   gfx->data.cursorX = 0;
   gfx->data.cursorY = 0;
+  gfx->data.offsetX = 0;
+  gfx->data.offsetY = 0;
 }
 
 void graphicsStructInit(JsGraphics *gfx, int width, int height, int bpp) {
@@ -265,6 +268,8 @@ size_t graphicsGetMemoryRequired(const JsGraphics *gfx) {
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y) {
 #ifndef DICKENS // For Dickens, we can use Bangle.lcdWr(0x36, xxx) to set the screen rotation
+  *x += gfx->data.offsetX;
+  *y += gfx->data.offsetY;
   if (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) {
     int t = *x;
     *x = *y;
@@ -277,6 +282,7 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y) {
 
 // If graphics is flipped or rotated then the coordinates need modifying. This is to go back - eg for touchscreens
 void deviceToGraphicsCoordinates(const JsGraphics *gfx, int *x, int *y) {
+#ifndef DICKENS // For Dickens, we can use Bangle.lcdWr(0x36, xxx) to set the screen rotation
   if (gfx->data.flags & JSGRAPHICSFLAGS_INVERT_X) *x = (int)(gfx->data.width - (*x+1));
   if (gfx->data.flags & JSGRAPHICSFLAGS_INVERT_Y) *y = (int)(gfx->data.height - (*y+1));
   if (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) {
@@ -284,11 +290,16 @@ void deviceToGraphicsCoordinates(const JsGraphics *gfx, int *x, int *y) {
     *x = *y;
     *y = t;
   }
+  *x -= gfx->data.offsetX;
+  *y -= gfx->data.offsetY;
+#endif
 }
 
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates16x(const JsGraphics *gfx, int *x, int *y) {
 #ifndef DICKENS // For Dickens, we can use Bangle.lcdWr(0x36, xxx) to set the screen rotation
+  *x += gfx->data.offsetX*16;
+  *y += gfx->data.offsetY*16;
   if (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) {
     int t = *x;
     *x = *y;
@@ -909,15 +920,22 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
   else if (ydir<0) gfx->fillRect(gfx,x1,y2+1+ydir,x2,y2, gfx->data.bgColor);
 }
 
-static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {
+void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {
   // no need to modify coordinates as setPixel does that
+  int x = x1;
   while (*str) {
+    char ch = *(str++);
+    if (ch=='\n') {
+      y1 += 8;
+      x = x1;
+      continue;
+    }
 #ifdef USE_FONT_6X8
-    graphicsDrawChar6x8(gfx,x1,y1,*(str++),1,1,false);
-    x1 = (int)(x1 + 6);
+    graphicsDrawChar6x8(gfx,x,y1,ch,1,1,false);
+    x += 6;
 #else
-    graphicsDrawChar4x6(gfx,x1,y1,*(str++),1,1,false);
-    x1 = (int)(x1 + 4);
+    graphicsDrawChar4x6(gfx,x,y1,ch,1,1,false);
+    x += 4;
 #endif
   }
 }
@@ -935,3 +953,4 @@ void graphicsIdle() {
   lcdIdle_SDL();
 #endif
 }
+

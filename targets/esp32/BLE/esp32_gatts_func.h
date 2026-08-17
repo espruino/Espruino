@@ -41,7 +41,10 @@ struct gatts_service_inst {
   uint16_t num_handles;
   ble_uuid_t ble_uuid;
   uint16_t uuid16;
+  uint16_t mtu;
+  esp_bd_addr_t bda; // device address
   BLEServiceFlags serviceFlag;
+  bool isPeripheral; // is this for a peripheral connection (being connected *to*) or central (connecting to other stuff)
 };
 
 struct gatts_char_inst {

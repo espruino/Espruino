@@ -170,7 +170,7 @@ void jshKickSoftWatchDog() {
 }
 
 /// Called when we have had an event that means we should execute JS
-void jshHadEvent() {
+__attribute__((weak)) void jshHadEvent() {
   jshHadEventDuringSleep = true;
 }
 

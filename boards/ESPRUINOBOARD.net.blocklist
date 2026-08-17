@@ -8,5 +8,9 @@
 {"class":"StorageFile","name":"readLine"},
 {"class":"StorageFile","name":"erase"},
 {"class":"StorageFile","name":"getLength"},
-{"class":"StorageFile","name":"write"}
+{"class":"StorageFile","name":"write"},
+{"class":"E","name":"getClock"},
+{"class":"SPI","name":"send4bit"},
+{"class":"E","name":"dumpStr"},
+{"class":"E","name":"dumpFragmentation"}
 ]

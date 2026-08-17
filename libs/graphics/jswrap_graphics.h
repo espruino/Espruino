@@ -37,7 +37,7 @@ JsVar *jswrap_graphics_createImage(JsVar *data);
 
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height);
 int jswrap_graphics_getBPP(JsVar *parent);
-JsVar *jswrap_graphics_reset(JsVar *parent);
+JsVar *jswrap_graphics_reset(JsVar *parent, JsVar *usage);
 JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState);
 JsVar *jswrap_graphics_fillRect(JsVar *parent, JsVar *opt, int y1, int x2, int y2);
 JsVar *jswrap_graphics_clearRect(JsVar *parent, JsVar *opt, int y1, int x2, int y2);
@@ -55,6 +55,7 @@ unsigned int jswrap_graphics_blendColor(JsVar *parent, JsVar *ca, JsVar *cb, JsV
 JsVar *jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground);
 JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground);
 JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2);
+JsVar *jswrap_graphics_setOffset(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont);
 JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height);
 JsVar *jswrap_graphics_setFontPBF(JsVar *parent, JsVar *file, int scale);

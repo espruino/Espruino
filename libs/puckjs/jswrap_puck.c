@@ -109,9 +109,9 @@ void jswrap_puck_notAvailableException(const char *hardware) {
 JsVar *to_xyz(int16_t d[3], double scale) {
   JsVar *obj = jsvNewObject();
   if (!obj) return 0;
-  jsvObjectSetChildAndUnLock(obj,"x",jsvNewFromFloat(d[0]*scale));
-  jsvObjectSetChildAndUnLock(obj,"y",jsvNewFromFloat(d[1]*scale));
-  jsvObjectSetChildAndUnLock(obj,"z",jsvNewFromFloat(d[2]*scale));
+  jsvObjectSetFloatChild(obj,"x", d[0]*scale);
+  jsvObjectSetFloatChild(obj,"y", d[1]*scale);
+  jsvObjectSetFloatChild(obj,"z", d[2]*scale);
   return obj;
 }
 
@@ -1255,8 +1255,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
       if (hasPulses) jstPinOutputAtTime(time, &timerOffset, &anode, 1, pulsePolarity);
       else jshPinSetState(anode, JSHPINSTATE_GPIO_OUT);
     } else {
-      if (pulsePolarity) jstExecuteFn(_jswrap_puck_IR_on, NULL, time, 0, &timerOffset);
-      else jstExecuteFn(_jswrap_puck_IR_off, NULL, time, 0, &timerOffset);
+      jstExecuteFn(pulsePolarity ? _jswrap_puck_IR_on : _jswrap_puck_IR_off, NULL, time, 0, &timerOffset);
     }
     hasPulses = true;
     time += jshGetTimeFromMilliseconds(pulseTime);
@@ -1856,7 +1855,7 @@ bool jswrap_puck_idle() {
 }*/
 void jswrap_puck_powerusage(JsVar *devices) {
   if (mag_enabled)
-    jsvObjectSetChildAndUnLock(devices, "mag", jsvNewFromInteger(mag_power));
+    jsvObjectSetIntChild(devices, "mag", mag_power);
   if (accel_enabled)
-    jsvObjectSetChildAndUnLock(devices, "accel", jsvNewFromInteger(accel_power));
+    jsvObjectSetIntChild(devices, "accel", accel_power);
 }

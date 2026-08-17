@@ -25,6 +25,8 @@
 #include "jshardware.h"
 #include "jshardwareESP32.h"
 #include "bluetooth_utils.h"
+#include "bluetooth_common.h"
+#include "jswrap_bluetooth.h"
 
 #if ESP_IDF_VERSION_MAJOR==5
 #include "esp_mac.h"
@@ -36,10 +38,11 @@
 #define GAP_SCAN_FUNC "gap_scan_func"
 
 static uint8_t adv_config_done = 0;
+uint16_t blePeriphConnectionInterval = 0;
 
-static esp_ble_adv_params_t adv_params = {
-    .adv_int_min        = 0x20,
-    .adv_int_max        = 0x40,
+static esp_ble_adv_params_t adv_params = { // Time = N * 0.625 msec Time Range: 20 ms to 10.24
+    .adv_int_min        = 600,
+    .adv_int_max        = 600,
     .adv_type           = ADV_TYPE_IND,
     .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
     //.peer_addr            =
@@ -52,24 +55,9 @@ static esp_ble_scan_params_t ble_scan_params =   {
   .scan_type              = BLE_SCAN_TYPE_ACTIVE,
   .own_addr_type          = BLE_ADDR_TYPE_PUBLIC,
   .scan_filter_policy     = BLE_SCAN_FILTER_ALLOW_ALL,
-  .scan_interval          = 0x10, // default = 0x10 (10ms)
-  .scan_window            = 0x10  // default = 0x10 (10ms)
-};
-
-static esp_ble_adv_data_t adv_data = {
-    .set_scan_rsp = false,
-    .include_name = true,
-    .include_txpower = true,
-    .min_interval = 0x20,
-    .max_interval = 0x40,
-    .appearance = 0x00,
-    .manufacturer_len = 0, //TEST_MANUFACTURER_DATA_LEN,
-    .p_manufacturer_data =  NULL, //&test_manufacturer[0],
-    .service_data_len = 0,
-    .p_service_data = NULL,
-    .service_uuid_len = 0,  //needs to be set before used
-    .p_service_uuid = NULL,
-    .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT)
+  .scan_interval          = 0x00A0, // 0xA0 = 160 * 0.625ms = 100 ms
+  .scan_window            = 0x0050, // 0x50 = 80  * 0.625ms = 50 ms
+  .scan_duplicate         = BLE_SCAN_DUPLICATE_DISABLE // allow duplicates
 };
 
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
@@ -83,7 +71,6 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
       break;
     }
     case ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT:{
-
       adv_config_done &= (~scan_rsp_config_flag);
       if (adv_config_done == 0){
         esp_ble_gap_start_advertising(&adv_params);
@@ -103,6 +90,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
       break;
     }
     case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:{
+      blePeriphConnectionInterval = param->update_conn_params.conn_int;
       /*jsWarn("update connection params: status = %d, min_int = %d, max_int = %d, conn_int = %d, latency = %d, timeout = %d",
                   param->update_conn_params.status,
                   param->update_conn_params.min_int,
@@ -149,10 +137,13 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 
 void bluetooth_gap_setScan(bool enable, bool activeScan){
   esp_err_t status;
-  ble_scan_params.scan_type = activeScan ? BLE_SCAN_TYPE_ACTIVE : BLE_SCAN_TYPE_PASSIVE;
-  status = esp_ble_gap_set_scan_params(&ble_scan_params);
-  if (status){ jsWarn("gap set scan error code = %x", status);return;}
-  if(enable == true){
+  if (enable){
+    // only set scan params when enabling!
+    ble_scan_params.scan_type = activeScan ? BLE_SCAN_TYPE_ACTIVE : BLE_SCAN_TYPE_PASSIVE;
+    status = esp_ble_gap_set_scan_params(&ble_scan_params);
+    if (status)
+      return jsWarn("gap set scan error code = %x", status);
+    // enable scan
     status = esp_ble_gap_start_scanning(0);
     if (status != ESP_OK) jsWarn("esp_ble_gap_start_scanning: rc=%d", status);
   } else {
@@ -163,94 +154,13 @@ void bluetooth_gap_setScan(bool enable, bool activeScan){
 esp_err_t bluetooth_gap_startAdvertising(bool enable){
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
+
+  adv_params.adv_int_min = bleAdvertisingInterval;
+  adv_params.adv_int_max = bleAdvertisingInterval;
   if(enable)
     return esp_ble_gap_start_advertising(&adv_params);
   else
     return esp_ble_gap_stop_advertising();
-}
-
-int addAdvertisingData(uint8_t *advData,int pnt,int idx,JsVar *value){
-  int len = 0;
-  JSV_GET_AS_CHAR_ARRAY(dPtr,dLen,value);
-  if (!dPtr) return 0;
-  len = 4 + dLen;
-  advData[pnt++] = 3 + dLen;
-  advData[pnt++] = 22;
-  advData[pnt++] = idx & 255;
-  advData[pnt++] = idx >> 8;
-  for(int i = 0; i < dLen; i++){ advData[pnt++] = dPtr[i];}
-  return len;
-}
-
-int addAdvertisingDeviceName(uint8_t *advData,int pnt){
-  JsVar *deviceName;
-  deviceName = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_DEVICE_NAME);
-  if (!deviceName) { // if it's the first time this was called, try and create the name
-    bluetooth_initDeviceName();
-    deviceName = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_DEVICE_NAME);
-  }
-  if(deviceName) {
-    JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
-    if (!namePtr) return 0;
-    if(nameLen > 0) {
-      if((nameLen + pnt + 2) > BLE_GAP_ADV_MAX_SIZE) {
-        nameLen = BLE_GAP_ADV_MAX_SIZE - 2 - pnt;
-        advData[pnt] = nameLen + 1;
-        advData[pnt + 1] = 8; //  flag for "incomplete name"
-      } else{
-        advData[pnt] = nameLen + 1;
-        advData[pnt + 1] = 9; // flag for normal name
-      }
-      for (int i = 0; i < nameLen; i++)
-        advData[pnt + i + 2] = namePtr[i];
-    }
-    jsvUnLock(deviceName);
-    return nameLen + 2;
-  } else return 0;
-}
-
-int addAdvertisingUart(uint8_t *advData,int pnt){
-  // Nordic UART service UUID (+packet ID+len)
-  uint8_t uart_advice[18] = {0x11,0x07,0x9e,0xca,0xdc,0x24,0x0e,0xe5,0xa9,0xe0,0x93,0xf3,0xa3,0xb5,0x01,0x00,0x40,0x6e,};
-  for(int i = 0; i < 18; i++){ advData[pnt + i] = uart_advice[i];}
-  return 18;
-}
-
-JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
-  uint8_t encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
-  int i = 0;
-  if(jsvIsArray(data) || jsvIsArrayBuffer(data)){
-    return jsvLockAgain(data);
-  } else if(jsvIsObject(data) || jsvIsUndefined(data)){
-    encoded_advdata[i++] = 2;
-    encoded_advdata[i++] = 1;
-    encoded_advdata[i++] = 6;  //todo add support of showName == false
-    if (jsvIsObject(data)) {
-      JsvObjectIterator it;
-      jsvObjectIteratorNew(&it, data);
-      while(jsvObjectIteratorHasValue(&it)){
-        JsVar *value = jsvObjectIteratorGetValue(&it);
-        int idx = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
-        i = i + addAdvertisingData(encoded_advdata,i,idx,value);
-        jsvUnLock(value);
-        jsvObjectIteratorNext(&it);
-      }
-      jsvObjectIteratorFree(&it);
-    }
-    //todo add support of manufacturerData
-    i = i + addAdvertisingDeviceName(encoded_advdata,i);
-
-    // This doesn't work - UART service needs to be in the scan response like we do for nRF52 (there's no space in the main packet)
-    /*JsVar *uartVar = jsvObjectGetChildIfExists(options, "uart"); // this is not ideal - we should be checking BLE_NAME_NUS
-    if (!uartVar || jsvGetBool(uartVar)) // default is on if not set
-      i = i + addAdvertisingUart(&encoded_advdata,i);
-    jsvUnLock(uartVar);*/
-  } else {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, Array or undefined, got %t",data);
-    return 0;
-  }
-  if (i==0) return 0;
-  return jsvNewArrayBufferWithData(i,encoded_advdata);
 }
 
 uint32_t jsble_advertising_update_scanresponse(char *dPtr, unsigned int dLen) {
@@ -264,50 +174,17 @@ esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray) {
   esp_err_t ret;
   JsVar *allocatedData = 0;
   if(!advArray) { // work out what data to use
-    // this is what jswrap_ble_setAdvertising/jswrap_ble_getAdvertisingData would have used anyway
-    allocatedData = bluetooth_gap_getAdvertisingData(NULL, NULL);
+    allocatedData = _jswrap_ble_getAdvertisingData(NULL, NULL, true/*for setAdvertising*/);
     advArray = allocatedData;
   }
-  if(!advArray) { // fallback
-    adv_data.service_uuid_len = gatts_get_service_cnt() * 16;
-    ret = esp_ble_gap_config_adv_data(&adv_data);
-  } else {
-    JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);
-    if (advPtr) ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
-    jsvUnLock(allocatedData);
-  }
+  JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);
+  if (advPtr) ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
+  else ret = ESP_ERR_NOT_FOUND;
+  jsvUnLock(allocatedData);
   if (ret) {
     jsWarn("bluetooth_gap_setAdvertising failed, error code = %x", ret);
   }
   return ret;
-}
-
-esp_err_t bluetooth_setDeviceName(JsVar *deviceName){
-  esp_err_t r;
-  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_DEVICE_NAME, deviceName);
-  JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
-  if (namePtr) r = esp_ble_gap_set_device_name((uint8_t *)namePtr);
-  return r;
-}
-
-void bluetooth_initDeviceName(){
-  char deviceName[32];
-#if defined(BLUETOOTH_NAME_PREFIX)
-  #error "BLUETOOTH_NAME_PREFIX is broken for ESP32 (passed badly into Makefile)"
-#endif
-  strcpy(deviceName,"Espruino");
-  size_t len = strlen(deviceName);
-  // append last 2 bytes of MAC address to name
-  deviceName[len++] = ' ';
-  uint8_t macnr[6];
-  esp_efuse_mac_get_default(macnr);
-  deviceName[len++] = itoch((macnr[4]>>4)&15);
-  deviceName[len++] = itoch(macnr[4]&15);
-  deviceName[len++] = itoch((macnr[5]>>4)&15);
-  deviceName[len++] = itoch(macnr[5]&15);
-  deviceName[len++] = 0;
-
-  jsvObjectSetChild(execInfo.hiddenRoot, BLE_DEVICE_NAME,jsvNewFromString(deviceName));
 }
 
 void gap_init_security(){

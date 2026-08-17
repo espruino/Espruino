@@ -31,6 +31,17 @@
 #define adc_channel_max 8
 
 adc_atten_t adc_channel[8];
+static bool adc_channel_setup[adc_channel_max];
+static adc_atten_t adc_channel_configured_atten[adc_channel_max];
+
+static void adcEnsureChannelConfigured(adc1_channel_t channel, int idx) {
+  if (idx < 0) return;
+  if (!adc_channel_setup[idx] || adc_channel_configured_atten[idx] != adc_channel[idx]) {
+    adc1_config_channel_atten(channel, adc_channel[idx]);
+    adc_channel_setup[idx] = true;
+    adc_channel_configured_atten[idx] = adc_channel[idx];
+  }
+}
 
 adc1_channel_t pinToAdcChannel(Pin pin){
   adc1_channel_t channel;
@@ -113,6 +124,7 @@ void initADC(int ADCgroup){
 #else
       adc_channel[i] = ADC_ATTEN_11db;
 #endif
+      adc_channel_setup[i] = false;
      }
     break;
   case 2:
@@ -128,22 +140,20 @@ void initADC(int ADCgroup){
 }
 
 void rangeADC(Pin pin,int range){
-  int idx,atten;
-  idx = pinToAdcChannelIdx(pin);
-  printf("idx:%d\n",idx);
+  int idx = pinToAdcChannelIdx(pin);
   if(idx >= 0){
     adc_channel[idx] = rangeToAdcAtten(range);
-    printf("Atten:%d \n",adc_channel[idx]);
+    adc_channel_setup[idx] = false;
   }
 }
 
 int readADC(Pin pin){
-  adc1_channel_t channel; int value;
+  adc1_channel_t channel;
   channel = pinToAdcChannel(pin);
   if(channel >= 0) {
-    adc1_config_channel_atten(channel,adc_channel[pinToAdcChannelIdx(pin)]);
+    int idx = pinToAdcChannelIdx(pin);
+    adcEnsureChannelConfigured(channel, idx);
 #if ESP_IDF_VERSION_MAJOR>=4
-	  // ESP_IDF 4.x - int adc1_get_voltage(adc1_channel_t channel)    //Deprecated. Use adc1_get_raw() instead
 	  int value=adc1_get_raw(channel);
 #if CONFIG_IDF_TARGET_ESP32C3
     // we need to call it twice to get a decent value on the C3 for some reason!
@@ -151,7 +161,7 @@ int readADC(Pin pin){
     value=adc1_get_raw(channel);
 #endif
 #else
-	  value = adc1_get_voltage(channel);
+	  int value = adc1_get_voltage(channel);
 #endif
     return value;
   } else return -1;

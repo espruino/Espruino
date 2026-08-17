@@ -299,7 +299,7 @@ static JsVar *_jswrap_array_iterate_with_callback(
             if (returnType == RETURN_ARRAY_ELEMENT || returnType == RETURN_ARRAY_INDEX) {
               if (matched) {
                 result = (returnType == RETURN_ARRAY_ELEMENT) ?
-                    jsvLockAgain(value) :
+                    jsvLockAgainSafe(value) :
                     jsvNewFromInteger(jsvGetInteger(index));
                 isDone = true;
               }

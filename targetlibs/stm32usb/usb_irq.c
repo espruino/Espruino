@@ -76,3 +76,9 @@ void OTG_FS_IRQHandler(void) {
   HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
 }
 #endif // STM32L4
+
+#ifdef STM32F7
+void OTG_FS_IRQHandler(void) {
+  HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
+}
+#endif // STM32F7

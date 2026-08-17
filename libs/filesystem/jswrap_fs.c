@@ -345,8 +345,8 @@ JsVar *jswrap_fs_stat(JsVar *path) {
     if (res==0 /*ok*/) {
       JsVar *obj = jsvNewObject();
       if (!obj) return 0;
-      jsvObjectSetChildAndUnLock(obj, "size", jsvNewFromInteger((JsVarInt)info.fsize));
-      jsvObjectSetChildAndUnLock(obj, "dir", jsvNewFromBool(info.fattrib & AM_DIR));
+      jsvObjectSetIntChild(obj, "size", (JsVarInt)info.fsize);
+      jsvObjectSetBoolChild(obj, "dir", info.fattrib & AM_DIR);
 
       CalendarDate date;
       date.year = 1980+(int)((info.fdate>>9)&127);
@@ -368,8 +368,8 @@ JsVar *jswrap_fs_stat(JsVar *path) {
   if (stat(pathStr, &info)==0 /*ok*/) {
     JsVar *obj = jsvNewObject();
     if (!obj) return 0;
-    jsvObjectSetChildAndUnLock(obj, "size", jsvNewFromInteger((JsVarInt)info.st_size));
-    jsvObjectSetChildAndUnLock(obj, "dir", jsvNewFromBool(S_ISDIR(info.st_mode)));
+    jsvObjectSetIntChild(obj, "size", (JsVarInt)info.st_size);
+    jsvObjectSetBoolChild(obj, "dir", S_ISDIR(info.st_mode));
     jsvObjectSetChildAndUnLock(obj, "mtime", jswrap_date_from_milliseconds((JsVarFloat)info.st_mtime*1000.0));
     return obj;
   }
@@ -424,10 +424,10 @@ JsVar *jswrap_fs_getfree(JsVar *path) {
 #else
       sect_size = FF_MIN_SS;
 #endif
-      jsvObjectSetChildAndUnLock(obj, "freeSectors", jsvNewFromInteger((JsVarInt)fre_sect));
-      jsvObjectSetChildAndUnLock(obj, "totalSectors", jsvNewFromInteger((JsVarInt)tot_sect));
-      jsvObjectSetChildAndUnLock(obj, "sectorSize", jsvNewFromInteger((JsVarInt)sect_size));
-      jsvObjectSetChildAndUnLock(obj, "clusterSize", jsvNewFromInteger((JsVarInt)fs->csize));
+      jsvObjectSetIntChild(obj, "freeSectors", (JsVarInt)fre_sect);
+      jsvObjectSetIntChild(obj, "totalSectors", (JsVarInt)tot_sect);
+      jsvObjectSetIntChild(obj, "sectorSize", (JsVarInt)sect_size);
+      jsvObjectSetIntChild(obj, "clusterSize", (JsVarInt)fs->csize);
       return obj;
     }
   }
