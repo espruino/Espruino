@@ -15,11 +15,7 @@
 #include <stdio.h>
 #include "jswrap_rtos.h"
 #include "jsparse.h"
-#if ESP_IDF_VERSION_MAJOR>=5
-  #include "rtosutil_idf5.h"
-#else
-  #include "rtosutil.h"
-#endif
+#include "rtosutil.h"
 
 /*JSON{
   "type"    : "class",

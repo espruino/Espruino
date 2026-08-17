@@ -15,8 +15,8 @@
  * ----------------------------------------------------------------------------
  */
 
-#ifndef TARGETS_ES32_JSHARDWARE_ESP32_H_
-#define TARGETS_ES32_JSHARDWARE_ESP32_H_
+#ifndef TARGETS_ESP32_JSHARDWARE_ESP32_H_
+#define TARGETS_ESP32_JSHARDWARE_ESP32_H_
 
 #include <stdio.h>
 #include "jsvar.h"
@@ -32,4 +32,4 @@ typedef enum{
 bool ESP32_Get_NVS_Status(esp_hardware_esp32_t hardware);
 void ESP32_Set_NVS_Status(esp_hardware_esp32_t hardware, bool enable);  
 
-#endif
+#endif /* TARGETS_ESP32_JSHARDWARE_ESP32_H_ */

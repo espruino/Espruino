@@ -31,14 +31,6 @@
 #else
 #define JS_VERSION "2v29." BUILDNUMBER
 #endif
-
-#ifndef JSUTILS_H
-  #define JSUTILS_H
-  #ifdef ESP32
-    extern uintptr_t espruino_stackHighPtr;
-  #endif
-#endif
-
 /*
   In code:
   TODO - should be fixed

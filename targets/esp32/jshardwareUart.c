@@ -22,14 +22,27 @@
 #include "jsdevices.h"
 #include "jsinteractive.h"
 
+#define uart_Serial1 0
+#define uart_Serial2 1
+#define uart_Serial3 2
+
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #include "driver/usb_serial_jtag.h"
+#if ESP_IDF_VERSION_MAJOR >= 5
+#include <unistd.h>
+#else // is_connected not in IDF 4, so make our own
+#include "hal/usb_serial_jtag_ll.h"
+uint16_t usb_serial_jtag_idle_counter = 0;
+uint32_t usb_serial_jtag_last_frame_counter = 0;
+bool usb_serial_jtag_is_driver_installed() {
+  return true;
+}
+bool usb_serial_jtag_is_connected() {
+  return usb_serial_jtag_idle_counter < 1000;
+}
 #endif
 
-bool serial2_initialized = false;
-bool serial3_initialized = false;
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-static bool uart_console_installed = false;
+volatile bool usbUARTIsNotFlushed;
 #endif
 
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
@@ -43,27 +56,6 @@ void initUart(int uart_num, uart_config_t uart_config, int txpin, int rxpin){
   ESP_ERROR_CHECK(err);
   err = uart_driver_install(uart_num, 1024, 1024, 0, NULL, 0);
   ESP_ERROR_CHECK(err);
-}
-
-void UartReset(){
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-  if (uart_console_installed) uart_driver_delete(uart_console);
-  usb_serial_jtag_driver_uninstall();
-#else
-  uart_driver_delete(uart_console);
-#endif
-  initConsole();
-
-  if(serial2_initialized){
-    uart_driver_delete(uart_Serial2);
-    serial2_initialized = false;
-  }
-#if ESPR_USART_COUNT>2
-  if(serial3_initialized){
-    uart_driver_delete(uart_Serial3);
-    serial3_initialized = false;
-  }
-#endif
 }
 
 void initSerial(IOEventFlags device, JshUSARTInfo *inf){
@@ -81,32 +73,28 @@ void initSerial(IOEventFlags device, JshUSARTInfo *inf){
     case 2: uart_config.parity = UART_PARITY_EVEN; break;
   }
   if(device == EV_SERIAL1) {
-#ifndef ESPR_USE_USB_SERIAL_JTAG
-    initUart(uart_console,uart_config,-1,-1);
-#else
-    // Console I/O uses USB Serial/JTAG; UART0 driver blocks light sleep
-    // (IDF suspend_uarts waits for UART0 FSM idle when the peripheral is on).
-    uart_console_installed = false;
-#endif
+    if (jshIsDeviceInitialised(EV_SERIAL1))
+      uart_driver_delete(uart_Serial1);
+    initUart(uart_Serial1, uart_config, -1, -1); // FIXME: pins?
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL1, true);
   } else if(device == EV_SERIAL2){
-    if(inf->pinTX == 0xFF) inf->pinTX = 4;
+    if(inf->pinTX == 0xFF) inf->pinTX = 4; // FIXME: use what's in jspininfo
     if(inf->pinRX == 0xFF) inf->pinRX = 5;
-    if(serial2_initialized) uart_driver_delete(uart_Serial2);
+    if (jshIsDeviceInitialised(EV_SERIAL2))
+      uart_driver_delete(uart_Serial2);
     initUart(uart_Serial2, uart_config, inf->pinTX, inf->pinRX);
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL2, true);
-    serial2_initialized = true;
 #if ESPR_USART_COUNT>2
   } else if(device == EV_SERIAL3){
-    if(inf->pinTX == 0xFF) inf->pinTX = 17;
+    if(inf->pinTX == 0xFF) inf->pinTX = 17; // FIXME: use what's in jspininfo
     if(inf->pinRX == 0xFF) inf->pinRX = 16;
-    if(serial3_initialized) uart_driver_delete(uart_Serial3);
+    if (jshIsDeviceInitialised(EV_SERIAL3))
+      uart_driver_delete(uart_Serial3);
     initUart(uart_Serial3, uart_config, inf->pinTX, inf->pinRX);
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL3, true);
-    serial3_initialized = true;
 #endif
   }
 }
@@ -120,13 +108,16 @@ void initConsole(){
   };
 #if ESP_IDF_VERSION_MAJOR>=5
   if (!usb_serial_jtag_is_driver_installed()) {
-#else
+#else // IDF <5
+  usb_serial_jtag_idle_counter = 65535;
+  usb_serial_jtag_last_frame_counter = USB_SERIAL_JTAG.fram_num.val;
   if (true) {
 #endif
     jsDebug(DBG_INFO, "initConsole: Installing usb_serial_jtag_driver\n");
     ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb_serial_config));
   }
-  uart_console_installed = false;
+  // No need for USB flow control - backpressure is fine
+  jshSetDeviceInitialised(EV_USBSERIAL, true);
 #else
   uart_config_t uart_config = {
     .baud_rate = 115200,
@@ -136,17 +127,38 @@ void initConsole(){
     .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
     .rx_flow_ctrl_thresh = 122,
   };
-  initUart(uart_console, uart_config, -1, -1);
-#endif
-
-  // should we use hardware flow control on most ESP32 boards?
-  // No... It looks like CTS is not connected on most boards, so XON/XOFF is best!
+  initUart(uart_Serial1, uart_config, -1, -1);
+  // Don't use hardware flow control on most ESP32 boards. CTS is not connected on most boards, so XON/XOFF is best
   jshSetFlowControlEnabled(EV_SERIAL1, true, PIN_UNDEFINED);
   jshSetDeviceInitialised(EV_SERIAL1, true);
+#endif
 }
+
+
 
 uint8_t rxbuf[256];
 void pollSerialDevices() {
+  // Handle transmission
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+#if ESP_IDF_VERSION_MAJOR < 5 // hack to work out if we're connected or not on IDF4
+  uint32_t frame = USB_SERIAL_JTAG.fram_num.val;
+  if (frame != usb_serial_jtag_last_frame_counter) {
+    usb_serial_jtag_idle_counter = 0;
+    usb_serial_jtag_last_frame_counter = frame;
+  } else if (usb_serial_jtag_idle_counter<65535) usb_serial_jtag_idle_counter++;
+#endif
+    /* The USB CDC UART on the C3 only writes the data to USB after a newline.
+    We don't want that, so we call flush in this uart task if any data has been sent. */
+    if (usbUARTIsNotFlushed) {
+#if ESP_IDF_VERSION_MAJOR >= 5
+      usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(10));
+#else
+      usb_serial_jtag_ll_txfifo_flush();
+#endif
+      usbUARTIsNotFlushed = false;
+    }
+#endif
+  // Hand Receive
   if (jshGetIOCharEventsFree() < 256) { // if we don't have enough space for data
     jshHadEvent(); // ensure we wake up the main task
     vTaskDelay(pdMS_TO_TICKS(10)); // wait for the espruino task
@@ -160,25 +172,32 @@ void pollSerialDevices() {
   /* FIXME: we should use esp_vfs_usb_serial_jtag_use_driver/esp_vfs_dev_uart_register
   and then 'select' on ALL of these open files - then we can sleep for however long
   we want. */
-
 #ifdef ESPR_USE_USB_SERIAL_JTAG
   len = usb_serial_jtag_read_bytes(rxbuf, sizeof(rxbuf), ticksToWait);
-#else
-  len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), ticksToWait);  // Read data from UART
-#endif
+  ticksToWait = 0;
   if(len > 0) {
-    jshPushIOCharEvents(EV_SERIAL1, rxbuf, len);
+    jshPushIOCharEvents(EV_USBSERIAL, rxbuf, len);
     busy = true;
   }
-  if(serial2_initialized){
-    len = uart_read_bytes(uart_Serial2, rxbuf, sizeof(rxbuf), 0/*don't wait*/);
+#endif
+  if(jshIsDeviceInitialised(EV_SERIAL1)){
+    len = uart_read_bytes(uart_Serial1, rxbuf, sizeof(rxbuf), ticksToWait);
+    ticksToWait = 0;
+    if(len > 0) {
+      jshPushIOCharEvents(EV_SERIAL1, rxbuf, len);
+      busy = true;
+    }
+  }
+  if(jshIsDeviceInitialised(EV_SERIAL2)){
+    len = uart_read_bytes(uart_Serial2, rxbuf, sizeof(rxbuf), ticksToWait);
+    ticksToWait = 0;
     if(len > 0) {
       jshPushIOCharEvents(EV_SERIAL2, rxbuf, len);
       busy = true;
     }
   }
 #if ESPR_USART_COUNT>2
-  if(serial3_initialized){
+  if(jshIsDeviceInitialised(EV_SERIAL3)){
     len = uart_read_bytes(uart_Serial3, rxbuf, sizeof(rxbuf), 0/*don't wait*/);
     if(len > 0) {
       jshPushIOCharEvents(EV_SERIAL3, rxbuf, len);
@@ -193,11 +212,20 @@ void pollSerialDevices() {
 
 void writeSerial(IOEventFlags device, uint8_t c){
   char str[2] = { (char)c, '\0' };
-  if(device == EV_SERIAL2 && serial2_initialized){
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+  if(device == EV_USBSERIAL) {
+    usb_serial_jtag_write_bytes(&c, 1, 0);
+    usbUARTIsNotFlushed = true; // ensure we flash USB eventually
+  }
+#endif
+  if(device == EV_SERIAL1 && jshIsDeviceInitialised(EV_SERIAL1)){
+    uart_write_bytes(uart_Serial1, str, 1);
+  }
+  if(device == EV_SERIAL2 && jshIsDeviceInitialised(EV_SERIAL2)){
     uart_write_bytes(uart_Serial2, str, 1);
   }
 #if ESPR_USART_COUNT>2
-  else if(device == EV_SERIAL3 && serial3_initialized){
+  else if(device == EV_SERIAL3 && jshIsDeviceInitialised(EV_SERIAL3)){
     uart_write_bytes(uart_Serial3, str, 1);
   }
 #endif

@@ -67,11 +67,7 @@
 #include "driver/gpio.h"
 #include "soc/gpio_sig_map.h"
 #ifdef ESPR_USE_USB_SERIAL_JTAG
-#if ESP_IDF_VERSION_MAJOR>=5
 #include "driver/usb_serial_jtag.h"
-#elif ESP_IDF_VERSION_MAJOR==4
-#include "hal/usb_serial_jtag_ll.h"
-#endif
 #endif
 
 #if ESP_IDF_VERSION_MAJOR>=5
@@ -176,7 +172,7 @@ void jshPinDefaultPullup() {
   // 6-11 are used by Flash chip
   // 32-33 are routed to rtc for xtal
   // 16-17 are used for PSRAM (future use)
-  // 34-39 are input-only 
+  // 34-39 are input-only
   jshPinSetStateRange(0,0,JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetStateRange(12,15,JSHPINSTATE_GPIO_IN_PULLUP);
 #ifdef CONFIG_IDF_TARGET_ESP32S3
@@ -199,12 +195,8 @@ void jshInit() {
   ESP_LOGW("Espruino", "ESP-IDF task watchdog enabled in sdkconfig; E.enableWatchdog may behave inconsistently");
 #endif
 #ifdef USE_NET
-  esp32_wifi_init();
+  if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) esp32_wifi_init();
 #endif
-  // Auto-reconnect if saved creds exist
-  //if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) {
-  //  jswrap_wifi_restore();  // Loads SSID/pass from NVS → auto-connect
-  //}
 #ifdef BLUETOOTH
   if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) gattc_init();
 #endif
@@ -227,7 +219,6 @@ void jshKill() {
 void jshReset() {
   jshResetDevices();
   jshPinDefaultPullup() ;
-//  UartReset();
   RMTReset();
   ADCReset();
   I2CReset();
@@ -558,7 +549,7 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 void jshKickWatchDog() {
 #ifndef CONFIG_ESP_TASK_WDT_EN
   return;
-#else 
+#else
 
 #ifdef ESPR_DISABLE_KICKWATCHDOG_PIN // if this pin is asserted, don't kick the watchdog
   if (jshPinGetValue(ESPR_DISABLE_KICKWATCHDOG_PIN)) return;
@@ -664,11 +655,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
 bool jshIsUSBSERIALConnected() {
 #ifdef ESPR_USE_USB_SERIAL_JTAG
-#if ESP_IDF_VERSION_MAJOR>=5
   return usb_serial_jtag_is_driver_installed() && usb_serial_jtag_is_connected();
-#else
-  return false;
-#endif
 #else
   return false; // "On non-USB boards this just returns false"
 #endif
@@ -681,41 +668,16 @@ bool jshIsUSBSERIALConnected() {
 void jshUSARTKick(IOEventFlags device) {
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
-  switch(device){
+    switch(device){
 #ifdef BLUETOOTH
-    case EV_BLUETOOTH:
-      gatts_sendNUSNotification(c);
-      break;
+      case EV_BLUETOOTH:
+        gatts_sendNUSNotification(c);
+        break;
 #endif
-    case EV_SERIAL1:
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-      {
-        uint8_t ch = (uint8_t)c;
-#if ESP_IDF_VERSION_MAJOR>=5
-        if (usb_serial_jtag_is_driver_installed()) {
-          usb_serial_jtag_write_bytes(&ch, 1, 0);
-        } else {
-          uart_tx_one_char(ch);
-        }
-#else
-        uart_tx_one_char(ch);
-#endif
-      }
-#else
-      uart_tx_one_char((uint8_t)c);
-#endif
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-      // Ensure uartTask in main.c knows to wait for pending USB Serial/JTAG TX to complete.
-      extern void esp32USBUARTWasUsed();
-      esp32USBUARTWasUsed();
-#endif
-      break;
-    default:
-      writeSerial(device,(uint8_t)c);
-      break;
-    //if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c);
-    //else writeSerial(device,(uint8_t)c);
-  }
+      default:
+        writeSerial(device,(uint8_t)c);
+        break;
+    }
     c = jshGetCharToTransmit(device);
   }
 }
@@ -762,6 +724,7 @@ void jshSetSystemTime(JsSysTime newTime) {
   tz.tz_dsttime=0;
   settimeofday(&tm, &tz);
 }
+
 void jshUtilTimerDisable() {
   timer_pause(TIMER_GROUP_0, 0);
   timer_disable_intr(TIMER_GROUP_0, 0);
@@ -904,7 +867,7 @@ JsVar *jshFlashGetFree() {
   return jsFreeFlash;
 }
 
-//Erase the flash page containing the address.
+/// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr) {
 #if ESP_IDF_VERSION_MAJOR>=5
   esp_err_t err = esp_flash_erase_region(esp_flash_default_chip, addr, 4096);

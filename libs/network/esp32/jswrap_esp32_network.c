@@ -63,7 +63,6 @@
 esp_netif_t *sta_netif;
 static esp_event_handler_instance_t instance_wifi = NULL;
 static esp_event_handler_instance_t instance_ip = NULL;
-//static esp_event_handler_instance_t instance_ap_ip = NULL;
 
 #endif
 
@@ -103,7 +102,6 @@ static wifi_event_sta_disconnected_t g_lastEventStaDisconnected;
 #else
 // The last time we were connected as a station.
 static system_event_sta_connected_t g_lastEventStaConnected;
-
 // The last time we were disconnected as a station.
 static system_event_sta_disconnected_t g_lastEventStaDisconnected;
 #endif
@@ -115,9 +113,6 @@ static bool g_isAPStarted = false;
 
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOPT)
-
-
-static const char *TAG = "wifi";
 
 //===== mDNS
 static bool mdns_started = 0;
@@ -152,7 +147,7 @@ void startMDNS(const char *hostname) {
   mdns_started = true;
 }
 
-// Convert an wifi_auth_mode_t data type to a string value.
+/// Convert an wifi_auth_mode_t data type to a string value.
 static char *authModeToString(wifi_auth_mode_t authMode) {
   switch(authMode) {
     case WIFI_AUTH_OPEN: return "open";
@@ -162,13 +157,9 @@ static char *authModeToString(wifi_auth_mode_t authMode) {
     case WIFI_AUTH_WPA_WPA2_PSK: return "wpa_wpa2";
     default:  return "unknown";
   }
-} // End of authModeToString
+}
 
-//Convert an wifi_cipher_type_t data type to a string value.
-
-/**
- * Convert an wifi_cipher_type_t data type to a string value.
- *
+/// Convert an wifi_cipher_type_t data type to a string value.
 static char *cipherTypeToString(wifi_cipher_type_t cipherType) {
 
   switch(cipherType) {
@@ -186,16 +177,9 @@ static char *cipherTypeToString(wifi_cipher_type_t cipherType) {
     return "TKIP+CCMP";
   }
   return "unknown";
-} // End of authModeToString
-*/
+}
 
-/**
- * check esp function
-*/
-
-/**
- * Convert an wifi_second_chan_t data type to a string value.
- */
+/// Convert an wifi_second_chan_t data type to a string value.
 static char *htModeToString(wifi_second_chan_t htMode) {
   switch(htMode) {
     case WIFI_SECOND_CHAN_NONE: return "HT20";
@@ -203,9 +187,9 @@ static char *htModeToString(wifi_second_chan_t htMode) {
     case WIFI_SECOND_CHAN_BELOW: return "HT40-";
     default: return "unknown";
   }
-} // End of htModeToString
+}
 
-// Convert a Wifi reason code to a string representation.
+/// Convert a Wifi reason code to a string representation.
 const char *wifiReasonToString(int r) {
   switch (r) {
     case WIFI_REASON_UNSPECIFIED: return "UNSPECIFIED";
@@ -238,9 +222,8 @@ const char *wifiReasonToString(int r) {
     default: return "Unknown reason";
   }
 }
-/**
- * Convery a wifi_mode_t data type to a string value.
- */
+
+/// Convert a wifi_mode_t data type to a string value.
 static char *wifiModeToString(wifi_mode_t mode) {
   switch(mode) {
     case WIFI_MODE_NULL: return "NULL";
@@ -249,10 +232,10 @@ static char *wifiModeToString(wifi_mode_t mode) {
     case WIFI_MODE_APSTA: return "APSTA";
     default: return "UNKNOWN";
   }
-} // End of wifiModeToString
+}
 
 #if ESP_IDF_VERSION_MAJOR>=5
-// Convert an wifi event to a string value.
+/// Convert an wifi event to a string value.
 const char *wifiEventToString(int e) {
   switch (e) {
     case WIFI_EVENT_STA_CONNECTED: return "STA_CONNECTED";
@@ -286,9 +269,7 @@ const char *ipEventToString(int e) {
   }
 }
 #else
-/**
- * Convert an wifi event to a string value.
- */
+/// Convert an wifi event to a string value.
 static char *wifiEventToString(uint32_t event){
   jsDebug(DBG_INFO, "wifiReasonToString %d\n",event);
   switch(event){
@@ -322,9 +303,7 @@ static char *wifiEventToString(uint32_t event){
 }
 #endif
 
-/**
- * convert WiFi error to a string value.
- */
+/// convert WiFi error to a string value.
 static char *wifiErrorToString(esp_err_t err){
   jsDebug(DBG_INFO, "wifiErrorToString %d: %s \n", err,esp_err_to_name(err));
   return (char *) esp_err_to_name(err);
@@ -378,18 +357,18 @@ static void scanCB() {
       // Add the new record to the array
       jsvArrayPush(jsAccessPointArray, jsCurrentAccessPoint);
       jsvUnLock(jsCurrentAccessPoint);
-    } // End of loop over each access point
+    }
     free(list);
   } // Number of access points > 0
 
   // We have now completed the scan callback, so now we can invoke the JS callback.
-  JsVar *params[] = {jsAccessPointArray};
+  JsVar *params[1] = { jsAccessPointArray };
   jsiQueueEvents(NULL, g_jsScanCallback, params, 1);
 
   jsvUnLock(jsAccessPointArray);
   jsvUnLock(g_jsScanCallback);
   g_jsScanCallback = NULL;
-} // End of scanCB
+}
 
 
 /** Get the global object for the Wifi library/module, this is used in order to send the
@@ -400,7 +379,7 @@ static JsVar *getWifiModule() {
   JsVar *m = jswrap_require(moduleName);
   jsvUnLock(moduleName);
   return m;
-} // End of getWifiModule
+}
 
 /**
  * Given an ESP32 WiFi event type, determine the corresponding
@@ -704,7 +683,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 
     stopWifiIfIdle();
     return ESP_OK;
-  } // End of handle SYSTEM_EVENT_STA_DISCONNECTED
+  }
 
   /**
    * SYSTEM_EVENT_STA_CONNECTED
@@ -733,7 +712,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     jsvObjectSetStringChild(jsDetails, "channel", temp);
     sendWifiEvent(event->event_id, jsDetails);
     return ESP_OK;
-  } // End of handle SYSTEM_EVENT_STA_CONNECTED
+  }
 
   if (event->event_id == SYSTEM_EVENT_STA_START) {
     // Perform an esp_wifi_connect
@@ -778,7 +757,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
       startMDNS(hostname);
     }
     return ESP_OK;
-  } // End of handle SYSTEM_EVENT_STA_GOT_IP
+  }
 
   /**
    * SYSTEM_EVENT_AP_STACONNECTED
@@ -846,7 +825,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 
   jsDebug(DBG_INFO, "Wifi: event_handler -> NOT HANDLED EVENT: %d\n", event->event_id );
   return ESP_OK;
-} // End of event_handler
+}
 #endif
 
 /**
@@ -908,7 +887,7 @@ static void sendWifiCompletionCB(
   // unlock and delete the global callback
   jsvUnLock(*g_jsCallback);
   *g_jsCallback = NULL;
-} // End of sendWifiCompletionCB
+}
 
 /*JSON{
   "type":"init",
@@ -920,7 +899,7 @@ static void sendWifiCompletionCB(
  * Perform a soft initialization of ESP32 networking.
  */
 void jswrap_esp32_wifi_soft_init() {
-  //jsDebug(DBG_INFO, "jswrap_esp32_wifi_soft_init()\n");
+  jsDebug(DBG_INFO, "jswrap_esp32_wifi_soft_init()\n");
   JsNetwork net;
   networkCreate(&net, JSNETWORKTYPE_ESP32); // Set the network type to be ESP32
   networkState = NETWORKSTATE_ONLINE; // Set the global state of the networking to be online
@@ -962,7 +941,7 @@ void jswrap_wifi_disconnect(JsVar *jsCallback) {
   if (jsvIsFunction(jsCallback)) {
     jsiQueueEvents(NULL, jsCallback, NULL, 0);
   }
-} // End of jswrap_wifi_disconnect
+}
 
 void jswrap_wifi_stopAP(JsVar *jsCallback) {
   // handle the callback parameter
@@ -997,7 +976,7 @@ void jswrap_wifi_stopAP(JsVar *jsCallback) {
   if (jsvIsFunction(jsCallback)) {
     jsiQueueEvents(NULL, jsCallback, NULL, 0);
   }
-} // End of jswrap_wifi_stopAP
+}
 
 void jswrap_wifi_connect(
     JsVar *jsSsid,
@@ -1055,7 +1034,7 @@ void jswrap_wifi_connect(
       password[0] = '\0';
     }
     jsvUnLock(jsPassword);
-  } // End of we had options
+  }
   jsDebug(DBG_INFO, "jswrap_wifi_connect: SSID '%s', password '%s', Callback done\n", ssid, password);
 
   // At this point, we have the ssid in "ssid" and the password in "password".
@@ -1202,7 +1181,7 @@ void jswrap_wifi_scan(JsVar *jsCallback) {
   // When the scan completes, we will be notified by an arriving event that is handled
   // in the event handler.  The event handler will see that we have a callback function
   // registered and will invoke that callback at that time.
-} // End of jswrap_wifi_scan
+}
 
 void jswrap_wifi_startAP(
     JsVar *jsSsid,     //!< The network SSID that we will use to listen as.
@@ -1294,7 +1273,7 @@ void jswrap_wifi_startAP(
       } else {
         apConfig.authmode = WIFI_AUTH_WPA2_PSK;
       }
-    } // End of no explicit authMode
+    }
 
     jsvUnLock(jsAuth);
 
@@ -1341,7 +1320,7 @@ void jswrap_wifi_startAP(
     jsError( "jswrap_wifi_startAP: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
     return;
   }
-} // End of jswrap_wifi_startAP
+}
 
 
 JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
@@ -1442,7 +1421,7 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
   jsvObjectSetStringChild(jsWiFiStatus, "powersave", psTypeStr);
 
   return jsWiFiStatus;
-} // End of jswrap_wifi_getStatus
+}
 
 
 void jswrap_wifi_setConfig(JsVar *jsSettings) {
@@ -1534,7 +1513,7 @@ JsVar *jswrap_wifi_getDetails(JsVar *jsCallback) {
     jsiQueueEvents(NULL, jsCallback, params, 1);
   }
   return jsDetails;
-} // End of jswrap_wifi_getDetails
+}
 
 
 JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
@@ -1571,31 +1550,7 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
     jsiQueueEvents(NULL, jsCallback, params, 1);
   }
   return jsDetails;
-} // End of jswrap_wifi_getAPDetails
-
-
-#if DEBUG
-static void dumpJsVarObject(JsVar *o) {
-  JsvObjectIterator it;
-  jsvObjectIteratorNew(&it, o);
-
-  while (jsvObjectIteratorHasValue(&it)) {
-    JsVar *key = jsvObjectIteratorGetKey(&it);
-    JsVar *val = jsvObjectIteratorGetValue(&it);
-
-    char keyBuf[32], valBuf[64];
-    jsvGetString(key, keyBuf, sizeof(keyBuf));
-    jsvGetString(val, valBuf, sizeof(valBuf));  // ← Converts ANY type to string
-
-    jsDebug(DBG_INFO, "  %s='%s'\n", keyBuf, valBuf);
-
-    jsvUnLock(key);
-    jsvUnLock(val);
-    jsvObjectIteratorNext(&it);
-  }
-  jsvObjectIteratorFree(&it);
 }
-#endif
 
 void jswrap_wifi_save(JsVar *what) {
   jsDebug(DBG_INFO, "Wifi.save\n");
@@ -1644,10 +1599,8 @@ void jswrap_wifi_save(JsVar *what) {
   esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
 #endif
   if (hostname) jsvObjectSetStringChild(o, "hostname", (char *) hostname);
+
   // save object
-#ifdef DEBUG
-  dumpJsVarObject(o);
-#endif
   JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
   jswrap_storage_erase(name);
   jswrap_storage_write(name,o,0,0);
@@ -1800,12 +1753,12 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
 
   return jsIpInfo;
 
-} // End of getIPInfo
+}
 
 JsVar *jswrap_wifi_getIP(JsVar *jsCallback) {
   JsVar *jsIpInfo = getIPInfo(jsCallback, TCPIP_ADAPTER_IF_STA);
   return jsIpInfo;
-} // End of jswrap_wifi_getIP
+}
 
 JsVar *jswrap_wifi_getAPIP(JsVar *jsCallback) {
   JsVar *jsIpInfo = getIPInfo(jsCallback, TCPIP_ADAPTER_IF_AP);

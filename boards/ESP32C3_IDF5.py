@@ -47,7 +47,7 @@
 
 # MakeFile identifier ESPR_USE_USB_SERIAL_JTAG
 # --------------------------------------------------------------
-# The 'makefile' list in the 'info' dictionary below can define ESPR_USE_USB_SERIAL_JTAG using 'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG'
+# The 'makefile' list in the 'info' dictionary below can define ESPR_USE_USB_SERIAL_JTAG using 'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG -DUSB'
 # where necessary.
 # By default, ESPR_USE_USB_SERIAL_JTAG is enabled below for the ESP32-C3.
 # This supports the case where the USB connector on the board is wired directly to the D+ and D- pins.
@@ -60,7 +60,7 @@ import pinutils;
 info = {
  'name'                     : "ESP32C3",
  'espruino_page_link'       : 'ESP32',
- 'default_console'          : "EV_SERIAL1",
+ 'default_console'          : "EV_USBSERIAL",
  'default_console_baudrate' : "115200",
  'variables'                : 16383, # See note above
  'io_buffer_size'           : 4096, # How big is the input buffer (in bytes). Default on nRF52 is 1024
@@ -83,7 +83,7 @@ info = {
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
-     'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG', # See note above
+     'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG -DUSB', # See note above
      'ESP32_FLASH_MAX=1572864'
    ]
  }

@@ -124,14 +124,8 @@ ifndef ALT_RELEASE
 LATEST_RELEASE=$(shell git tag | grep RELEASE_ | sort | tail -1)
 # use egrep to count lines instead of wc to avoid whitespace error on Mac
 COMMITS_SINCE_RELEASE=$(shell git log --oneline $(LATEST_RELEASE)..HEAD | egrep -c .)
-#COMMITS_SINCE_RELEASE=$(shell git log --oneline $(LATEST_RELEASE)..HEAD | grep -c .)
 ifneq ($(COMMITS_SINCE_RELEASE),0)
 DEFINES += -DBUILDNUMBER=\"$(COMMITS_SINCE_RELEASE)\"
-endif
-
-ifdef QEMU_BUILD
-# force no asserts to be compiled in
-DEFINES += -DQEMU_BUILD
 endif
 
 else
@@ -143,7 +137,6 @@ else
 # v1.81.peter_experiment_83bd432, where the last letters are the short of the current commit SHA.
 # Warning: this same release label derivation is also in scripts/common.py in get_version()
 LATEST_RELEASE=$(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
-#LATEST_RELEASE=$(shell grep -Po 'define JS_VERSION.*"\K[0-9]v[0-9]+' src/jsutils.h)
 COMMITS_SINCE_RELEASE=$(ALT_RELEASE)_$(subst -,_,$(shell git name-rev --name-only HEAD))_$(shell git rev-parse --short HEAD)
 # Figure out whether we're building a tagged commit (true release) or not
 TAGGED:=$(shell if git describe --tags --exact-match >/dev/null 2>&1; then echo yes; fi)

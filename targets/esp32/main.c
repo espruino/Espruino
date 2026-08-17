@@ -11,14 +11,6 @@
 #include "esp_event_loop.h"
 #endif
 
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-#if ESP_IDF_VERSION_MAJOR==5
-#include "driver/usb_serial_jtag.h"
-#elif ESP_IDF_VERSION_MAJOR==4
-#include "hal/usb_serial_jtag_ll.h"
-#endif
-#endif
-
 #include "nvs_flash.h"
 
 #include <jsdevices.h>
@@ -59,22 +51,6 @@ uintptr_t espruino_stackHighPtr = 0;
 
 #include "jsvar.h"
 
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-  #pragma message ("USB Serial JTAG console is enabled")
-#else
-  #pragma message ("Using UART console")
-#endif
-
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-#if ESP_IDF_VERSION_MAJOR >= 5
-#include "driver/usb_serial_jtag.h"
-#include <unistd.h>
-#else
-#include "hal/usb_serial_jtag_ll.h"
-#endif
-volatile bool usbUARTIsNotFlushed;
-#endif
-
 #ifdef CONFIG_ESP_TASK_WDT_EN
 #if ESP_IDF_VERSION_MAJOR>=5
 #define TWDT_TICKS 10
@@ -83,30 +59,12 @@ volatile bool usbUARTIsNotFlushed;
 #endif
 #endif
 
-void esp32USBUARTWasUsed() {
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-  usbUARTIsNotFlushed = true;
-#endif
-}
-
 extern void initialise_wifi(void);
 
 static void uartTask(void *data) {
   initConsole();
   while(1) {
     pollSerialDevices();
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-    /* Espruino writes console output outside stdio, so explicitly wait for the
-    USB Serial/JTAG driver to drain any queued TX bytes. */
-    if (usbUARTIsNotFlushed) {
-    #if ESP_IDF_VERSION_MAJOR >= 5
-      usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(10));
-    #else
-      usb_serial_jtag_ll_txfifo_flush();
-    #endif
-      usbUARTIsNotFlushed = false;
-    }
-#endif
   }
 }
 
@@ -163,6 +121,7 @@ static void espruinoTask(void *data) {
 #ifdef CONFIG_ESP_TASK_WDT_EN
   esp_task_wdt_add(NULL);
 #endif
+jsiOneSecondAfterStartup(); // ensure we push output to correct UART
   while(1) {
     jsiLoop();   // Perform the primary loop processing
     #ifdef CONFIG_ESP_TASK_WDT_EN
