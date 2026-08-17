@@ -18,7 +18,7 @@ import pinutils;
 info = {
  'name'                     : "Espruino ePaper Badge",
  'espruino_page_link'       : 'Badge',
- 'default_console'          : "EV_USBSERIAL",
+ 'default_console'          : "EV_USBSERIAL", # USB only no serial, see ESPR_USE_USB_SERIAL_JTAG
  'default_console_baudrate' : "115200",
  'variables'                : 4095,
  'io_buffer_size'           : 2048, # How big is the input buffer (in bytes). Default on nRF52 is 1024
@@ -43,7 +43,7 @@ info = {
      'DEFINES+=-DESP_HEAP_SIZE=70000', # enough for HTTPS
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
-     'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG -DUSB',
+     'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG -DUSB', # Use on-chip USB. See ESPR_USE_USB_SERIAL_JTAG in README_BuildProcess.md
      'ESP32_FLASH_MAX=1572864',
      'JSMODULESOURCES += _:libs/js/misc/epaper_badge.js'
    ]

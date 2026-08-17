@@ -44,6 +44,7 @@
             ESP32C3: Enable BLE power saving, improve NUS BLE service so it works with powersave, and supports higher MTUs
             ESP32: wifi.connect now tries multiple times, and calls the callback with an error if it doesn't connect properly
             ESP32: wifi.connect will now always try and connect. If you call it, `callback` gets called one way or the other
+            ESP32C3/S3: Move USB console onto EV_USB, allowing Serial1 to be used if needed #2730
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

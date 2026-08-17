@@ -18,6 +18,7 @@
 
 void initConsole();
 void initSerial(IOEventFlags device,JshUSARTInfo *inf);
+void uninitSerial(IOEventFlags device);
 void writeSerial(IOEventFlags device,uint8_t c);
 void pollSerialDevices();
 

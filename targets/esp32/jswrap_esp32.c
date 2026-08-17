@@ -28,7 +28,7 @@
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #include "hal/usb_serial_jtag_ll.h"
 #include "driver/usb_serial_jtag.h"
-#include "rtosutil.h"
+#include "jshardwareUart.h"
 #endif
 
 #ifdef BLUETOOTH
@@ -290,23 +290,29 @@ void jswrap_ESP32_lightSleep(JsVarInt ms) {
   if (ms <= 0) return;
 
 #ifdef ESPR_USE_USB_SERIAL_JTAG
+  bool usbEnabled = usb_serial_jtag_is_driver_installed();
   // ConsoleTask (priority 20) outruns the Espruino task and keeps calling
   // usb_serial_jtag_read_bytes while USJ pads are gated in light sleep,
   // which can fault and reset the chip. Pause it for the sleep window.
   TaskHandle_t uartTaskHandle = xTaskGetHandle("uartTask");
   if (uartTaskHandle) vTaskSuspend(uartTaskHandle);
   vTaskDelay(1); // let ConsoleTask finish its current read slice
-  usb_serial_jtag_ll_txfifo_flush();
-  usb_serial_jtag_driver_uninstall();
+  if (usbEnabled) {
+    usb_serial_jtag_ll_txfifo_flush();
+    usb_serial_jtag_driver_uninstall();
+  }
 #endif
 
   esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
   esp_err_t err = esp_sleep_enable_timer_wakeup((uint64_t)ms * 1000ULL);
+  // FIXME: what about wakeup with pins?? maybe this could be part of Espruino's 'setDeepSleep'?
   if (err != ESP_OK) {
 #ifdef ESPR_USE_USB_SERIAL_JTAG
-    usb_serial_jtag_driver_config_t usb_cfg = {.tx_buffer_size = 128, .rx_buffer_size = 128};
-    usb_serial_jtag_driver_install(&usb_cfg);
-    if (uartTaskHandle) vTaskResume(uartTaskHandle);
+    if (usbEnabled) {
+      usb_serial_jtag_driver_config_t usb_cfg = {.tx_buffer_size = 128, .rx_buffer_size = 128};
+      usb_serial_jtag_driver_install(&usb_cfg);
+      if (uartTaskHandle) vTaskResume(uartTaskHandle);
+    }
 #endif
     jsExceptionHere(JSET_ERROR, "lightSleep: %d", err);
     return;
@@ -321,9 +327,11 @@ void jswrap_ESP32_lightSleep(JsVarInt ms) {
   jsiLastIdleTime = jshGetSystemTime();
 
 #ifdef ESPR_USE_USB_SERIAL_JTAG
-  usb_serial_jtag_driver_config_t usb_cfg = {.tx_buffer_size = 128, .rx_buffer_size = 128};
-  usb_serial_jtag_driver_install(&usb_cfg);
-  if (uartTaskHandle) vTaskResume(uartTaskHandle);
+  if (usbEnabled) {
+    usb_serial_jtag_driver_config_t usb_cfg = {.tx_buffer_size = 128, .rx_buffer_size = 128};
+    usb_serial_jtag_driver_install(&usb_cfg);
+    if (uartTaskHandle) vTaskResume(uartTaskHandle);
+  }
 #endif
 
   if (err != ESP_OK &&

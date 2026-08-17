@@ -190,7 +190,11 @@ These are used for ESP32:
 
 * `ESP_STACK_SIZE=25000` - the stack size allocated for the Espruino task
 * `ESP_HEAP_SIZE=40000` - how much free heap to leave (ESP32 builds change the amount of variables depending on free RAM, but leave enough heap eg for HTTPS)
-* `ESPR_USE_USB_SERIAL_JTAG` - On ESP32 This supports the case where the USB connector on the board is wired directly to the D+ and D- pins. If the board uses a USB-to-UART converter, do not use the define so the UART console is used. This is introduced to fix issue #2609 and replaces the previous method using the `USB_CDC` identifier.
+* `-DESPR_USE_USB_SERIAL_JTAG -DUSB` - On ESP32 This supports the case where the USB connector on the board is wired directly to the D+ and D- pins (ESP32C3 and S3). If set:
+  * A new EV_USBSERIAL device is added (`USB` from JS) and the console is put on that if USB is connected 1 second after the ESP32 boots.
+  * If USB is not connected when the ESP32 boots (and `'default_console'/DEFAULT_CONSOLE_DEVICE` is not `EV_USBSERIAL`, USB serial will not be disabled and `SERIAL1` enabled. 
+  * However if `DEFAULT_CONSOLE_DEVICE==EV_USBSERIAL` then USB serial will be kept powered and `SERIAL1` will not be enabled.
+  * If the board uses a USB-to-UART converter and does not have USB connected to the chip, you can avoid `ESPR_USE_USB_SERIAL_JTAG`. See issue #2609 and #2730
 
 
 These are used for STM32:

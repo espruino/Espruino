@@ -121,7 +121,6 @@ static void espruinoTask(void *data) {
 #ifdef CONFIG_ESP_TASK_WDT_EN
   esp_task_wdt_add(NULL);
 #endif
-jsiOneSecondAfterStartup(); // ensure we push output to correct UART
   while(1) {
     jsiLoop();   // Perform the primary loop processing
     #ifdef CONFIG_ESP_TASK_WDT_EN
@@ -178,6 +177,7 @@ int app_main(void)
 
   xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", ESP_STACK_SIZE, NULL, 5, NULL, 0);
   xTaskCreatePinnedToCore(&uartTask,"uartTask",2200,NULL,20,NULL,0);
+
 
   return 0;
 }

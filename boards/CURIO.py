@@ -50,7 +50,7 @@ import pinutils;
 info = {
  'name'                     : "CURIO",
  'espruino_page_link'       : 'Curio',
- 'default_console'          : "EV_USBSERIAL",
+ 'default_console'          : "EV_USBSERIAL", # USB only no serial, see ESPR_USE_USB_SERIAL_JTAG
  'default_console_baudrate' : "115200",
  'variables'                : 16383, # See note above
  'io_buffer_size'           : 4096, # How big is the input buffer (in bytes). Default on nRF52 is 1024
@@ -73,7 +73,7 @@ info = {
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
-     'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG -DUSB', # Using USB CDC directly (not via a USB-Serial converter on Serial1)
+     'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG -DUSB', # Use on-chip USB. See ESPR_USE_USB_SERIAL_JTAG in README_BuildProcess.md
      'ESP32_FLASH_MAX=1572864',
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX="Curio"', # string passing in IDF4 makefile is broken
      'INCLUDE += -I$(ROOT)/libs/misc',

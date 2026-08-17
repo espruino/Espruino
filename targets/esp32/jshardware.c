@@ -644,13 +644,15 @@ bool jshIsEventForPin(
 
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
-
   if (inf->errorHandling) {
     jsExceptionHere(JSET_ERROR, "ESP32 Espruino builds can't handle framing/parity errors (errors:true)");
     return;
   }
+  initSerial(device, inf);
+}
 
-  initSerial(device,inf);
+void jshUSARTUnSetup(IOEventFlags device) {
+  uninitSerial(device);
 }
 
 bool jshIsUSBSERIALConnected() {
