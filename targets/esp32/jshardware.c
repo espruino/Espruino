@@ -668,20 +668,7 @@ bool jshIsUSBSERIALConnected() {
  *
  */
 void jshUSARTKick(IOEventFlags device) {
-  int c = jshGetCharToTransmit(device);
-  while(c >= 0) {
-    switch(device){
-#ifdef BLUETOOTH
-      case EV_BLUETOOTH:
-        gatts_sendNUSNotification(c);
-        break;
-#endif
-      default:
-        writeSerial(device,(uint8_t)c);
-        break;
-    }
-    c = jshGetCharToTransmit(device);
-  }
+  // ignore - the `uartTask` handles all this now in pollSerialDevices
 }
 
 //===== System time stuff =====

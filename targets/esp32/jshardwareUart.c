@@ -26,6 +26,10 @@
 #define uart_Serial2 1
 #define uart_Serial3 2
 
+#ifdef BLUETOOTH
+#include "BLE/esp32_gatts_func.h"
+#endif
+
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #include "driver/usb_serial_jtag.h"
 #if ESP_IDF_VERSION_MAJOR >= 5
@@ -42,7 +46,6 @@ bool usb_serial_jtag_is_connected() {
   return usb_serial_jtag_idle_counter < 1000;
 }
 #endif
-
 volatile bool usbUARTIsNotFlushed;
 #endif
 
@@ -181,7 +184,6 @@ void initConsole() {
 
 uint8_t rxbuf[256];
 void pollSerialDevices() {
-  // Handle transmission
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #if ESP_IDF_VERSION_MAJOR < 5 // hack to work out if we're connected or not on IDF4
   if (usb_serial_initialised) {
@@ -192,7 +194,27 @@ void pollSerialDevices() {
     } else if (usb_serial_jtag_idle_counter<65535) usb_serial_jtag_idle_counter++;
   }
 #endif
-    /* The USB CDC UART on the C3 only writes the data to USB after a newline.
+#endif
+  // Handle transmission
+  IOEventFlags device = jshGetDeviceToTransmit();
+  int c = jshGetCharToTransmit(device); // get top device (FIXME: can this be cleaner?)
+  while(c >= 0) {
+    // FIXME: can we put multiple chars into rxbuf and so reduce TX calls?
+    switch(device){
+  #ifdef BLUETOOTH
+      case EV_BLUETOOTH:
+        gatts_sendNUSNotification(c);
+        break;
+  #endif
+      default:
+        writeSerial(device,(uint8_t)c);
+        break;
+    }
+    device = jshGetDeviceToTransmit();
+    c = jshGetCharToTransmit(device);
+  }
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+/* The USB CDC UART on the C3 only writes the data to USB after a newline.
     We don't want that, so we call flush in this uart task if any data has been sent. */
   if (usb_serial_jtag_is_connected() && usbUARTIsNotFlushed) {
 #if ESP_IDF_VERSION_MAJOR >= 5
