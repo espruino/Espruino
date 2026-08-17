@@ -1122,7 +1122,7 @@ size_t _jswrap_ble_getAdvertisingDataRaw(uint8_t *advdata, JsVar *data, JsVar *o
 
   // Add actual services
   if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
-    return jsvLockAgain(data);
+    return jsvGetString(data, advdata, ESPR_MAX_ADVERTISEMENT_DATA);
   } else if (jsvIsObject(data)) {
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, data);
