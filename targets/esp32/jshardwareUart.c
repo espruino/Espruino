@@ -153,9 +153,11 @@ void initConsole() {
 #endif
   }
 #endif
+#ifdef USB
   // if default console is USB serial, we're not going to Serial1 so don't enable it
   if (DEFAULT_CONSOLE_DEVICE == EV_USBSERIAL)
     needUART = false;
+#endif
 
   if (needUART) {
     uart_config_t uart_config = {
