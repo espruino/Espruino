@@ -47,6 +47,7 @@ info = {
             # "TENSORFLOW",
             "NEOPIXEL",
             "JIT",
+            "I2S",
         ],
         "makefile": [
             "DEFINES += -DESPR_LSE_ENABLE",  # Ensure low speed external osc enabled
