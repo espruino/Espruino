@@ -46,7 +46,6 @@ bool usb_serial_jtag_is_connected() {
   return usb_serial_jtag_idle_counter < 1000;
 }
 #endif
-volatile bool usbUARTIsNotFlushed;
 #endif
 
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
@@ -123,7 +122,7 @@ void initConsole() {
 #ifdef ESPR_USE_USB_SERIAL_JTAG
   /* Configure USB-CDC driver */
   usb_serial_jtag_driver_config_t usb_serial_config = {
-    .tx_buffer_size = 128,
+    .tx_buffer_size = 256,
     .rx_buffer_size = 128
   };
 #if ESP_IDF_VERSION_MAJOR>=5
@@ -186,8 +185,15 @@ void writeSerial(IOEventFlags device, uint8_t *buf, int len){
   int err;
 #ifdef ESPR_USE_USB_SERIAL_JTAG
   if(device == EV_USBSERIAL) {
-    usb_serial_jtag_write_bytes(buf, len, pdMS_TO_TICKS(500)); // could return <0 for an error.
-    usbUARTIsNotFlushed = true; // ensure we flash USB eventually
+    usb_serial_jtag_write_bytes(buf, len, pdMS_TO_TICKS(100)); // could return <0 for an error.
+/* The USB CDC UART on the C3 only writes the data to USB after a newline.
+    We don't want that, so we call flush in this uart task if any data has been sent. */
+#if ESP_IDF_VERSION_MAJOR >= 5
+    usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(10));
+#else
+    usb_serial_jtag_ll_txfifo_flush();
+#endif
+
   }
 #endif
   if(device == EV_SERIAL1 && jshIsDeviceInitialised(EV_SERIAL1)){
@@ -241,19 +247,7 @@ void pollSerialDevices() {
     }
     device = jshGetDeviceToTransmit();
   }
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-/* The USB CDC UART on the C3 only writes the data to USB after a newline.
-    We don't want that, so we call flush in this uart task if any data has been sent. */
-  if (usb_serial_jtag_is_connected() && usbUARTIsNotFlushed) {
-#if ESP_IDF_VERSION_MAJOR >= 5
-      usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(10));
-#else
-      usb_serial_jtag_ll_txfifo_flush();
-#endif
-      usbUARTIsNotFlushed = false;
-    }
-#endif
-  // Hand Receive
+  // Handle Receive
   if (jshGetIOCharEventsFree() < 256) { // if we don't have enough space for data
     jshHadEvent(); // ensure we wake up the main task
     vTaskDelay(pdMS_TO_TICKS(10)); // wait for the espruino task
