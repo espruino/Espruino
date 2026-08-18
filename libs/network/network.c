@@ -581,6 +581,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
     return false;
   }
 
+  char hostname[64] = "mbed TLS Server 1";
   if (jsvIsObject(options)) {
     if (!ssl_load_cacert(sd, options) ||
         !ssl_load_owncert(sd, options) ||
@@ -588,6 +589,9 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
       ssl_freeSocketData(sckt);
       return false;
     }
+    JsVar *v = jsvObjectGetChildIfExists(options, "host");
+    if (jsvIsString(v)) jsvGetString(v, hostname, sizeof(hostname));
+    jsvUnLock(v);
   }
 
   if (( ret = mbedtls_ssl_config_defaults( &sd->conf,
@@ -614,7 +618,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
       return false;
     }
   }
-  
+
   // FIXME no cert checking!
   mbedtls_ssl_conf_authmode( &sd->conf, MBEDTLS_SSL_VERIFY_NONE );
   mbedtls_ssl_conf_ca_chain( &sd->conf, &sd->cacert, NULL );
@@ -629,7 +633,9 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
     return false;
   }
 
-  if (( ret = mbedtls_ssl_set_hostname( &sd->ssl, "mbed TLS Server 1" )) != 0) {
+
+
+  if (( ret = mbedtls_ssl_set_hostname( &sd->ssl, hostname)) != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
     jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_ssl_set_hostname: %v", e );
     jsvUnLock(e);
