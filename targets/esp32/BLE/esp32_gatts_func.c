@@ -71,7 +71,7 @@ bool _removeValues;
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
 
 int uart_gatts_service = -1;
-uint16_t uart_tx_handle;
+uint16_t uart_tx_handle, uart_rx_handle;
 bool uart_gatts_connected = false;
 
 /// Bluetooth UART transmit data
@@ -327,6 +327,8 @@ static void gatts_check_add_char(esp_bt_uuid_t char_uuid, uint16_t attr_handle) 
     gatts_char[ble_char_pos].char_handle = attr_handle;
     if (gatts_char[ble_char_pos].charFlag == BLE_CHAR_UART_TX)
       uart_tx_handle = attr_handle;
+    if (gatts_char[ble_char_pos].charFlag == BLE_CHAR_UART_RX)
+      uart_rx_handle = attr_handle;
     gatts_add_descr(); // try to add descriptors to this characteristic
   }
 }
@@ -395,9 +397,11 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
   case ESP_GATTS_CONNECT_EVT: {gatts_connect_handler(event,gatts_if,param); break;}
   case ESP_GATTS_READ_EVT: {gatts_read_value_handler(event, gatts_if, param);break;}
   case ESP_GATTS_WRITE_EVT:{
-    if(gatts_service[getIndexFromGatts_if(gatts_if)].serviceFlag == BLE_SERVICE_NUS){ // UART service
-      jshPushIOCharEvents(EV_BLUETOOTH, (char*)param->write.value, param->write.len);
-      jshHadEvent();
+    if(gatts_service[getIndexFromGatts_if(gatts_if)].serviceFlag == BLE_SERVICE_NUS) { // UART service
+      if (param->write.handle == uart_rx_handle) { // we could have been writing to the TX CCCD to enable notifications
+        jshPushIOCharEvents(EV_BLUETOOTH, (char*)param->write.value, param->write.len);
+        jshHadEvent();
+      }
     } else { // a normal write
       // Update our hidden var with the right value (this is not great to do from an IRQ)
       gatts_set_char_value(param->write.handle, (char*)param->write.value, param->write.len);
