@@ -45,14 +45,13 @@
 # available memory. Using too small a JsVar format will under utilise
 # available memory.
 
-
 import pinutils;
 info = {
  'name'                     : "ESP32C3",
  'espruino_page_link'       : 'ESP32',
- 'default_console'          : "EV_SERIAL1",  # USB + Serial1 - see ESPR_USE_USB_SERIAL_JTAG
+ 'default_console'          : "EV_SERIAL1", # USB + Serial1 - see ESPR_USE_USB_SERIAL_JTAG
  'default_console_baudrate' : "115200",
- 'variables'                : 16383, # See note above
+ 'variables'                : 4095, # See note above
  'io_buffer_size'           : 4096, # How big is the input buffer (in bytes). Default on nRF52 is 1024
  'binary_name'              : 'espruino_%v_esp32c3.bin',
  'build' : {
@@ -63,14 +62,15 @@ info = {
      'GRAPHICS',
      'CRYPTO','SHA256','SHA512',
      'TLS',
-     'TELNET',
+#     'TELNET',
      'FILESYSTEM',
      'BLUETOOTH',
 #     'NEOPIXEL'
    ],
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1',
-     'DEFINES+=-DESP_STACK_SIZE=25000',
+     'DEFINES+=-DESP_STACK_SIZE=15000',
+     'DEFINES+=-DESP_HEAP_SIZE=70000', # enough for HTTPS
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
      'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG -DUSB', # Use on-chip USB. See ESPR_USE_USB_SERIAL_JTAG in README_BuildProcess.md
