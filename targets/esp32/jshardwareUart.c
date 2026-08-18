@@ -293,7 +293,8 @@ void pollSerialDevices() {
   }
 #if ESPR_USART_COUNT>2
   if(jshIsDeviceInitialised(EV_SERIAL3)){
-    len = uart_read_bytes(uart_Serial3, buf, sizeof(buf), 0/*don't wait*/);
+    len = uart_read_bytes(uart_Serial3, buf, sizeof(buf), ticksToWait);
+    ticksToWait = 0;
     if(len > 0) {
       jshPushIOCharEvents(EV_SERIAL3, buf, len);
       busy = true;
