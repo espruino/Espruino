@@ -95,13 +95,19 @@ void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
       // When we write the descriptior, that usually means notifications
       jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_NOTIFY, 0);
       break;
-    case ESP_GATTC_NOTIFY_EVT:
+    case ESP_GATTC_NOTIFY_EVT: {
       // We've been notified of new data
       // p_data->notify.is_notify is whether it's notify or indicate
       // FIXME: for >1 connection we need to add (jsble_get_central_connection_idx(central_conn_handle) << BLEP_CENTRAL_NOTIFICATION_CONN_SHIFT) to this
-      jsble_queue_pending_buf(BLEP_CENTRAL_NOTIFICATION, p_data->notify.handle, (char*)p_data->notify.value, p_data->notify.value_len);
+      int len = p_data->notify.value_len;
+      if (len > IOEVENT_MAX_LEN-4) {
+        jsiConsolePrintf("ESP_GATTC_NOTIFY_EVT too long (%d)\n", len);
+        len = IOEVENT_MAX_LEN-4;
+      }
+      jsble_queue_pending_buf(BLEP_CENTRAL_NOTIFICATION, p_data->notify.handle, (char*)p_data->notify.value, len);
       // Do we have to send a confirmation if it's an indication?
       break;
+    }
     case ESP_GATTC_PREP_WRITE_EVT: break;
     case ESP_GATTC_EXEC_EVT: break;
     case ESP_GATTC_ACL_EVT: break;

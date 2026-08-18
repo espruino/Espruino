@@ -398,8 +398,8 @@ size_t jsbleGetDeviceName(char *deviceName) {
 /// Add a new bluetooth event to the queue with a buffer of data
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len) {
   assert(ptr);
-  assert(len+3 < IOEVENT_MAX_LEN);
-  if (len+3 > IOEVENT_MAX_LEN)
+  assert(len+3 <= IOEVENT_MAX_LEN);
+  if (len > IOEVENT_MAX_LEN-3)
     len = IOEVENT_MAX_LEN-3;
   // check to ensure we have space for the data we're adding
   if (!jshHasEventSpaceForChars(len+3)) {

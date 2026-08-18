@@ -184,6 +184,10 @@ typedef enum {
 #undef IOEVENT_MAX_LEN
 #define IOEVENT_MAX_LEN (NRF_SDH_BLE_GATT_MAX_MTU_SIZE+3)
 #endif
+#ifdef ESP32
+#undef IOEVENT_MAX_LEN
+#define IOEVENT_MAX_LEN 503 // 500 byte MTU on ESP32!
+#endif
 
 #include "jspin.h"
 
