@@ -838,6 +838,9 @@ void esp32_wifi_init() {
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   esp_netif_create_default_wifi_ap();
   esp_netif_create_default_wifi_sta();
+#else
+  tcpip_adapter_init();
+  ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
 #endif
 
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -848,19 +851,13 @@ void esp32_wifi_init() {
   ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, &instance_ip));
   //ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_LOST_IP, &wifi_event_handler, NULL, &instance_lost_ip));
   //ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, &wifi_event_handler, NULL, &instance_ap_ip));
-
 #else
-  tcpip_adapter_init();
-  ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 #endif
 
-  // 3. CRITICAL: Set mode + start WiFi BEFORE handlers
-  //ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-  ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-  //ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
-  ESP_ERROR_CHECK(esp_wifi_start());
-
+  // Don't init wifi yet - wait until wifi.connect/startAP is called
+  //ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP)); // WIFI_MODE_STA/WIFI_MODE_APSTA
+  //ESP_ERROR_CHECK(esp_wifi_start());
 }
 
 /**
