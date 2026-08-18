@@ -47,7 +47,8 @@ void jsble_init(){
     if(initController()) return;
     if(initBluedroid()) return;
     if(registerCallbacks()) return;
-    setMtu();
+    ret = esp_ble_gatt_set_local_mtu(ESP_GATT_MTU_SIZE); // set MTU based on the most we're expecting to put in our queue at a time
+    if(ret) jsWarn("set local MTU failed:%x\n",ret);
     gap_init_security();
     // force advertising with the right info
     bleStatus |= BLE_IS_ADVERTISING;

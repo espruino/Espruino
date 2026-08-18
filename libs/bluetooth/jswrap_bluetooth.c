@@ -54,6 +54,7 @@
 #include "BLE/esp32_gap_func.h"
 #include "BLE/esp32_gatts_func.h"
 #include "BLE/esp32_gattc_func.h"
+#include "esp_bt_device.h"
 #endif
 
 // ------------------------------------------------------------------------------
@@ -855,10 +856,9 @@ void jswrap_ble_getAddress_binary(uint32_t *result, bool current) {
  result[0] =  NRF_FICR->DEVICEADDR[0];
  result[1] =  NRF_FICR->DEVICEADDR[1];
 #elif defined(ESP32)
-  uint8_t macnr[6];
-  jshGetSerialNumber(macnr, sizeof(macnr));
-  result[0] =  (macnr[3]<<24) | (macnr[2]<<16) | (macnr[1]<<8) | macnr[0];
-  result[1] =  (macnr[5]<<8) | macnr[4];
+  const uint8_t *macnr = esp_bt_dev_get_address();
+  result[0] =  (macnr[2]<<24) | (macnr[3]<<16) | (macnr[4]<<8) | macnr[5];
+  result[1] =  ((macnr[0] & 0x3f)<<8) | macnr[1];
 #else
   result[0] = 0xDEADDEAD;
   result[1] = 0xDEAD;

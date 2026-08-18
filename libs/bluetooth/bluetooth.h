@@ -83,6 +83,10 @@ typedef struct {
 #define BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE                  0x1812
 #endif //!NRF5X (fudge NRF5X API for ESP32)
 
+#ifdef ESP32
+#define ESP_GATT_MTU_SIZE (IOEVENT_MAX_LEN-3) // most we're expecting to put in our BLE queue
+#endif
+
 #ifndef CENTRAL_LINK_COUNT /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #if defined(NRF52_SERIES) || defined(ESP32) // nRF52 gets the ability to connect to other devices
 #define CENTRAL_LINK_COUNT              1

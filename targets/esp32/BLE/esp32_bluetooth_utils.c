@@ -58,11 +58,7 @@ esp_err_t registerCallbacks(){
   ret = esp_ble_gattc_register_callback(gattc_event_handler);if(ret){jsWarn("gattc regigister error:%x\n",ret);return ret;}
   return ret;
 }
-esp_err_t setMtu(){
-  esp_err_t ret;
-  ret = esp_ble_gatt_set_local_mtu(500);if(ret)jsWarn("set local MTU failed:%x\n",ret);
-  return ret;
-}
+
 
 void ESP32_setBLE_Debug(int level){
   bleEventDebug = level;

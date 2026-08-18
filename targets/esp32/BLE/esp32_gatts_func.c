@@ -75,7 +75,7 @@ uint16_t uart_tx_handle, uart_rx_handle;
 bool uart_gatts_connected = false;
 
 /// Bluetooth UART transmit data
-uint8_t nusBuffer[64]; // could be 500? need to make sure we transmit sooner if so!
+uint8_t nusBuffer[ESP_GATT_MTU_SIZE];
 /// Amount of characters ready to send in Bluetooth UART
 volatile uint8_t nusBufferLen = 0;
 
