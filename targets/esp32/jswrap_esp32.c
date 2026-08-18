@@ -364,7 +364,7 @@ JsVar *jswrap_ESP32_getState() {
   // Create a new variable and populate it with the properties of the ESP32 that we
   // wish to return.
   JsVar *esp32State = jsvNewObject();
-  jsvObjectSetStringChild(esp32State, "sdkVersion", (esp_get_idf_version));
+  jsvObjectSetStringChild(esp32State, "sdkVersion", esp_get_idf_version());
   jsvObjectSetIntChild(esp32State, "freeHeap", esp_get_free_heap_size());
   jsvObjectSetBoolChild(esp32State, "BLE", ESP32_Get_NVS_Status(ESP_NETWORK_BLE));
   jsvObjectSetBoolChild(esp32State, "Wifi", ESP32_Get_NVS_Status(ESP_NETWORK_WIFI));

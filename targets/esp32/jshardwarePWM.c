@@ -52,7 +52,7 @@ int getChannelIndex(Pin pin){
   }
   return -1;
 }
-int getFreeChannel(pin){
+int getFreeChannel(Pin pin){
   int i;
   i = getChannelIndex(pin);
   if(i >= 0) return i;

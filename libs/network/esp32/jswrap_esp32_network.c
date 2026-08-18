@@ -271,7 +271,6 @@ const char *ipEventToString(int e) {
 #else
 /// Convert an wifi event to a string value.
 static char *wifiEventToString(uint32_t event){
-  jsDebug(DBG_INFO, "wifiReasonToString %d\n",event);
   switch(event){
     case SYSTEM_EVENT_STA_CONNECTED:return "STA_CONNECTED";
     case SYSTEM_EVENT_STA_DISCONNECTED:return "STA_DISCONNECTED";
@@ -298,6 +297,9 @@ static char *wifiEventToString(uint32_t event){
     case SYSTEM_EVENT_ETH_DISCONNECTED: return "ETH_DISCONNECTED";
     case SYSTEM_EVENT_ETH_GOT_IP: return "ETH_GOT_IP";
     case SYSTEM_EVENT_MAX: return "MAX";
+#if ESP_IDF_VERSION_MAJOR>=4
+    case SYSTEM_EVENT_STA_BEACON_TIMEOUT: return "STA_BEACON_TIMEOUT";
+#endif
     default: return "unknown event, see wifiEventToString";
   }
 }
@@ -628,7 +630,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
     sendWifiEvent(WIFI_EVENT_SCAN_DONE, NULL);
   }
 }
-#else
+#else // IDF4 and earlier
 /**
  * Wifi event handler
  * Here we get invoked whenever a WiFi event is received from the ESP32 WiFi
