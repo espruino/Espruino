@@ -62,7 +62,7 @@ void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
       break;
     case ESP_GATTC_CONNECT_EVT:
       gattc_apps[GATTC_PROFILE].conn_id = p_data->connect.conn_id;
-      m_central_conn_handles[0] = 0x01;
+      m_central_conn_handles[0] = 0;
       memcpy(gattc_apps[GATTC_PROFILE].remote_bda, p_data->connect.remote_bda, sizeof(esp_bd_addr_t));
       esp_err_t ret = esp_ble_gattc_send_mtu_req (gattc_if, p_data->connect.conn_id);
       jsble_check_error((uint32_t)ret);
@@ -274,6 +274,7 @@ void gattc_getCharacteristics(JsVar *service, ble_uuid_t char_uuid){
         ble_uuid_t ble_uuid;
         espbtuuid_TO_bleuuid(char_elem_result[i].uuid, &ble_uuid);
         jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(ble_uuid));
+        jsvObjectSetChild(o, "service", service);
         jsvObjectSetIntChild(o,"handle_value", char_elem_result[i].char_handle);
         if (cccd_handle != INVALID_HANDLE)
           jsvObjectSetIntChild(o,"handle_cccd", cccd_handle);
