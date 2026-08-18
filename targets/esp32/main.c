@@ -61,6 +61,10 @@ uintptr_t espruino_stackHighPtr = 0;
 
 extern void initialise_wifi(void);
 
+/** Task that runs and:
+     * pulls data from serial/USB and pushes it to Espruino
+     * takes data from Espruino outout queue and pushes it to serial/USB/bluetooth
+*/
 static void uartTask(void *data) {
   initConsole();
   while(1) {
@@ -70,7 +74,7 @@ static void uartTask(void *data) {
 
 #include "esp_heap_caps.h"  // Required header
 void printHeapDebug(int i ) {
-  printf("%d DRAM Free: %6d | Largest: %6d | Min: %6d\n",
+  jsiConsolePrintf("%d DRAM Free: %6d | Largest: %6d | Min: %6d\n",
          i,
          heap_caps_get_free_size(MALLOC_CAP_8BIT),
          heap_caps_get_largest_free_block(MALLOC_CAP_8BIT),
@@ -78,7 +82,7 @@ void printHeapDebug(int i ) {
 
   multi_heap_info_t info;
   heap_caps_get_info(&info, MALLOC_CAP_8BIT);
-  printf("%d Blocks: %d total (%d alloc, %d free)\n",
+  jsiConsolePrintf("%d Blocks: %d total (%d alloc, %d free)\n",
          i, info.total_blocks, info.allocated_blocks, info.free_blocks);
 }
 
