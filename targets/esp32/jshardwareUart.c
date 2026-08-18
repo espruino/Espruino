@@ -182,8 +182,31 @@ void initConsole() {
 
 
 
-uint8_t rxbuf[256];
+void writeSerial(IOEventFlags device, uint8_t *buf, int len){
+  int err;
+#ifdef ESPR_USE_USB_SERIAL_JTAG
+  if(device == EV_USBSERIAL) {
+    usb_serial_jtag_write_bytes(buf, len, pdMS_TO_TICKS(500)); // could return <0 for an error.
+    usbUARTIsNotFlushed = true; // ensure we flash USB eventually
+  }
+#endif
+  if(device == EV_SERIAL1 && jshIsDeviceInitialised(EV_SERIAL1)){
+    uart_write_bytes(uart_Serial1, buf, len);
+  }
+  if(device == EV_SERIAL2 && jshIsDeviceInitialised(EV_SERIAL2)){
+    uart_write_bytes(uart_Serial2, buf, len);
+  }
+#if ESPR_USART_COUNT>2
+  else if(device == EV_SERIAL3 && jshIsDeviceInitialised(EV_SERIAL3)){
+    uart_write_bytes(uart_Serial3, buf, len);
+  }
+#endif
+}
+
 void pollSerialDevices() {
+  uint8_t buf[64];
+  bool busy = false;
+  static uint16_t idleCount = 0;
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #if ESP_IDF_VERSION_MAJOR < 5 // hack to work out if we're connected or not on IDF4
   if (usb_serial_initialised) {
@@ -197,21 +220,26 @@ void pollSerialDevices() {
 #endif
   // Handle transmission
   IOEventFlags device = jshGetDeviceToTransmit();
-  int c = jshGetCharToTransmit(device); // get top device (FIXME: can this be cleaner?)
-  while(c >= 0) {
-    // FIXME: can we put multiple chars into rxbuf and so reduce TX calls?
+  while(device != EV_NONE) {
+    busy = true;
+    idleCount = 0;
+    buf[0] = jshGetCharToTransmit(device); // get top device (FIXME: can this be cleaner?)
+    int len = 1;
+
+    // FIXME: can we put multiple chars into buf and so reduce TX calls?
     switch(device){
   #ifdef BLUETOOTH
       case EV_BLUETOOTH:
-        gatts_sendNUSNotification(c);
+        gatts_sendNUSNotification(buf[0]);
         break;
   #endif
       default:
-        writeSerial(device,(uint8_t)c);
+        while (jshGetDeviceToTransmit() == device && len<sizeof(buf))
+          buf[len++] = jshGetCharToTransmit(device);
+        writeSerial(device, buf, len);
         break;
     }
     device = jshGetDeviceToTransmit();
-    c = jshGetCharToTransmit(device);
   }
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 /* The USB CDC UART on the C3 only writes the data to USB after a newline.
@@ -232,44 +260,42 @@ void pollSerialDevices() {
     return; // don't bother reading if we can't put the data in
   }
   // sleep handling - if idle for 5s, we start waiting 100ms for data - otherwise just 1ms
-  static uint16_t idleCount = 0;
   TickType_t ticksToWait = (idleCount>5000) ? pdMS_TO_TICKS(100) : pdMS_TO_TICKS(5);
-  bool busy = false;
   int len;
   /* FIXME: we should use esp_vfs_usb_serial_jtag_use_driver/esp_vfs_dev_uart_register
   and then 'select' on ALL of these open files - then we can sleep for however long
   we want. */
 #ifdef ESPR_USE_USB_SERIAL_JTAG
   if (usb_serial_jtag_is_connected()) {
-    len = usb_serial_jtag_read_bytes(rxbuf, sizeof(rxbuf), ticksToWait);
+    len = usb_serial_jtag_read_bytes(buf, sizeof(buf), ticksToWait);
     ticksToWait = 0;
     if(len > 0) {
-      jshPushIOCharEvents(EV_USBSERIAL, rxbuf, len);
+      jshPushIOCharEvents(EV_USBSERIAL, buf, len);
       busy = true;
     }
   }
 #endif
   if(jshIsDeviceInitialised(EV_SERIAL1)){
-    len = uart_read_bytes(uart_Serial1, rxbuf, sizeof(rxbuf), ticksToWait);
+    len = uart_read_bytes(uart_Serial1, buf, sizeof(buf), ticksToWait);
     ticksToWait = 0;
     if(len > 0) {
-      jshPushIOCharEvents(EV_SERIAL1, rxbuf, len);
+      jshPushIOCharEvents(EV_SERIAL1, buf, len);
       busy = true;
     }
   }
   if(jshIsDeviceInitialised(EV_SERIAL2)){
-    len = uart_read_bytes(uart_Serial2, rxbuf, sizeof(rxbuf), ticksToWait);
+    len = uart_read_bytes(uart_Serial2, buf, sizeof(buf), ticksToWait);
     ticksToWait = 0;
     if(len > 0) {
-      jshPushIOCharEvents(EV_SERIAL2, rxbuf, len);
+      jshPushIOCharEvents(EV_SERIAL2, buf, len);
       busy = true;
     }
   }
 #if ESPR_USART_COUNT>2
   if(jshIsDeviceInitialised(EV_SERIAL3)){
-    len = uart_read_bytes(uart_Serial3, rxbuf, sizeof(rxbuf), 0/*don't wait*/);
+    len = uart_read_bytes(uart_Serial3, buf, sizeof(buf), 0/*don't wait*/);
     if(len > 0) {
-      jshPushIOCharEvents(EV_SERIAL3, rxbuf, len);
+      jshPushIOCharEvents(EV_SERIAL3, buf, len);
       busy = true;
     }
   }
@@ -277,25 +303,4 @@ void pollSerialDevices() {
   // idle counter
   if (busy) idleCount = 0;
   else if (idleCount<65535) idleCount++;
-}
-
-void writeSerial(IOEventFlags device, uint8_t c){
-  char str[2] = { (char)c, '\0' };
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-  if(device == EV_USBSERIAL) {
-    usb_serial_jtag_write_bytes(&c, 1, 0);
-    usbUARTIsNotFlushed = true; // ensure we flash USB eventually
-  }
-#endif
-  if(device == EV_SERIAL1 && jshIsDeviceInitialised(EV_SERIAL1)){
-    uart_write_bytes(uart_Serial1, str, 1);
-  }
-  if(device == EV_SERIAL2 && jshIsDeviceInitialised(EV_SERIAL2)){
-    uart_write_bytes(uart_Serial2, str, 1);
-  }
-#if ESPR_USART_COUNT>2
-  else if(device == EV_SERIAL3 && jshIsDeviceInitialised(EV_SERIAL3)){
-    uart_write_bytes(uart_Serial3, str, 1);
-  }
-#endif
 }

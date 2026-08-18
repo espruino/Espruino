@@ -19,7 +19,6 @@
 void initConsole();
 void initSerial(IOEventFlags device,JshUSARTInfo *inf);
 void uninitSerial(IOEventFlags device);
-void writeSerial(IOEventFlags device,uint8_t c);
 void pollSerialDevices();
 
 #if defined(ESPR_USE_USB_SERIAL_JTAG) && ESP_IDF_VERSION_MAJOR < 5
