@@ -243,11 +243,18 @@ void jshSoftInit() {
 /**
  * Handle whatever needs to be done in the idle loop when there's nothing to do.
  *
- * Nothing is needed on the ESP32.
+ * Nothing is needed on the ESP32 - we have a uartTask thread
  */
 void jshIdle() {
 
 }
+
+/** Called when we're busy waiting for something but still idling */
+void jshBusyIdle() {
+  // Delay for 10ms - allow other tasks to run as these may be needed to purge full buffers
+  vTaskDelay(pdMS_TO_TICKS(10));
+}
+
 
 // ESP32 chips don't have a serial number but they do have a MAC address
 int jshGetSerialNumber(unsigned char *data, int maxChars) {

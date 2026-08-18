@@ -174,10 +174,10 @@ int app_main(void)
     // The mapping in hrom is never released - as js code can be called at anytime
   }
   esp_partition_iterator_release(it);
-
-  xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", ESP_STACK_SIZE, NULL, 5, NULL, 0);
+  // Start tasks
+  // uartTask should be first, so it can handle sending characters made by espruinoTask
   xTaskCreatePinnedToCore(&uartTask,"uartTask",2200,NULL,20,NULL,0);
-
+  xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", ESP_STACK_SIZE, NULL, 5, NULL, 0);
 
   return 0;
 }
