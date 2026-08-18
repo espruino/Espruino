@@ -147,10 +147,12 @@ void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
       }
       break;
 
-    case ESP_GATTC_DISCONNECT_EVT:
-      m_central_conn_handles[0] = BLE_CONN_HANDLE_INVALID;
-      jsble_queue_pending(BLEP_CENTRAL_DISCONNECTED, p_data->disconnect.reason);
+    case ESP_GATTC_DISCONNECT_EVT: {
+      int centralIdx = 0;
+      m_central_conn_handles[centralIdx] = BLE_CONN_HANDLE_INVALID;
+      jsble_queue_pending(BLEP_CENTRAL_DISCONNECTED, (p_data->disconnect.reason&255) | (centralIdx<<8));
       break;
+    }
     default: break;
   }
 }
