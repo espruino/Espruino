@@ -89,70 +89,6 @@ Badge.setLEDs = function(r,g,b) {
   require("neopixel").write(D21, led_rgb);
 }
 
-Badge.scan = function() {
-  var gatt, service, tx, rx;
-  var text = "\x10print(JSON.stringify(ID))\n";
-  // left-right bluetooth scan effect
-  LED_EN.reset();
-  let arr = new Uint24Array(led_rgb.buffer);
-  arr.fill(10);
-  require("neopixel").write(D21, led_rgb);
-  let animInt = setInterval(function() {
-    var n = 4.5+3*Math.sin(getTime()*2);
-    for (var i=0;i<10;i++)
-      arr[i] = E.HSBtoRGB(0.7,1,Math.pow(E.clip(1-0.2*Math.abs(i-n),0,1),2)*0.2);
-    require("neopixel").write(D21, led_rgb);
-  }, 50);
-
-  let found = false;
-  return new Promise(resolve => NRF.setScan(function(d) {
-    if (found || d.rssi < -50) return;
-    found = true;
-    NRF.setScan();
-    clearInterval(animInt);
-    setLEDs(0x7F0000);
-    print("Found ",d);
-    resolve(d);
-    animInt = setTimeout(function() {
-      setLEDs();
-    }, 1000);
-  }, { filters: [{ namePrefix:"Espruino" }] })).then(function(device) {
-    return device.gatt.connect();
-  }).then(function(d) {
-    gatt = d;
-    return d.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
-  }).then(function(s) {
-    service = s;
-    return service.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
-  }).then(function(c) {
-    tx = c;
-    return service.getCharacteristic("6e400003-b5a3-f393-e0a9-e50e24dcca9e");
-  }).then(function(c) {
-    rx = c;
-    rx.on('characteristicvaluechanged', function(event) {
-      var d = E.toString(event.target.value.buffer);
-      print("RX", E.toJS(d));
-    });
-    return rx.startNotifications();
-  }).then(function() {
-    function sender(resolve, reject) {
-      if (text.length) {
-        tx.writeValue(text.substr(0,20)).then(function() {
-          sender(resolve, reject);
-        }).catch(reject);
-        text = text.substr(20);
-      } else  {
-        resolve();
-      }
-    }
-    return new Promise(sender);
-  }).then(function() {
-    return new Promise(resolve => setTimeout(resolve, 1000));
-  }).then(function() {
-    gatt.disconnect();
-  });
-}
-
 // ePaper
 const CS = D4, DC = D10, RST = D1, BUSY = D0; // BUSY keeps changing?
 const Source_BITS  = 800;
@@ -322,13 +258,13 @@ Badge.showTestImage = function() {
    0=black, 1=white, 2=yellow, 3=red */
 Badge.getGraphics = function() {
   var g = Graphics.createArrayBuffer(400,240,2); /* 0=black, 1=white, 2=yellow, 3=red */
-  
+
   g.flip = function() {
     if (Badge.epaperBusy) throw new Error("ePaper is busy");
     Badge.epaperBusy = true;
     return epdInit().then(() => {
-      eC(0x10);    
-      
+      eC(0x10);
+
       var line = new Uint16Array(100);
       /*var lut = new Uint16Array(256);
       for (var i=0;i<256;i++) lut[i] = (((i&0x03)<<8) | ((i&0x0C)<<10) | ((i&0x30)>>4) | ((i&0xC0)>>2)) * 0b0101;
@@ -350,13 +286,13 @@ Badge.getGraphics = function() {
 Badge.showTestScreen = function() {
   return Badge.showRendering(function(g) {
     g.setColor(1).drawRect(0,0,399,239).drawRect(1,1,398,238);
-      g.setBgColor(1).clear();
-      for (var i=0;i<4;i++) g.setColor(i).fillRect(i*40,0,(i+1)*40,479);
-      g.setColor(0);
-      for (var i=0;i<480;i+=10) g.drawLine(799,i, 799-i,479);     
-      g.setColor(0).setFontVector(80).setFontAlign(0,0).drawString("Hello World",400,240);
-      var env = process.env, mem=process.memory();
-      g.setFont("6x8:2").setFontAlign(0,0).drawString(`Espruino ${env.VERSION} (${env.GIT_COMMIT})
+    g.setBgColor(1).clear();
+    for (var i=0;i<4;i++) g.setColor(i).fillRect(i*40,0,(i+1)*40,479);
+    g.setColor(0);
+    for (var i=0;i<480;i+=10) g.drawLine(799,i, 799-i,479);
+    g.setColor(0).setFontVector(80).setFontAlign(0,0).drawString("Hello World",400,240);
+    var env = process.env, mem=process.memory();
+    g.setFont("6x8:2").setFontAlign(0,0).drawString(`Espruino ${env.VERSION} (${env.GIT_COMMIT})
 https://espruino.com/Badge
 ${env.BOARD}
 ${mem.free} / ${mem.total} vars free
@@ -364,10 +300,28 @@ ${mem.free} / ${mem.total} vars free
   });
 };
 
+/* Call this with a string or an Error object to display an error String */
+Badge.showError = function(error) {
+  require("Storage").write("showing", "error");
+  let stack = ((error instanceof Object) && error.stack) ? error.stack : undefined;
+  let msg = (error instanceof Object) ? error.message : error.toString();
+  return Badge.showRendering(function(g) {
+    g.setBgColor(3).clearRect(0,0,799,479);
+    g.setBgColor(1).clearRect(20,20,779,459);
+    g.setColor(3).setFontVector(80).setFontAlign(0,0).drawString("ERROR",400,120);
+    g.setColor(0).setFont("6x8:3").setFontAlign(0,0).drawString(msg,400,180);
+    if (stack) g.setFont("6x8:2").setFontAlign(-1,-1).drawString(stack, 30, 240);
+    var env = process.env, mem=process.memory();
+    g.setFont("6x8:2").setFontAlign(-1,-1).drawString(`Espruino ${env.VERSION} (${env.GIT_COMMIT})  ${env.BOARD}
+https://espruino.com/Badge  ${mem.free} / ${mem.total} vars free
+`,30,30);
+  });
+};
 
 /* Show full-res 800x480 graphics on the display. We don't have a full-size
 buffer for this, so we have a callback which is called to render each
-slice in turn. Just render as-normal in gfxCallback */
+slice in turn. Just render as-normal in gfxCallback.
+0=black, 1=white, 2=yellow, 3=red */
 Badge.showRendering = function(gfxCallback) {
   if (Badge.epaperBusy) throw new Error("ePaper is busy");
   Badge.epaperBusy = true;
@@ -385,6 +339,8 @@ Badge.showRendering = function(gfxCallback) {
   });
 };
 
+/* Load a raw 800x480x2 image file from storage.
+0=black, 1=white, 2=yellow, 3=red */
 Badge.showImageFile = function(filename) {
   if (Badge.epaperBusy) throw new Error("ePaper is busy");
   Badge.epaperBusy = true;
