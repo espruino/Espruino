@@ -1005,14 +1005,16 @@ JsVarFloat jswrap_ble_getBattery() {
    uuid is only used for BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA(0xFF)  */
 bool _jswrap_ble_getAdvertisingDataAdd(uint8_t *advdata, size_t *advdatalen, const char *name, uint8_t type, const uint8_t *data, uint16_t dataLen, uint16_t uuid) {
   int extra = 2;
-  if (type==BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA) extra += 2; // 2 extra bytes for company ID
+  bool includeUUID = (type==BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA) ||
+                     (type==BLE_GAP_AD_TYPE_SERVICE_DATA);
+  if (includeUUID) extra += 2; // 2 extra bytes for company ID
   if (*advdatalen + dataLen + extra > ESPR_MAX_ADVERTISEMENT_DATA) {
     jsExceptionHere(JSET_ERROR, "Advertising data too long when adding %s", name);
     return false;
   }
   advdata[(*advdatalen)++] = dataLen + extra - 1; // length of this field
   advdata[(*advdatalen)++] = type;        // type of this field
-  if (type==BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA) { // 2 extra bytes for company ID
+  if (includeUUID) { // 2 extra bytes for company ID
     advdata[(*advdatalen)++] = uuid & 0xFF; // company ID LSB
     advdata[(*advdatalen)++] = (uuid >> 8) & 0xFF; // company ID MSB
   }
@@ -1138,7 +1140,7 @@ size_t _jswrap_ble_getAdvertisingDataRaw(uint8_t *advdata, JsVar *data, JsVar *o
         ok &= _jswrap_ble_addService(advUUID16, &advUUID16Len, advUUID128, &advUUID128Len, &ble_uuid);
       } else { // if we have data, it's a service
         JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, v);
-        ok &= _jswrap_ble_getAdvertisingDataAdd(advdata, &len, "Service", BLE_GAP_AD_TYPE_SERVICE_DATA, (uint8_t*)dPtr, dLen, 0);
+        ok &= _jswrap_ble_getAdvertisingDataAdd(advdata, &len, "Service", BLE_GAP_AD_TYPE_SERVICE_DATA, (uint8_t*)dPtr, dLen, ble_uuid.uuid);
       }
       jsvUnLock(v);
       jsvObjectIteratorNext(&it);
