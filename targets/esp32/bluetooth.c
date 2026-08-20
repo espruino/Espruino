@@ -152,9 +152,10 @@ uint32_t jsble_set_scanning(bool enabled, JsVar *options){
   if (enabled) {
     if (bleStatus & BLE_IS_SCANNING) return 0;
     bleStatus |= BLE_IS_SCANNING;
-    bool activeScan = false;
+    bool activeScan = false, extended = false;
     if (enabled && jsvIsObject(options)) {
       activeScan = jsvObjectGetBoolChild(options, "active");
+      extended = jsvObjectGetBoolChild(options, "extended");
     }
     bluetooth_gap_setScan(enabled, activeScan);
   } else { // !enabled
@@ -324,7 +325,14 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
 
 /// Set the transmit power of the current (and future) connections
 void jsble_set_tx_power(int8_t pwr) {
-  jsWarn("jsble_set_tx_power not implemented yet\n");
+  // convert to ESP32 power levels
+  esp_power_level_t power = ESP_PWR_LVL_N0 + (int)(pwr/3);
+  if (power < ESP_PWR_LVL_N24) power = ESP_PWR_LVL_N24;
+  if (power > ESP_PWR_LVL_P21) power = ESP_PWR_LVL_P21;
+  // set power levels
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, power);
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, power);
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, power);
 }
 
 uint32_t jsble_central_send_passkey(uint16_t central_conn_handle, char *passkey) {

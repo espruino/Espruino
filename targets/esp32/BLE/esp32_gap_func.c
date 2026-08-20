@@ -32,12 +32,6 @@
 #include "esp_mac.h"
 #endif
 
-#define adv_config_flag      (1 << 0)
-#define scan_rsp_config_flag (1 << 1)
-#define BT_BD_ADDR_HEX(addr)   addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]
-#define GAP_SCAN_FUNC "gap_scan_func"
-
-static uint8_t adv_config_done = 0;
 uint16_t blePeriphConnectionInterval = 0;
 
 static esp_ble_adv_params_t adv_params = { // Time = N * 0.625 msec Time Range: 20 ms to 10.24
@@ -64,17 +58,11 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
   jsWarnGapEvent(event);
   switch (event) {
     case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:{
-      adv_config_done &= (~adv_config_flag);
-      if (adv_config_done == 0){
-        esp_ble_gap_start_advertising(&adv_params);
-      }
+      esp_ble_gap_start_advertising(&adv_params);
       break;
     }
     case ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT:{
-      adv_config_done &= (~scan_rsp_config_flag);
-      if (adv_config_done == 0){
-        esp_ble_gap_start_advertising(&adv_params);
-      }
+      esp_ble_gap_start_advertising(&adv_params);
       break;
     }
     case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:{
