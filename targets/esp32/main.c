@@ -131,9 +131,6 @@ static void espruinoTask(void *data) {
       esp_task_wdt_reset();
       vTaskDelay(pdMS_TO_TICKS(TWDT_TICKS)); // FIXME: shouldn't jshKickWatchdog kick this? And also, a 10ms delay in the idle loop is BAD for performance
    #endif
-#ifdef BLUETOOTH
-    gatts_sendNUSNotificationIfNotEmpty();
-#endif
   }
 }
 

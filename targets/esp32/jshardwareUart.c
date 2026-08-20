@@ -184,7 +184,7 @@ void initConsole() {
 void writeSerial(IOEventFlags device, uint8_t *buf, int len){
   int err;
 #ifdef ESPR_USE_USB_SERIAL_JTAG
-  if(device == EV_USBSERIAL) {
+  if(device == EV_USBSERIAL && usb_serial_jtag_is_driver_installed()) {
     usb_serial_jtag_write_bytes(buf, len, pdMS_TO_TICKS(100)); // could return <0 for an error.
 /* The USB CDC UART on the C3 only writes the data to USB after a newline.
     We don't want that, so we call flush in this uart task if any data has been sent. */
@@ -226,17 +226,18 @@ void pollSerialDevices() {
 #endif
   // Handle transmission
   IOEventFlags device = jshGetDeviceToTransmit();
+  bool hadBluetooth = false;
   while(device != EV_NONE) {
     busy = true;
     idleCount = 0;
     buf[0] = jshGetCharToTransmit(device); // get top device (FIXME: can this be cleaner?)
     int len = 1;
 
-    // FIXME: can we put multiple chars into buf and so reduce TX calls?
     switch(device){
   #ifdef BLUETOOTH
-      case EV_BLUETOOTH:
+      case EV_BLUETOOTH: // FIXME: can we put multiple chars into buf and so reduce TX calls?
         gatts_sendNUSNotification(buf[0]);
+        hadBluetooth = true;
         break;
   #endif
       default:
@@ -247,6 +248,9 @@ void pollSerialDevices() {
     }
     device = jshGetDeviceToTransmit();
   }
+  #ifdef BLUETOOTH
+  if (hadBluetooth) gatts_sendNUSNotificationIfNotEmpty();
+  #endif
   // Handle Receive
   if (jshGetIOCharEventsFree() < 256) { // if we don't have enough space for data
     jshHadEvent(); // ensure we wake up the main task
