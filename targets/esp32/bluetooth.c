@@ -15,6 +15,7 @@
 
 #include "esp_bt.h"
 #include "esp_bt_main.h"
+#include "esp_gap_ble_api.h"
 #include "esp_gatt_common_api.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -49,7 +50,7 @@ void jsble_init(){
     if(registerCallbacks()) return;
     ret = esp_ble_gatt_set_local_mtu(ESP_GATT_MTU_SIZE); // set MTU based on the most we're expecting to put in our queue at a time
     if(ret) jsWarn("set local MTU failed:%x\n",ret);
-    gap_init_security();
+    jsble_update_security();
     // force advertising with the right info
     bleStatus |= BLE_IS_ADVERTISING;
   }
@@ -258,6 +259,56 @@ void jsble_central_setWhitelist(uint16_t central_conn_handle, bool whitelist){
 }
 
 void jsble_update_security() {
+  /* set the security iocap & auth_req & key size & init key response key parameters to the stack*/
+  esp_ble_auth_req_t auth_req = (bleStatus & BLE_SECURITY_MITM) ? ESP_LE_AUTH_REQ_BOND_MITM : ESP_LE_AUTH_NO_BOND;
+  esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;           //set the IO capability to No output No input
+  bool encryptUart = false;
+  bool mitmProtect = false;
+
+  JsVar *options = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SECURITY);
+  if (jsvIsObject(options)) {
+    JsVar *v;
+    encryptUart = jsvObjectGetBoolChild(options, "encryptUart");
+    mitmProtect = jsvObjectGetBoolChild(options, "mitm");
+    v = jsvObjectGetChildIfExists(options, "pair");
+    if (!jsvIsUndefined(v) && !jsvGetBool(v)) {
+      bleStatus |= BLE_IS_NOT_PAIRABLE;
+    } else {
+      bleStatus &= ~BLE_IS_NOT_PAIRABLE;
+      jsWarn("pair:0 not implemented on ESP32 yet\n");
+    }
+    jsvUnLock(v);
+
+    bool display = jsvObjectGetBoolChild(options, "display");
+    bool keyboard = jsvObjectGetBoolChild(options, "keyboard");
+    if (keyboard && display) iocap = ESP_IO_CAP_KBDISP;
+    else if (keyboard) iocap = ESP_IO_CAP_IN;
+    else if (display) iocap = ESP_IO_CAP_OUT;
+  }
+
+  // If UART encryption or mitm protection status changed, we need to update flags and restart Bluetooth
+  if (((bleStatus & BLE_ENCRYPT_UART) != 0) != encryptUart || ((bleStatus & BLE_SECURITY_MITM) != 0) != mitmProtect) {
+    if (encryptUart) bleStatus |= BLE_ENCRYPT_UART;
+    else bleStatus &= ~BLE_ENCRYPT_UART;
+    if (mitmProtect) bleStatus |= BLE_SECURITY_MITM;
+    else bleStatus &= ~BLE_SECURITY_MITM;
+    // But only restart if the UART was enabled
+    if (bleStatus & BLE_NUS_INITED)
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+  }
+
+  uint8_t key_size = 16;      //the key size should be 7~16 bytes
+  uint8_t init_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
+  uint8_t rsp_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
+  esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
+  esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
+  esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
+  /* If your BLE device act as a Slave, the init_key means you hope which types of key of the master should distribut to you,
+  and the response key means which key you can distribut to the Master;
+  If your BLE device act as a master, the response key means you hope which types of key of the slave should distribut to you,
+  and the init key means which key you can distribut to the slave. */
+  esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
+  esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
 }
 
 /// Return an object showing the security status of the given connection
@@ -279,4 +330,21 @@ void jsble_set_tx_power(int8_t pwr) {
 uint32_t jsble_central_send_passkey(uint16_t central_conn_handle, char *passkey) {
   jsWarn("central set Whitelist not implemented yet\n");
   return 0;
+}
+
+void jsble_central_eraseBonds(bool hard) {
+  int dev_num = esp_ble_get_bond_device_num();
+  if (dev_num <= 0) {
+    jsiConsolePrintf("No saved bonds found\n");
+    return;
+  }
+
+  esp_ble_bond_dev_t *dev_list = (esp_ble_bond_dev_t *)malloc(sizeof(esp_ble_bond_dev_t) * dev_num);
+  if (!dev_list) return;
+
+  esp_ble_get_bond_device_list(&dev_num, dev_list);
+  for (int i = 0; i < dev_num; i++)
+    esp_ble_remove_bond_device(dev_list[i].bd_addr);
+
+  free(dev_list);
 }

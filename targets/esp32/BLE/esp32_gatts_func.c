@@ -208,7 +208,8 @@ static void gatts_read_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
 static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
   NOT_USED(event);
   int g = getIndexFromGatts_if(gatts_if);
-  esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
+  if (bleStatus & (BLE_ENCRYPT_UART | BLE_SECURITY_MITM))
+    esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
   if(g >= 0){
     gatts_service[g].conn_id = param->connect.conn_id;
     memcpy(gatts_service[g].bda, param->connect.remote_bda, ESP_BD_ADDR_LEN);
@@ -451,6 +452,12 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
 
 void add_ble_uart(){
   int handles = 1;
+  esp_gatt_perm_t read_perm = ESP_GATT_PERM_READ,
+                  write_perm = ESP_GATT_PERM_WRITE;
+  if (bleStatus & BLE_ENCRYPT_UART) {
+    read_perm = ESP_GATT_PERM_READ_ENCRYPTED;// or ENC_MITM to require MITM protection?
+    write_perm = ESP_GATT_PERM_WRITE_ENCRYPTED;// or ENC_MITM to require MITM protection?
+  }
   ble_service_pos++;
   gatts_service[ble_service_pos].ble_uuid = uart_service_uuid;
   bleuuid_To_uuid128(gatts_service[ble_service_pos].ble_uuid,&adv_service_uuid128[ble_service_pos * 16]);
@@ -458,20 +465,18 @@ void add_ble_uart(){
   gatts_service[ble_service_pos].serviceFlag = BLE_SERVICE_NUS;
   gatts_service[ble_service_pos].gatts_if = ESP_GATT_IF_NONE;
   ble_char_pos++;
-  gatts_char[ble_char_pos].char_perm = 0;
   gatts_char[ble_char_pos].service_pos = ble_service_pos;
   gatts_char[ble_char_pos].char_uuid = uart_char_rx_uuid;
-  gatts_char[ble_char_pos].char_perm |= ESP_GATT_PERM_WRITE;
+  gatts_char[ble_char_pos].char_perm = write_perm;
   gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_WRITE|ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
   gatts_char[ble_char_pos].char_control = NULL;
   gatts_char[ble_char_pos].char_handle = 0;
   gatts_char[ble_char_pos].charFlag = BLE_CHAR_UART_RX;
   handles +=2;
   ble_char_pos++;
-  gatts_char[ble_char_pos].char_perm = 0;
   gatts_char[ble_char_pos].service_pos = ble_service_pos;
   gatts_char[ble_char_pos].char_uuid = uart_char_tx_uuid;
-  gatts_char[ble_char_pos].char_perm |= ESP_GATT_PERM_READ;
+  gatts_char[ble_char_pos].char_perm = read_perm;
   gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_NOTIFY;
   gatts_char[ble_char_pos].char_control = NULL;
   gatts_char[ble_char_pos].char_handle = 0;
@@ -481,7 +486,7 @@ void add_ble_uart(){
   gatts_descr[ble_descr_pos].char_pos = ble_char_pos;
   gatts_descr[ble_descr_pos].descr_uuid = descriptor_uuid;
   gatts_descr[ble_descr_pos].descr_handle = 0;
-  gatts_descr[ble_descr_pos].descr_perm = ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE;
+  gatts_descr[ble_descr_pos].descr_perm = read_perm | write_perm;
   gatts_descr[ble_descr_pos].len = 2;
   handles +=2;
   gatts_service[ble_service_pos].num_handles = (uint16_t)handles;

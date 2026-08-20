@@ -812,7 +812,7 @@ void jswrap_ble_restart(JsVar *callback) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "eraseBonds",
-    "#if" : "defined(NRF52_SERIES)",
+    "#if" : "defined(NRF52_SERIES) || defined(ESP32)",
     "generate" : "jswrap_ble_eraseBonds",
     "params" : [
       ["hard","bool","[optional] If set, this resets bonds not by asking the softdevice, but by deleting the pages containing pairing info. You should restart the device after."]
@@ -825,7 +825,7 @@ while a connection is active, so if there is a connection it will be postponed u
 Booting your device while holding all buttons down together should also have the same effect.
 */
 void jswrap_ble_eraseBonds(bool hard) {
-#if PEER_MANAGER_ENABLED
+#if PEER_MANAGER_ENABLED || defined(ESP32)
   if (jsble_has_connection()) {
     jsExceptionHere(JSET_ERROR, "BLE Connected, can't erase bonds.");
   } else {
@@ -861,11 +861,11 @@ void jswrap_ble_getAddress_binary(uint32_t *result, bool current) {
   }
 #if defined(NRF5X)
  result[0] =  NRF_FICR->DEVICEADDR[0];
- result[1] =  NRF_FICR->DEVICEADDR[1];
+ result[1] =  NRF_FICR->DEVICEADDR[1] | 0xC000;
 #elif defined(ESP32)
   const uint8_t *macnr = esp_bt_dev_get_address();
   result[0] =  (macnr[2]<<24) | (macnr[3]<<16) | (macnr[4]<<8) | macnr[5];
-  result[1] =  ((macnr[0] & 0x3f)<<8) | macnr[1];
+  result[1] =  (macnr[0]<<8) | macnr[1];
 #else
   result[0] = 0xDEADDEAD;
   result[1] = 0xDEAD;
@@ -875,7 +875,7 @@ JsVar *jswrap_ble_getAddress(bool current) {
   uint32_t addr[2];
   jswrap_ble_getAddress_binary(addr, current);
   return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
-      ((addr[1]>>8 )&0xFF)|0xC0,
+      ((addr[1]>>8 )&0xFF),
       ((addr[1]    )&0xFF),
       ((addr[0]>>24)&0xFF),
       ((addr[0]>>16)&0xFF),
