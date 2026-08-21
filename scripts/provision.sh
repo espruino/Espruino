@@ -122,7 +122,7 @@ if [ "$PROVISION_ESP32_IDF4" = "1" ]; then
         echo installing esp-idf folder
         mkdir esp-idf-4
         cd esp-idf-4 || exit
-        git clone -b v4.4.8 --recursive https://github.com/espressif/esp-idf.git
+        git clone -b v4.4.8 --depth=1 --recursive --shallow-submodules https://github.com/espressif/esp-idf.git
         esp-idf/install.sh			# RIC if not specifying the target, it installs all of them for now, selected targets are: esp32c3, esp32, esp32s2, esp32h2, esp32s3
         cd ..
     fi
@@ -136,7 +136,7 @@ if [ "$PROVISION_ESP32_IDF5" = "1" ]; then
         echo installing esp-idf folder
         mkdir esp-idf-5
         cd esp-idf-5 || exit
-        git clone -b v5.5.3 --recursive https://github.com/espressif/esp-idf.git
+        git clone -b v5.5.3 --depth=1 --recursive --shallow-submodules https://github.com/espressif/esp-idf.git
         esp-idf/install.sh			# RIC if not specifying the target, it installs all of them for now, selected targets are: esp32c3, esp32, esp32s2, esp32h2, esp32s3
         cd ..
     fi
