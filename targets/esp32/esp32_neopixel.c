@@ -88,6 +88,8 @@ int neopixelConfiguredGPIO = -1;
 
 #if ESP_IDF_VERSION_MAJOR >= 5
 
+extern void esp_rom_gpio_connect_out_signal(uint32_t gpio_num, uint32_t signal_idx, bool out_inv, bool oen_inv);
+
 static esp_err_t neopixel_rmt_init_v5(gpio_num_t gpio_num) {
   if (neopixelConfiguredGPIO == (int)gpio_num) {
     if (neopixel_tx_chan != NULL && neopixel_gpio_num == gpio_num) {
@@ -100,6 +102,9 @@ static esp_err_t neopixel_rmt_init_v5(gpio_num_t gpio_num) {
     rmt_del_channel(neopixel_tx_chan);
     if (neopixel_copy_encoder) {
       rmt_del_encoder(neopixel_copy_encoder);
+    }
+    if (neopixel_gpio_num != GPIO_NUM_NC) {
+      esp_rom_gpio_connect_out_signal((uint32_t)neopixel_gpio_num, 256, false, false);
     }
     neopixel_tx_chan = NULL;
     neopixel_copy_encoder = NULL;
@@ -127,6 +132,7 @@ static esp_err_t neopixel_rmt_init_v5(gpio_num_t gpio_num) {
   
   neopixel_gpio_num = gpio_num;
   neopixelConfiguredGPIO = (int)gpio_num;
+  rmt_tx_wait_all_done(neopixel_tx_chan, pdMS_TO_TICKS(100));
   return ESP_OK;
 }
 
@@ -189,7 +195,6 @@ static bool neopixel_write_v5(gpio_num_t gpio_num, unsigned char *rgbData, size_
   free(symbols);
   
   if (ret != ESP_OK) return false;
-  // rmt_tx_wait_all_done(neopixel_tx_chan, pdMS_TO_TICKS(100));
   return true;
 }
 
