@@ -473,9 +473,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
     JsVarFloat value,
     JsVarFloat freq,
     JshAnalogOutputFlags flags) { // if freq<=0, the default is used
-#if ESP_IDF_VERSION_MAJOR >= 5
-    jsError("writeDAC() is not implemented yes");
-#else
   UNUSED(flags);
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=1-value;
   if (value<0) value=0;
@@ -498,7 +495,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
     }
     else writePWM(pin,( uint16_t)(value * PWMTimerRange),(int) freq);
   }
-#endif
   return 0;
 }
 
@@ -507,9 +503,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
  *
  */
 void jshSetOutputValue(JshPinFunction func, int value) {
-#if ESP_IDF_VERSION_MAJOR >= 5
-    jsError("writeDAC() is not implemented yes");
-#else
   int pin;
   if (JSH_PINFUNCTION_IS_DAC(func)) {
     uint8_t val = (uint8_t)(value >> 8);
@@ -524,7 +517,6 @@ void jshSetOutputValue(JshPinFunction func, int value) {
     value=value >> (16 - PWMTimerBit);
     setPWM( (Pin)pin, (uint16_t)value);
   }
-#endif
 }
 
 void jshEnableWatchDog(JsVarFloat timeout) {
