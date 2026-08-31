@@ -480,7 +480,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
   if (!isfinite(freq)) freq=0;
   if(pin == 25 || pin == 26){
   if(flags & (JSAOF_ALLOW_SOFTWARE | JSAOF_FORCE_SOFTWARE)) jsError("pin does not support software PWM");
-    writeDAC(pin,(uint8_t)(value * 256));
+    writeDAC(pin,(uint8_t)(value * 255));
   }
   else{
   if(flags & JSAOF_ALLOW_SOFTWARE){
