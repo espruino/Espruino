@@ -564,7 +564,11 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     g_isAPStarted = false;
     stopWifiIfIdle();
   } else
+#if ESP_IDF_VERSION_MAJOR>=5
+    jsDebug(DBG_INFO, "Wifi: event_handler -> NOT HANDLED EVENT: %d\n", event_id );
+#else
     jsDebug(DBG_INFO, "Wifi: event_handler -> NOT HANDLED EVENT: %d\n", event->event_id );
+#endif
 #if ESP_IDF_VERSION_MAJOR<5
   return ESP_OK;
 #endif
