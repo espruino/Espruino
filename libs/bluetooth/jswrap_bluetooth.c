@@ -55,6 +55,7 @@
 #include "BLE/esp32_gatts_func.h"
 #include "BLE/esp32_gattc_func.h"
 #include "esp_bt_device.h"
+#include "jshardwareESP32.h"
 #endif
 
 // ------------------------------------------------------------------------------
@@ -213,6 +214,12 @@ uint16_t jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(JsVar *parent) {
   "generate" : "jswrap_ble_init"
 }*/
 void jswrap_ble_init() {
+  #ifdef ESP32
+    if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) {
+      jsWarn("Bluetooth is disabled per ESP32.enableBLE(false)\n");
+      return;
+    }
+  #endif
   // Turn off sleeping if it was on before
   jsiStatus &= ~BLE_IS_SLEEPING;
 

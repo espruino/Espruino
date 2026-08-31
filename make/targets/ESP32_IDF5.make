@@ -29,6 +29,7 @@ $(CMAKEFILE):
 	@echo "INCLUDE_WITHOUT_GEN: $(INCLUDE_WITHOUT_GEN)"
 	@mkdir -p $(BINDIR)/main
 	@touch $(CMAKEFILE)
+	@echo 'set(ESPTOOLPY "$${IDF_PATH}/components/esptool_py/esptool/esptool.py" CACHE FILEPATH "" FORCE)' >> $(CMAKEFILE)
 	@echo 'set(SDKCONFIG_DEFAULTS "sdkconfig.defaults $(SDKCONFIG)")' >> $(CMAKEFILE)
 	@echo "idf_component_register(" >> $(CMAKEFILE)
 	@echo "    SRCS" >> $(CMAKEFILE)

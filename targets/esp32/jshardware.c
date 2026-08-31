@@ -177,6 +177,9 @@ void jshPinDefaultPullup() {
   jshPinSetStateRange(18,18,JSHPINSTATE_GPIO_IN_PULLUP);
 #else
   jshPinSetStateRange(18,19,JSHPINSTATE_GPIO_IN_PULLUP);
+  #if defined(CONFIG_RTC_CLK_SRC_INT_RC) 
+    jshPinSetStateRange(32,33,JSHPINSTATE_GPIO_IN_PULLUP);
+  #endif
 #endif
   jshPinSetStateRange(21,22,JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetStateRange(25,27,JSHPINSTATE_GPIO_IN_PULLUP);

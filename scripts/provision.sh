@@ -141,6 +141,7 @@ if [ "$PROVISION_ESP32_IDF5" = "1" ]; then
         cd ..
     fi
     source esp-idf-5/esp-idf/export.sh
+    export ESP_IDF_PATH=$IDF_PATH
 fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_ESP8266" = "1" ]; then
