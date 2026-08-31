@@ -334,6 +334,7 @@ void jshPinSetState(
   Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
+  if (pin == 25 || pin == 26) disableDAC(pin);
   /* Make sure we kill software PWM if we set the pin state
    * after we've started it */
   if (BITFIELD_GET(jshPinSoftPWM, pin)) {
@@ -413,6 +414,7 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
+  if (pin == 25 || pin == 26) disableDAC(pin);
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
   gpio_num_t gpioNum = pinToESP32Pin(pin);
 #if ESP_IDF_VERSION_MAJOR>=5
