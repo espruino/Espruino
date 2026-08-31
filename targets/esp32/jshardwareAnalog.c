@@ -176,7 +176,10 @@ void writeDAC(Pin pin,uint8_t value){
 #if CONFIG_IDF_TARGET_ESP32
   channel = pinToDacChannel(pin);
 #if ESP_IDF_VERSION_MAJOR>=4
-  if(channel >= 0) dac_output_voltage(channel, value);
+  if(channel >= 0) {
+    dac_output_enable(channel);
+    dac_output_voltage(channel, value);
+  }
 #else
   if(channel >= 0) dac_out_voltage(channel, value);
 #endif
@@ -188,6 +191,5 @@ void writeDAC(Pin pin,uint8_t value){
 	#error Not an ESP32 or ESP32-S3
 #endif
 }
-
 
 
