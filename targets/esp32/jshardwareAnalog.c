@@ -18,6 +18,7 @@
 #include "driver/adc.h"
 #if CONFIG_IDF_TARGET_ESP32
 	#include "driver/dac.h"
+	#include "driver/rtc_io.h"
 #elif CONFIG_IDF_TARGET_ESP32C3
 	typedef enum { DAC_CHAN_0=0 , DAC_CHAN_1=1 } dac_channel_t;
 #elif CONFIG_IDF_TARGET_ESP32S3
@@ -192,4 +193,14 @@ void writeDAC(Pin pin,uint8_t value){
 #endif
 }
 
-
+void disableDAC(Pin pin){
+#if CONFIG_IDF_TARGET_ESP32
+  dac_channel_t channel = pinToDacChannel(pin);
+  if(channel >= 0) {
+    dac_output_disable(channel);
+    rtc_gpio_deinit((gpio_num_t)pin);
+  }
+#else
+  UNUSED(pin);
+#endif
+}

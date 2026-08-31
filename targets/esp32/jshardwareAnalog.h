@@ -23,3 +23,4 @@ int readADC(Pin pin);
 void rangeADC(Pin pin,int range);
 
 void writeDAC(Pin pin,uint8_t value);
+void disableDAC(Pin pin);
