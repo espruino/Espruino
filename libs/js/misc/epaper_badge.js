@@ -5,7 +5,7 @@ Badge.getTemperature().then(print);
 Badge.getAccel().then(print);
 Badge.setLEDs("#f00");
 
-Badge.showTestImage();
+Badge.showTestScreen();
 Badge.showImageFile("img.raw");
 Badge.showRendering(function(g) { // Colors are: 0=black, 1=white, 2=yellow, 3=red
   g.clear().setColor(1).setFontVector(300).setFontAlign(0,0).drawString("Hello",400,240);
@@ -227,32 +227,6 @@ function epdUpdate(){
   eD(0x00);
   return epdWait();
 }
-
-Badge.showTestImage = function() {
-  if (Badge.epaperBusy) throw new Error("ePaper is busy");
-  Badge.epaperBusy = true;
-  return epdInit().then(() => {
-    eC(0x10);
-    var g = Graphics.createArrayBuffer(400,240,2); /* 0=black, 1=white, 2=yellow, 3=red */
-    g.setColor(1).drawRect(0,0,399,239).drawRect(1,1,398,238);
-    g.drawLine(0,0,300,300);
-    for (var i=0;i<4;i++) g.setColor(i).fillRect(4+i*20,4,4+(i+1)*20,50);
-    g.setColor(1).setFontVector(50).setFontAlign(0,0).drawString("Hello World",200,120);
-    var line = new Uint16Array(100);
-    var lut = new Uint16Array(256);
-    for (var i=0;i<256;i++)
-      lut[i] = (((i&0x03)<<8) | ((i&0x0C)<<10) | ((i&0x30)>>4) | ((i&0xC0)>>2)) * 0b0101;
-    for (var y=0;y<240;y++) {
-      E.mapInPlace(new Uint8Array(g.buffer, y*100, 100), line, lut);
-      eD(line.buffer);
-      eD(line.buffer);
-    }
-    return epdUpdate();
-  }).then(epdSleep).then(() => {
-    Badge.epaperBusy = false;
-  });
-}
-
 
 /* Return a 400x240 2bpp graphics instance, which you can call `.flip()` on to update the screen.
    0=black, 1=white, 2=yellow, 3=red */
