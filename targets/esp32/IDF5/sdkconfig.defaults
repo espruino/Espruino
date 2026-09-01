@@ -1,0 +1,27 @@
+# This file was generated using idf.py save-defconfig. It can be edited manually.
+# Espressif IoT Development Framework (ESP-IDF) 5.5.3 Project Minimal Configuration
+#
+# cd bin 
+# idf.py menuconfig  
+## create list of changes 
+# idf.py save-defconfig
+# 
+## and save the common parts in sdkconfig.defaults
+
+CONFIG_BT_ENABLED=y
+CONFIG_ESP_INT_WDT=n
+CONFIG_FREERTOS_ENABLE_BACKWARD_COMPATIBILITY=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_LWIP_IPV6=n
+CONFIG_RMT_SUPPRESS_DEPRECATE_WARN=y
+
+CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_DISABLE=y
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+CONFIG_ESP_TASK_WDT_EN=n
+CONFIG_TASK_WDT=n
+CONFIG_BOOTLOADER_WDT_ENABLE=n
+CONFIG_LOG_DEFAULT_LEVEL_ERROR=y
+CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN=8192
+
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=5744
+CONFIG_LWIP_TCP_WND_DEFAULT=5744

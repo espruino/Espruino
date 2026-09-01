@@ -15,20 +15,21 @@
  * ----------------------------------------------------------------------------
  */
 
-#ifndef TARGETS_ES32_JSHARDWARE_ESP32_H_
-#define TARGETS_ES32_JSHARDWARE_ESP32_H_
+#ifndef TARGETS_ESP32_JSHARDWARE_ESP32_H_
+#define TARGETS_ESP32_JSHARDWARE_ESP32_H_
 
 #include <stdio.h>
 #include "jsvar.h"
- 
+
 typedef enum{
   ESP_NETWORK_BLE = 1,
   ESP_NETWORK_WIFI = 2
 } esp_hardware_esp32_t;
 
+#define NVS_NAMESPACE "hardware"
 #define ESP32HARDWAREDEFAULT 1
  
 bool ESP32_Get_NVS_Status(esp_hardware_esp32_t hardware);
 void ESP32_Set_NVS_Status(esp_hardware_esp32_t hardware, bool enable);  
 
-#endif /* TARGETS_ES32_JSHARDWARE_ESP32_H_ */
+#endif /* TARGETS_ESP32_JSHARDWARE_ESP32_H_ */

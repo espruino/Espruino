@@ -43,8 +43,6 @@ esp_err_t initBluedroid();
 esp_err_t deinitController();
 esp_err_t deinitBluedroid();
 esp_err_t registerCallbacks();
-esp_err_t setMtu();
-
 
 void ESP32_setBLE_Debug(int level);
 void jsWarnGattsEvent(esp_gatts_cb_event_t event,esp_gatt_if_t gatts_if);

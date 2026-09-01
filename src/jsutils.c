@@ -954,6 +954,7 @@ size_t jsuGetFreeStack() {
   //Later entries are in lower memory locations.
 
 
+  extern uintptr_t espruino_stackHighPtr;
   uint32_t stackPos   = (uint32_t)&ptr;
   uint32_t stackStart = (uint32_t)espruino_stackHighPtr - ESP_STACK_SIZE;
 

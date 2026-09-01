@@ -24,7 +24,6 @@
 #include "app_error.h"
 #endif
 #ifdef ESP32
-#include "esp_bt.h"
 #include "esp_gattc_api.h"
 #include "BLE/esp32_bluetooth_utils.h"
 #endif
@@ -72,7 +71,7 @@ JsVar *bleUUIDToStr(ble_uuid_t uuid) {
   assert(dataLen==16); // it should always be 16 as we checked above
   return bleUUID128ToStr(&data[0]);
 #else
-  return bleUUID128ToStr(&uuid.uuid128[0]);
+  return bleUUID128ToStr(uuid.uuid128);
 #endif
 }
 
@@ -399,8 +398,8 @@ size_t jsbleGetDeviceName(char *deviceName) {
 /// Add a new bluetooth event to the queue with a buffer of data
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len) {
   assert(ptr);
-  assert(len+3 < IOEVENT_MAX_LEN);
-  if (len+3 > IOEVENT_MAX_LEN)
+  assert(len+3 <= IOEVENT_MAX_LEN);
+  if (len > IOEVENT_MAX_LEN-3)
     len = IOEVENT_MAX_LEN-3;
   // check to ensure we have space for the data we're adding
   if (!jshHasEventSpaceForChars(len+3)) {

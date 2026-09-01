@@ -4,7 +4,13 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_event.h"
+#if ESP_IDF_VERSION_MAJOR>=5
+#include "esp_event.h"
+#include "esp_task_wdt.h"
+#else
 #include "esp_event_loop.h"
+#endif
+
 #include "nvs_flash.h"
 
 #include <jsdevices.h>
@@ -17,13 +23,16 @@
 #include "jshardwarePulse.h"
 #include "jshardwareSpi.h"
 #include "jshardwareESP32.h"
-#include "jswrap_wifi.h" // jswrap_wifi_restore
+#ifdef USE_NET
+#include "jswrap_wifi.h"
+#endif
 #include "jswrapper.h"
+
+uintptr_t espruino_stackHighPtr = 0;
 
 #ifndef ESP_HEAP_SIZE
 #define ESP_HEAP_SIZE 40000
 #endif
-
 
 #ifdef BLUETOOTH
 #include "libs/bluetooth/bluetooth.h"
@@ -42,56 +51,55 @@
 
 #include "jsvar.h"
 
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-  #pragma message ("USB Serial JTAG console is enabled")
+#ifdef CONFIG_ESP_TASK_WDT_EN
+#if ESP_IDF_VERSION_MAJOR>=5
+#define TWDT_TICKS 10
 #else
-  #pragma message ("Using UART console")
+#define TWDT_TICKS 1
 #endif
-
-extern void *espruino_stackHighPtr;  //Name spaced because this has to be a global variable.
-                                     //Used in jsuGetFreeStack().
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-#include "hal/usb_serial_jtag_ll.h"
-volatile bool usbUARTIsNotFlushed;
 #endif
-
-void esp32USBUARTWasUsed() {
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-  usbUARTIsNotFlushed = true;
-#endif
-}
 
 extern void initialise_wifi(void);
 
+/** Task that runs and:
+     * pulls data from serial/USB and pushes it to Espruino
+     * takes data from Espruino outout queue and pushes it to serial/USB/bluetooth
+*/
 static void uartTask(void *data) {
   initConsole();
   while(1) {
     pollSerialDevices();
-#ifdef ESPR_USE_USB_SERIAL_JTAG
-    /* The USB CDC UART on the C3 only writes the data to USB after a newline.
-    We don't want that, so we call flush in this uart task if any data has been sent. */
-    if (usbUARTIsNotFlushed) {
-      usb_serial_jtag_ll_txfifo_flush();
-      usbUARTIsNotFlushed = false;
-    }
-#endif
   }
+}
+
+#include "esp_heap_caps.h"  // Required header
+void printHeapDebug(int i ) {
+  jsiConsolePrintf("%d DRAM Free: %6d | Largest: %6d | Min: %6d\n",
+         i,
+         heap_caps_get_free_size(MALLOC_CAP_8BIT),
+         heap_caps_get_largest_free_block(MALLOC_CAP_8BIT),
+         heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
+
+  multi_heap_info_t info;
+  heap_caps_get_info(&info, MALLOC_CAP_8BIT);
+  jsiConsolePrintf("%d Blocks: %d total (%d alloc, %d free)\n",
+         i, info.total_blocks, info.allocated_blocks, info.free_blocks);
 }
 
 static void espruinoTask(void *data) {
   int heapVars;
-
-  espruino_stackHighPtr = &heapVars;  //Ignore the name, 'heapVars' is on the stack!
+  espruino_stackHighPtr = (uintptr_t)&heapVars; //Ignore the name, 'heapVars' is on the stack!
                         //I didn't use another variable becaue this function never ends so
                         //all variables declared here consume stack space that is never freed.
 
+  printHeapDebug(1);
+
   PWMInit();
   RMTInit();
-  SPIChannelsInit();
   initADC(1);
+  SPIChannelsInit();
   jshInit();     // Initialize the hardware
   jswHWInit();
-
 
   heapVars = (esp_get_free_heap_size() - ESP_HEAP_SIZE) / sizeof(JsVar);  //calculate space for jsVars
 
@@ -104,18 +112,25 @@ static void espruinoTask(void *data) {
       heapVars = maxVars;
     }
   }
+  printHeapDebug(2);
 
   jsvInit(heapVars);     // Initialize the variables
 
-  // not sure why this delay is needed?
-  vTaskDelay(200 / portTICK_PERIOD_MS);
   jsiInit(true); // Initialize the interactive subsystem
+
+  printHeapDebug(3);
+#ifdef USE_NET
   if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_wifi_restore();
+#endif
+#ifdef CONFIG_ESP_TASK_WDT_EN
+  esp_task_wdt_add(NULL);
+#endif
   while(1) {
     jsiLoop();   // Perform the primary loop processing
-#ifdef BLUETOOTH
-    gatts_sendNUSNotificationIfNotEmpty();
-#endif
+    #ifdef CONFIG_ESP_TASK_WDT_EN
+      esp_task_wdt_reset();
+      vTaskDelay(pdMS_TO_TICKS(TWDT_TICKS)); // FIXME: shouldn't jshKickWatchdog kick this? And also, a 10ms delay in the idle loop is BAD for performance
+   #endif
   }
 }
 
@@ -129,6 +144,7 @@ int app_main(void)
 {
   esp_log_level_set("*", ESP_LOG_VERBOSE); // set all components to ERROR level - suppress Wifi Info
   esp_log_level_set("BT_BTM", ESP_LOG_NONE); // Kill "BT_BTM: BTM_GetSecurityFlags false" BLE errors
+  esp_log_level_set("gpio", ESP_LOG_WARN); // remove `I gpio:...` info messages
 #ifdef RELEASE
   esp_log_level_set("wifi", ESP_LOG_WARN); //  remove `I wifi:...` info messages
 #endif
@@ -160,15 +176,10 @@ int app_main(void)
     // The mapping in hrom is never released - as js code can be called at anytime
   }
   esp_partition_iterator_release(it);
-
-#ifdef RTOS
-  queues_init();
-  tasks_init();
-  task_init(espruinoTask,"EspruinoTask", ESP_STACK_SIZE, 5, 0);
-  task_init(uartTask,"ConsoleTask",2200,20,0);
-#else
-  xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", ESP_STACK_SIZE, NULL, 5, NULL, 0);
+  // Start tasks
+  // uartTask should be first, so it can handle sending characters made by espruinoTask
   xTaskCreatePinnedToCore(&uartTask,"uartTask",2200,NULL,20,NULL,0);
-#endif
+  xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", ESP_STACK_SIZE, NULL, 5, NULL, 0);
+
   return 0;
 }

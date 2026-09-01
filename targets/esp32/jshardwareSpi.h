@@ -28,21 +28,21 @@ gpio_num_t pinToESP32Pin(Pin pin);
 #else
 #define SPIMax 2
 #endif
-struct SPIChannel{
+typedef struct {
   spi_device_handle_t spi;
   bool spi_read;
   uint32_t g_lastSPIRead;
   spi_host_device_t HOST;
-};
-struct SPIChannel SPIChannels[SPIMax];
-void SPIChannelsInit();
-void SPIReset();
+} SPIChannel;
 
-void jshSPISetup( IOEventFlags device, JshSPIInfo *inf );
+extern SPIChannel SPIChannels[SPIMax];
 
-int jshSPISend( IOEventFlags device, int data );
-bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)());
-void jshSPISend16( IOEventFlags device, int data );
-void jshSPISet16( IOEventFlags device, bool is16 );
-void jshSPIWait( IOEventFlags device );
+void SPIChannelsInit(void);
+void SPIReset(void);
+void jshSPISetup(IOEventFlags device, JshSPIInfo *inf);
+int  jshSPISend(IOEventFlags device, int data);
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)(void));
+void jshSPISend16(IOEventFlags device, int data);
+void jshSPISet16(IOEventFlags device, bool is16);
+void jshSPIWait(IOEventFlags device);
 void jshSPISetReceive(IOEventFlags device, bool isReceive);

@@ -10,7 +10,7 @@ ifeq ($(CHIP),ESP32C3)
 	PORT ?= /dev/ttyACM0
 else
 	ifeq ($(CHIP),ESP32)
-		SDKCONFIG = sdkconfig
+		SDKCONFIG = sdkconfig.defaults
 		FMW_BIN_NAME = espruino-esp32
 		PORT ?= /dev/ttyUSB0
 	else
@@ -51,7 +51,7 @@ $(CMAKEFILE):
 
 
 $(PROJ_NAME).bin: $(CMAKEFILE) $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h $(PININFOFILE).c $(WRAPPERFILE)
-	$(Q)cp ${ROOT}/targets/esp32/IDF4/${SDKCONFIG} $(BINDIR)/sdkconfig
+	$(Q)cp ${ROOT}/targets/esp32/IDF4/${SDKCONFIG} $(BINDIR)/sdkconfig.defaults
 	$(Q)cp ${ROOT}/targets/esp32/IDF4/CMakeLists.txt $(BINDIR)
 	$(Q)cp ${ROOT}/targets/esp32/IDF4/partitions.csv $(BINDIR)
 	cd $(BINDIR) && idf.py build

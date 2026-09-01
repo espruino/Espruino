@@ -243,7 +243,7 @@ elif board.chip["family"]=="AVR":
   board.chip["class"]="AVR"
 elif board.chip["family"]=="ESP8266":
   board.chip["class"]="ESP8266"
-elif board.chip["family"]=="ESP32" or board.chip["family"]=="ESP32_IDF4":
+elif board.chip["family"]=="ESP32" or board.chip["family"]=="ESP32_IDF4" or board.chip["family"]=="ESP32_IDF5":
   board.chip["class"]="ESP32"
   exti_count = 40
 elif board.chip["family"]=="RP2XXX":

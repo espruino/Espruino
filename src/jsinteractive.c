@@ -1000,7 +1000,6 @@ void jsiOneSecondAfterStartup() {
      char or two can get corrupted.
    */
 #ifdef USB
-
   if (consoleDevice == EV_LIMBO) {
     consoleDevice = jsiGetPreferredConsoleDevice();
     // now move any output that was made to Limbo to the given device

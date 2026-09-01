@@ -223,6 +223,8 @@ else ifeq ($(FAMILY),ESP32)
 USE_ESP32=1
 else ifeq ($(FAMILY),ESP32_IDF4)
 USE_ESP32=1
+else ifeq ($(FAMILY),ESP32_IDF5)
+USE_ESP32=1
 else ifdef EMW3165
 USE_WICED=1
 else ifdef CC3000
@@ -886,6 +888,8 @@ ifdef LINUX # ---------------------------------------------------
 include make/targets/LINUX.make
 else ifdef EMSCRIPTEN
 include make/targets/EMSCRIPTEN.make
+else ifdef ESP32_IDF5
+include make/targets/ESP32_IDF5.make
 else ifdef ESP32_IDF4
 include make/targets/ESP32_IDF4.make
 else ifdef ESP32
@@ -920,6 +924,7 @@ clean:
 	$(Q)rm -f $(BINDIR)/espruino_embedded.c
 	$(Q)rm -f $(BINDIR)/jstypes.h
 	$(Q)rm -f $(ROOT)/targetlibs/nrf5x_*/components/toolchain/gcc/gcc_startup_nrf5*.o $(ROOT)/targetlibs/nrf5x_*/modules/nrfx/mdk/gcc_startup_nrf5*.o $(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4*.o $(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_*.o
+	$(Q)rm -f $(BINDIR)/sdkconfig* $(BINDIR)/partitions.csv $(BINDIR)/CMakeLists.txt
 
 wrappersources:
 	$(info WRAPPERSOURCES=$(WRAPPERSOURCES))

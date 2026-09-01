@@ -20,8 +20,6 @@
 
 void bluetooth_gap_setScan(bool enabled, bool activeScan);
 
-void gap_init_security();
-
 esp_err_t bluetooth_gap_startAdvertising(bool enable);
 esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray);
 

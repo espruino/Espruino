@@ -28,6 +28,7 @@ node_modules
 /app
 /esp-idf
 /esp-idf-4
+/esp-idf-5
 /pico-sdk
 /picotool-install
 /picotool-src

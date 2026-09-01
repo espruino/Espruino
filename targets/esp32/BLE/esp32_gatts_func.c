@@ -71,11 +71,11 @@ bool _removeValues;
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
 
 int uart_gatts_service = -1;
-uint16_t uart_tx_handle;
+uint16_t uart_tx_handle, uart_rx_handle;
 bool uart_gatts_connected = false;
 
 /// Bluetooth UART transmit data
-uint8_t nusBuffer[64]; // could be 500? need to make sure we transmit sooner if so!
+uint8_t nusBuffer[ESP_GATT_MTU_SIZE];
 /// Amount of characters ready to send in Bluetooth UART
 volatile uint8_t nusBufferLen = 0;
 
@@ -208,7 +208,8 @@ static void gatts_read_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
 static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
   NOT_USED(event);
   int g = getIndexFromGatts_if(gatts_if);
-  esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
+  if (bleStatus & (BLE_ENCRYPT_UART | BLE_SECURITY_MITM))
+    esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
   if(g >= 0){
     gatts_service[g].conn_id = param->connect.conn_id;
     memcpy(gatts_service[g].bda, param->connect.remote_bda, ESP_BD_ADDR_LEN);
@@ -327,6 +328,8 @@ static void gatts_check_add_char(esp_bt_uuid_t char_uuid, uint16_t attr_handle) 
     gatts_char[ble_char_pos].char_handle = attr_handle;
     if (gatts_char[ble_char_pos].charFlag == BLE_CHAR_UART_TX)
       uart_tx_handle = attr_handle;
+    if (gatts_char[ble_char_pos].charFlag == BLE_CHAR_UART_RX)
+      uart_rx_handle = attr_handle;
     gatts_add_descr(); // try to add descriptors to this characteristic
   }
 }
@@ -395,9 +398,11 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
   case ESP_GATTS_CONNECT_EVT: {gatts_connect_handler(event,gatts_if,param); break;}
   case ESP_GATTS_READ_EVT: {gatts_read_value_handler(event, gatts_if, param);break;}
   case ESP_GATTS_WRITE_EVT:{
-    if(gatts_service[getIndexFromGatts_if(gatts_if)].serviceFlag == BLE_SERVICE_NUS){ // UART service
-      jshPushIOCharEvents(EV_BLUETOOTH, (char*)param->write.value, param->write.len);
-      jshHadEvent();
+    if(gatts_service[getIndexFromGatts_if(gatts_if)].serviceFlag == BLE_SERVICE_NUS) { // UART service
+      if (param->write.handle == uart_rx_handle) { // we could have been writing to the TX CCCD to enable notifications
+        jshPushIOCharEvents(EV_BLUETOOTH, (char*)param->write.value, param->write.len);
+        jshHadEvent();
+      }
     } else { // a normal write
       // Update our hidden var with the right value (this is not great to do from an IRQ)
       gatts_set_char_value(param->write.handle, (char*)param->write.value, param->write.len);
@@ -447,6 +452,12 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
 
 void add_ble_uart(){
   int handles = 1;
+  esp_gatt_perm_t read_perm = ESP_GATT_PERM_READ,
+                  write_perm = ESP_GATT_PERM_WRITE;
+  if (bleStatus & BLE_ENCRYPT_UART) {
+    read_perm = ESP_GATT_PERM_READ_ENCRYPTED;// or ENC_MITM to require MITM protection?
+    write_perm = ESP_GATT_PERM_WRITE_ENCRYPTED;// or ENC_MITM to require MITM protection?
+  }
   ble_service_pos++;
   gatts_service[ble_service_pos].ble_uuid = uart_service_uuid;
   bleuuid_To_uuid128(gatts_service[ble_service_pos].ble_uuid,&adv_service_uuid128[ble_service_pos * 16]);
@@ -454,20 +465,18 @@ void add_ble_uart(){
   gatts_service[ble_service_pos].serviceFlag = BLE_SERVICE_NUS;
   gatts_service[ble_service_pos].gatts_if = ESP_GATT_IF_NONE;
   ble_char_pos++;
-  gatts_char[ble_char_pos].char_perm = 0;
   gatts_char[ble_char_pos].service_pos = ble_service_pos;
   gatts_char[ble_char_pos].char_uuid = uart_char_rx_uuid;
-  gatts_char[ble_char_pos].char_perm |= ESP_GATT_PERM_WRITE;
+  gatts_char[ble_char_pos].char_perm = write_perm;
   gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_WRITE|ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
   gatts_char[ble_char_pos].char_control = NULL;
   gatts_char[ble_char_pos].char_handle = 0;
   gatts_char[ble_char_pos].charFlag = BLE_CHAR_UART_RX;
   handles +=2;
   ble_char_pos++;
-  gatts_char[ble_char_pos].char_perm = 0;
   gatts_char[ble_char_pos].service_pos = ble_service_pos;
   gatts_char[ble_char_pos].char_uuid = uart_char_tx_uuid;
-  gatts_char[ble_char_pos].char_perm |= ESP_GATT_PERM_READ;
+  gatts_char[ble_char_pos].char_perm = read_perm;
   gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_NOTIFY;
   gatts_char[ble_char_pos].char_control = NULL;
   gatts_char[ble_char_pos].char_handle = 0;
@@ -477,7 +486,7 @@ void add_ble_uart(){
   gatts_descr[ble_descr_pos].char_pos = ble_char_pos;
   gatts_descr[ble_descr_pos].descr_uuid = descriptor_uuid;
   gatts_descr[ble_descr_pos].descr_handle = 0;
-  gatts_descr[ble_descr_pos].descr_perm = ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE;
+  gatts_descr[ble_descr_pos].descr_perm = read_perm | write_perm;
   gatts_descr[ble_descr_pos].len = 2;
   handles +=2;
   gatts_service[ble_service_pos].num_handles = (uint16_t)handles;

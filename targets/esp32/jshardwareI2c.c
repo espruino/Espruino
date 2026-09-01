@@ -28,6 +28,10 @@
 #define ACK_VAL  0x0     /*!< I2C ack value */
 #define NACK_VAL   0x1     /*!< I2C nack value */
 
+#ifndef portTICK_RATE_MS
+#define portTICK_RATE_MS portTICK_PERIOD_MS
+#endif
+
 /* To do:
  support both i2c ports - done
  Test!
@@ -106,7 +110,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
           funcTypeStr, info->pinSDA, info->pinSCL);
   #endif
 
-  i2c_config_t conf;
+  i2c_config_t conf = {0};
   conf.mode = I2C_MODE_MASTER;
   conf.sda_io_num = pinToESP32Pin(info->pinSDA);
   conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
@@ -114,10 +118,8 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
   conf.master.clk_speed = info->bitrate;
   
-  #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)     // added to resolve issue #2589 for IDF v4.x
-    conf.clk_flags = 0;     // will always select 2MZ XTAL clock - Although speed set as in conf.master.clk_speed
-    // conf.clk_flags = 1;  // or set driver to ignore XTAL clock and use 1MHz RTC clock (better for low power?)
-    // ref https://docs.espressif.com/projects/esp-idf/en/v4.4/esp32s3/api-reference/peripherals/i2c.html#source-clock-configuration
+  #if ESP_IDF_VERSION_MAJOR >= 4
+    conf.clk_flags = 0; // select the default I2C clock source
   #endif
                     
   esp_err_t err=i2c_param_config(i2c_master_port, &conf);

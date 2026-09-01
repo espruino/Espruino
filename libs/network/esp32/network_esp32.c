@@ -239,7 +239,7 @@ int net_esp32_accept(JsNetwork *net, int sckt) {
 int net_esp32_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t len) {
   NOT_USED(net);
   struct sockaddr_in fromAddr;
-  int fromAddrLen = sizeof(fromAddr);
+  socklen_t fromAddrLen = sizeof(fromAddr);
   int num = 0;
   fd_set s;
   FD_ZERO(&s);
@@ -255,7 +255,7 @@ int net_esp32_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, s
   } else if (n>0) {
     // receive data
     if (socketType & ST_UDP) {
-      num = (int)recvfrom(sckt,buf+sizeof(JsNetUDPPacketHeader),len-sizeof(JsNetUDPPacketHeader),0,&fromAddr,&fromAddrLen);
+      num = (int)recvfrom(sckt,buf+sizeof(JsNetUDPPacketHeader),len-sizeof(JsNetUDPPacketHeader),0,(struct sockaddr*)&fromAddr, &fromAddrLen);
 
       JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
       *(in_addr_t*)&header->host = fromAddr.sin_addr.s_addr;
@@ -266,7 +266,7 @@ int net_esp32_recv(JsNetwork *net, SocketType socketType, int sckt, void *buf, s
       if (num==0) return -1; // select says data, but recv says 0 means connection is closed
       num += sizeof(JsNetUDPPacketHeader);
     } else {
-      num = (int)recvfrom(sckt,buf,len,0,&fromAddr,&fromAddrLen);
+      num = (int)recvfrom(sckt,buf,len,0,(struct sockaddr*)&fromAddr, &fromAddrLen);
       if (num==0) return -1; // select says data, but recv says 0 means connection is closed
     }
   }

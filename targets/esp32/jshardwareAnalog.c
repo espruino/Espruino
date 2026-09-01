@@ -18,6 +18,7 @@
 #include "driver/adc.h"
 #if CONFIG_IDF_TARGET_ESP32
 	#include "driver/dac.h"
+	#include "driver/rtc_io.h"
 #elif CONFIG_IDF_TARGET_ESP32C3
 	typedef enum { DAC_CHAN_0=0 , DAC_CHAN_1=1 } dac_channel_t;
 #elif CONFIG_IDF_TARGET_ESP32S3
@@ -87,24 +88,17 @@ int pinToAdcChannelIdx(Pin pin){
   return pinInfo[pin].analog & JSH_MASK_ANALOG_CH;
 }
 
-dac_channel_t pinToDacChannel(Pin pin){
-#if CONFIG_IDF_TARGET_ESP32
-  dac_channel_t channel;
-  switch(pin){
-    case 25: channel = DAC_CHANNEL_1; break;
-    case 26: channel = DAC_CHANNEL_2; break;
-    default: channel = -1; break;
-  }
-  return channel;
-#elif CONFIG_IDF_TARGET_ESP32C3
-  jsExceptionHere(JSET_ERROR, "not implemented\n");
-  return 0;
-#elif CONFIG_IDF_TARGET_ESP32S3
-  jsExceptionHere(JSET_ERROR, "not implemented\n");
-  return 0;
-#else
-	#error Not an ESP32 or ESP32-S3
+dac_channel_t pinToDacChannel(Pin pin) {
+  JshPinFunction func = pinInfo[pin].functions[0];
+  if ((func&JSH_MASK_TYPE) != JSH_DAC) // no channel if not a DAC pin
+    return -1;
+  switch(func & JSH_MASK_INFO){
+#if CONFIG_IDF_TARGET_ESP32 // only ESP32 has DAC
+    case JSH_DAC_CH1: return DAC_CHANNEL_1;
+    case JSH_DAC_CH2: return DAC_CHANNEL_2;
 #endif
+    default: return -1;
+  }
 }
 
 void ADCReset(){
@@ -176,7 +170,10 @@ void writeDAC(Pin pin,uint8_t value){
 #if CONFIG_IDF_TARGET_ESP32
   channel = pinToDacChannel(pin);
 #if ESP_IDF_VERSION_MAJOR>=4
-  if(channel >= 0) dac_output_voltage(channel, value);
+  if(channel >= 0) {
+    dac_output_enable(channel);
+    dac_output_voltage(channel, value);
+  }
 #else
   if(channel >= 0) dac_out_voltage(channel, value);
 #endif
@@ -189,5 +186,14 @@ void writeDAC(Pin pin,uint8_t value){
 #endif
 }
 
-
-
+void disableDAC(Pin pin){
+#if CONFIG_IDF_TARGET_ESP32
+  dac_channel_t channel = pinToDacChannel(pin);
+  if(channel >= 0) {
+    dac_output_disable(channel);
+    rtc_gpio_deinit((gpio_num_t)pin);
+  }
+#else
+  NOT_USED(pin);
+#endif
+}

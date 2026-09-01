@@ -43,6 +43,9 @@ boardName = boardName[2:]
 wrapperFileName = sys.argv[len(sys.argv)-1]
 wrapperFileName = wrapperFileName[2:]
 
+print("BOARD "+boardName)
+board = importlib.import_module(boardName)
+
 # Load any JS modules specified on command-line
 jsmodules = {}     # JS modules to be included
 jsbootcode = False # if set, JS code to be run at boot time
@@ -63,6 +66,9 @@ for i in range(1,len(sys.argv)):
       jsbootcode = jscode
     else:
       jsmodules[modulename] = jscode
+# ... or in the BOARD.py...
+if "jsbootcode" in board.info["build"]:
+  jsbootcode = board.info["build"]["jsbootcode"]
 
 # List of argument specifiers (JSWAT...) that have been used
 argSpecs = []
@@ -280,9 +286,6 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 # ------------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------------
-
-print("BOARD "+boardName)
-board = importlib.import_module(boardName)
 
 jsondatas = common.get_jsondata(is_for_document = False, parseArgs = True, boardObject = board)
 if 'BLACKLIST' in os.environ:

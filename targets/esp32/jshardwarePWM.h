@@ -17,17 +17,17 @@
 
 #include "jspininfo.h"
 
-#define PWMMax 5 //maximum PWM channel for Analog output (freq = 50000)
+#define PWMMax 5     //maximum PWM channel for Analog output (freq = 50000)
 #define PWMFreqMax 3 //maximum PWM channel with free frequency
 #define PWMTimerBit 10 //10 bit for value
 #define PWMTimerRange 1024
 
-struct PWMChannel{Pin pin;}; //will be extended once we know more about PWM for Espruino on ESP32
-struct PWMChannel PWMChannels[PWMMax];
-struct PWMFreqChannel{Pin pin; int freq;};
-struct PWMFreqChannel PWMFreqChannels[PWMFreqMax];
+struct PWMChannel { Pin pin; }; //will be extended once we know more about PWM for Espruino on ESP32
+struct PWMFreqChannel { Pin pin; int freq; };
+
+extern struct PWMChannel PWMChannels[PWMMax];
+extern struct PWMFreqChannel PWMFreqChannels[PWMFreqMax];
 
 void PWMInit();
-void writePWM(Pin pin, uint16_t value,int freq);
-
-void setPWM(Pin pin,uint16_t value);
+void writePWM(Pin pin, uint16_t value, int freq);
+void setPWM(Pin pin, uint16_t value);

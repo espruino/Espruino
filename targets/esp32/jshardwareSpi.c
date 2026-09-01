@@ -34,8 +34,6 @@
 #include "jshardwareSpi.h"
 #include "jsinteractive.h"
 
-#define UNUSED(x) (void)(x)
-
 #if ESP_IDF_VERSION_MAJOR >= 4     // Modified for issue #2601
 #define SPICHANNEL0_HOST SPI2_HOST // SPI1_host internal use only
   #define SPICHANNEL1_HOST SPI3_HOST
@@ -43,6 +41,8 @@
   #define SPICHANNEL0_HOST HSPI_HOST
   #define SPICHANNEL1_HOST VSPI_HOST
 #endif
+
+SPIChannel SPIChannels[SPIMax];   // <-- THE ONLY definition
 
 int getSPIChannelPnt(IOEventFlags device){
   return device - EV_SPI1;
@@ -233,8 +233,8 @@ void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
 ) {
-  UNUSED(device);
-  UNUSED(is16);
+  NOT_USED(device);
+  NOT_USED(is16);
   jsError(">> jshSPISend16: Not implemented");
 }
 
@@ -246,7 +246,18 @@ void jshSPIWait(IOEventFlags device) {
   int channelPnt = getSPIChannelPnt(device);
   if(!spi_Sending)return;
   esp_err_t ret;
-  ret=spi_device_get_trans_result(SPIChannels[channelPnt].spi, &spi_trans, portMAX_DELAY);
+
+  #if ESP_IDF_VERSION_MAJOR>=5
+  spi_transaction_t *ret_trans;
+  ret = spi_device_get_trans_result(
+        SPIChannels[channelPnt].spi,
+        &ret_trans,
+        portMAX_DELAY);
+  #else
+  ret = spi_device_get_trans_result(SPIChannels[channelPnt].spi, (spi_transaction_t **)&spi_trans, portMAX_DELAY);
+  #endif
+
+
   if (ret != ESP_OK) {
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d", ret);
   }

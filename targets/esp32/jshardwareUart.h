@@ -16,12 +16,13 @@
  */
 #include "jshardware.h"
 
-#define uart_console 0
-#define uart_Serial2 1
-#define uart_Serial3 2
-
 void initConsole();
-void UartReset();
 void initSerial(IOEventFlags device,JshUSARTInfo *inf);
-void writeSerial(IOEventFlags device,uint8_t c);
+void uninitSerial(IOEventFlags device);
 void pollSerialDevices();
+
+#if defined(ESPR_USE_USB_SERIAL_JTAG) && ESP_IDF_VERSION_MAJOR < 5
+// not in IDF 4, make our own
+bool usb_serial_jtag_is_driver_installed();
+bool usb_serial_jtag_is_connected();
+#endif

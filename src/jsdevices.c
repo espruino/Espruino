@@ -270,8 +270,9 @@ void jshTransmit(
 #endif
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
-      if (jshIsInInterrupt()) {
+      if (jshIsInInterrupt() && jspIsInterrupted()) {
         // if we're printing from an IRQ, don't wait - it's unlikely TX will ever finish
+        // OR if we were blocking on sending and someone presses Ctrl-C, break out
         jsErrorFlags |= JSERR_BUFFER_FULL;
         return;
       }
@@ -282,7 +283,7 @@ void jshTransmit(
       if (device == EV_SWDCON) swdconBusyIdle(loopCount);
 #endif
 #ifdef USB
-      // just in case USB was unplugged while we were waiting!
+      // just in case USB was unplugged while we were waiting, see if we can free any daya!
       if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);
 #endif
     }
