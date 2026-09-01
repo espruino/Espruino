@@ -88,24 +88,17 @@ int pinToAdcChannelIdx(Pin pin){
   return pinInfo[pin].analog & JSH_MASK_ANALOG_CH;
 }
 
-dac_channel_t pinToDacChannel(Pin pin){
-#if CONFIG_IDF_TARGET_ESP32
-  dac_channel_t channel;
-  switch(pin){
-    case 25: channel = DAC_CHANNEL_1; break;
-    case 26: channel = DAC_CHANNEL_2; break;
-    default: channel = -1; break;
-  }
-  return channel;
-#elif CONFIG_IDF_TARGET_ESP32C3
-  jsExceptionHere(JSET_ERROR, "not implemented\n");
-  return 0;
-#elif CONFIG_IDF_TARGET_ESP32S3
-  jsExceptionHere(JSET_ERROR, "not implemented\n");
-  return 0;
-#else
-	#error Not an ESP32 or ESP32-S3
+dac_channel_t pinToDacChannel(Pin pin) {
+  JshPinFunction func = pinInfo[pin].functions[0];
+  if ((func&JSH_MASK_TYPE) != JSH_DAC) // no channel if not a DAC pin
+    return -1;
+  switch(func & JSH_MASK_INFO){
+#if CONFIG_IDF_TARGET_ESP32 // only ESP32 has DAC
+    case JSH_DAC_CH1: return DAC_CHANNEL_1;
+    case JSH_DAC_CH2: return DAC_CHANNEL_2;
 #endif
+    default: return -1;
+  }
 }
 
 void ADCReset(){

@@ -100,7 +100,7 @@ static IOEventFlags pinToEV_EXTI(
   return (IOEventFlags)(EV_EXTI0 + pin);
 }
 
-static uint8_t g_pinState[JSH_PIN_COUNT];
+static JshPinState g_pinState[JSH_PIN_COUNT];
 
 /// Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
@@ -329,10 +329,10 @@ void jshDelayMicroseconds(int microsec) {
  * `pinMode()`.  For example, `pinMode(pin, "input")` will set the given pin to input.
  */
 void jshPinSetState(
-  Pin pin,                 //!< The pin to have its state changed.
+    Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
-  if (pin == 25 || pin == 26) disableDAC(pin);
+  if (g_pinState[pin] == JSHPINSTATE_DAC_OUT) disableDAC(pin);
   /* Make sure we kill software PWM if we set the pin state
    * after we've started it */
   if (BITFIELD_GET(jshPinSoftPWM, pin)) {
@@ -415,9 +415,9 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
-  if (pin == 25 || pin == 26) disableDAC(pin);
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
   gpio_num_t gpioNum = pinToESP32Pin(pin);
+  // FIXME: gpio_matrix_out/etc should really be in PinSetState
 #if ESP_IDF_VERSION_MAJOR>=5
   esp_rom_gpio_connect_out_signal(gpioNum, SIG_GPIO_OUT_IDX, false, false); // reset pin to be GPIO in case it was used as rmt or something else
 #else
@@ -471,13 +471,17 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
   if (value<0) value=0;
   if (value>1) value=1;
   if (!isfinite(freq)) freq=0;
-  if(pin == 25 || pin == 26){
-  if(flags & (JSAOF_ALLOW_SOFTWARE | JSAOF_FORCE_SOFTWARE)) jsError("pin does not support software PWM");
+  if((pinInfo[pin].functions[0]&JSH_MASK_TYPE) == JSH_DAC) {
+    if(flags & (JSAOF_ALLOW_SOFTWARE | JSAOF_FORCE_SOFTWARE)) {
+      jsError("pin does not support software PWM");
+      return 0;
+    }
+    g_pinState[pin] = JSHPINSTATE_DAC_OUT; // ensure that we know to disable DAC when changing pin state
     writeDAC(pin,(uint8_t)(value * 255));
-  }
-  else{
-  if(flags & JSAOF_ALLOW_SOFTWARE){
-    if (!jshGetPinStateIsManual(pin)){
+    return pinInfo[pin].functions[0];
+  } else {
+    if(flags & JSAOF_ALLOW_SOFTWARE) {
+      if (!jshGetPinStateIsManual(pin)){
         BITFIELD_SET(jshPinSoftPWM, pin, 0);
         jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
       }
@@ -485,8 +489,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
       if ((freq<=0)) freq=50;
       jstPinPWM(freq, value, pin);
       return 0;
-    }
-    else writePWM(pin,( uint16_t)(value * PWMTimerRange),(int) freq);
+    } else writePWM(pin,( uint16_t)(value * PWMTimerRange),(int) freq);
   }
   return 0;
 }
