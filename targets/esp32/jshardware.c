@@ -344,6 +344,9 @@ void jshPinSetState(
   gpio_pull_mode_t pull_mode=GPIO_FLOATING;
   bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
   switch(state) {
+  case JSHPINSTATE_UNDEFINED:
+    mode = GPIO_MODE_DISABLE;
+    break;
   case JSHPINSTATE_GPIO_OUT:
     mode = GPIO_MODE_INPUT_OUTPUT;
     break;
