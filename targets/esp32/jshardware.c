@@ -439,30 +439,20 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
 
 
 JsVarFloat jshPinAnalog(Pin pin) {
-#if ESP_IDF_VERSION_MAJOR >= 5
-  jsError("jshPinAnalog(Pin pin) is not implemented yet");
-  return NAN;
-#else
   if (pinInfo[pin].analog == JSH_ANALOG_NONE)
     return NAN;
   JsVarFloat v = (JsVarFloat) readADC(pin) / 4096;
   if (pinInfo[pin].port & JSH_PIN_NEGATED) v=1-v;
   return v;
-#endif
 }
 
 
 int jshPinAnalogFast(Pin pin) {
-#if ESP_IDF_VERSION_MAJOR >= 5
-  jsError("jshPinAnalogFast(Pin pin) is not implemented yet");
-  return NAN;
-#else
   if (pinInfo[pin].analog == JSH_ANALOG_NONE)
     return 0;
   int v = readADC(pin) << 4;
   if (pinInfo[pin].port & JSH_PIN_NEGATED) v=65535-v;
   return v;
-#endif
 }
 
 
