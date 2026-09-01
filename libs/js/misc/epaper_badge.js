@@ -12,7 +12,7 @@ Badge.showRendering(function(g) { // Colors are: 0=black, 1=white, 2=yellow, 3=r
 });
 */
 (function(){
-global.LED_EN = D20; // inverted
+global.LED_EN = D20;
 var led_rgb = new Uint8Array(3*10);
 require("neopixel").write(D21, led_rgb); // set all neopixels to off
 
@@ -82,8 +82,8 @@ Badge.getAccel = function() {
 Badge.setLEDs = function(r,g,b) {
   var g = Graphics.createArrayBuffer(1,1,24,{color_order:"bgr"}); // use 24 bit GFX to convert color types/strings
   var col = g.toColor(r,g,b);
-  if (col==0) return LED_EN.set(); // LEDs off
-  LED_EN.reset();
+  if (col==0) return LED_EN.reset(); // LEDs off
+  LED_EN.set(); // LEDs on
   let arr = new Uint24Array(led_rgb.buffer);
   arr.fill(col);
   require("neopixel").write(D21, led_rgb);

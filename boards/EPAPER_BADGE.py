@@ -38,7 +38,7 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX="Espruino"',
-     'DEFINES+=-DESP_PLATFORM -DESP32=1 -DESP32C3 -DESP32C3_IDF4',
+     'DEFINES+=-DESP_PLATFORM -DESP32=1 -DESP32C3',
      'DEFINES+=-DESP_STACK_SIZE=15000',
      'DEFINES+=-DESP_HEAP_SIZE=70000', # enough for HTTPS
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
@@ -52,7 +52,7 @@ info = {
 
 chip = {
   'part'    : "ESP32C3",
-  'family'  : "ESP32_IDF4",
+  'family'  : "ESP32_IDF5",
   'package' : "",
   'ram'     : 400,
   'flash'   : 0,
