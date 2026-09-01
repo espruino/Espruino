@@ -194,8 +194,8 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data);
 extern JsVar *timerArray; // Linked List of timers to check and run
 extern JsVar *watchArray; // Linked List of input watches to check and run
 
-extern JsVarInt jsiTimerAdd(JsVar *timerPtr);
-extern void jsiTimersChanged(); // Flag timers changed so we can skip out of the loop if needed
+extern JsVarInt jsiTimerAdd(JsVar *timerPtr); ///< Add a timer to the timers list and return the index. Does not unlock
+extern void jsiTimersChanged(); ///< Flag timers changed so we can skip out of the loop if needed
 // end for jswrap_interactive/io.c ------------------------------------------------
 
 #ifdef USE_DEBUGGER

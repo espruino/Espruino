@@ -2855,6 +2855,26 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 }
 
 JsVarInt jsiTimerAdd(JsVar *timerPtr) {
+  if (jsvGetArrayLength(timerArray) == 0x7FFFFFFF) {
+    // if array is at max size, instead work forward from start and find an empty index
+    JsvIterator it;
+    jsvIteratorNew(&it, timerArray, JSIF_EVERY_ARRAY_ELEMENT);
+    while (jsvIteratorHasElement(&it)) {
+      JsVar *el = jsvIteratorGetValue(&it);
+      bool isFree = jsvIsUndefined(el);
+      jsvUnLock(el);
+      if (isFree) {
+        jsvIteratorSetValue(&it, timerPtr);
+        JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
+        jsvIteratorFree(&it);
+        return idx;
+      }
+      jsvIteratorNext(&it);
+
+    }
+    jsvIteratorFree(&it);
+  }
+  // otherwise array is not full - just add to the end
   return jsvArrayAddToEnd(timerArray, timerPtr, 1) - 1;
 }
 

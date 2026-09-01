@@ -46,6 +46,7 @@
             ESP32: wifi.connect will now always try and connect. If you call it, `callback` gets called one way or the other
             ESP32C3/S3: Move USB console onto EV_USB, allowing Serial1 to be used if needed #2730
             https: Set TLS hostname correctly to avoid "Server Name Indication" server errors
+            setInterval/timeout - ensure timeout index never gets above 0x7FFFFFFF (int32 max)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes
