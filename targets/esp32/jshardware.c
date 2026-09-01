@@ -416,7 +416,7 @@ void jshPinSetValue(
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
   gpio_num_t gpioNum = pinToESP32Pin(pin);
 #if ESP_IDF_VERSION_MAJOR>=5
-  gpio_iomux_out(gpioNum, SIG_GPIO_OUT_IDX, 0); // reset pin to be GPIO in case it was used as rmt or something else
+  esp_rom_gpio_connect_out_signal(gpioNum, SIG_GPIO_OUT_IDX, false, false); // reset pin to be GPIO in case it was used as rmt or something else
 #else
   gpio_matrix_out(gpioNum,SIG_GPIO_OUT_IDX,0,0);  // reset pin to be GPIO in case it was used as rmt or something else
 #endif
