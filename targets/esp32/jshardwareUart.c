@@ -299,6 +299,9 @@ void pollSerialDevices() {
     }
   }
 #endif
+  // if nothing else needs IO (no USB, no serial active) ensure we sleep to give other tasks a go!
+  if (ticksToWait)
+    vTaskDelay(pdMS_TO_TICKS(500));
   // idle counter
   if (busy) idleCount = 0;
   else if (idleCount<65535) idleCount++;
