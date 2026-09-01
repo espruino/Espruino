@@ -327,8 +327,12 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
 void jsble_set_tx_power(int8_t pwr) {
   // convert to ESP32 power levels
   esp_power_level_t power = ESP_PWR_LVL_N0 + (int)(pwr/3);
-  if (power < ESP_PWR_LVL_N24) power = ESP_PWR_LVL_N24;
+  if (power<0) power=0; // ESP_PWR_LVL_N24 on C3 / ESP_PWR_LVL_N12 on ESP32
+#if CONFIG_IDF_TARGET_ESP32
+  if (power > ESP_PWR_LVL_P9) power = ESP_PWR_LVL_P9;
+#else
   if (power > ESP_PWR_LVL_P21) power = ESP_PWR_LVL_P21;
+#endif
   // set power levels
   esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, power);
   esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, power);
