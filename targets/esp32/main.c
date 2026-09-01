@@ -74,6 +74,7 @@ static void uartTask(void *data) {
 
 #include "esp_heap_caps.h"  // Required header
 void printHeapDebug(int i ) {
+#ifndef RELEASE
   jsiConsolePrintf("%d DRAM Free: %6d | Largest: %6d | Min: %6d\n",
          i,
          heap_caps_get_free_size(MALLOC_CAP_8BIT),
@@ -84,6 +85,7 @@ void printHeapDebug(int i ) {
   heap_caps_get_info(&info, MALLOC_CAP_8BIT);
   jsiConsolePrintf("%d Blocks: %d total (%d alloc, %d free)\n",
          i, info.total_blocks, info.allocated_blocks, info.free_blocks);
+#endif
 }
 
 static void espruinoTask(void *data) {
