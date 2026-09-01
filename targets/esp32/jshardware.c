@@ -84,8 +84,6 @@
 #define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
 #define FLASH_PAGE ((uint32_t)1<<FLASH_PAGE_SHIFT)  //4KB
 
-#define UNUSED(x) (void)(x)
-
 // Store the handle of the task during jshSleep so jshHadEvent can target it
 volatile TaskHandle_t sleepingTaskHandle = NULL;
 
@@ -126,7 +124,7 @@ void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
 */
 void IRAM_ATTR gpio_intr_handler(void* arg){
   //GPIO intr process. Mainly copied from esp-idf
-  UNUSED(arg);
+  NOT_USED(arg);
   IOEventFlags exti;
   Pin gpio_num = 0;
   uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);   //read status to get interrupt status for GPIO0-31
@@ -177,7 +175,7 @@ void jshPinDefaultPullup() {
   jshPinSetStateRange(18,18,JSHPINSTATE_GPIO_IN_PULLUP);
 #else
   jshPinSetStateRange(18,19,JSHPINSTATE_GPIO_IN_PULLUP);
-  #if defined(CONFIG_RTC_CLK_SRC_INT_RC) 
+  #if defined(CONFIG_RTC_CLK_SRC_INT_RC)
     jshPinSetStateRange(32,33,JSHPINSTATE_GPIO_IN_PULLUP);
   #endif
 #endif
@@ -291,7 +289,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
             pdMS_TO_TICKS(ms)     // Max sleep duration in ticks
         );
 #else
-  UNUSED(timeUntilWake);
+  NOT_USED(timeUntilWake);
   // we never sleep in older IDFs
 #endif
   return true;
@@ -468,7 +466,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
     JsVarFloat value,
     JsVarFloat freq,
     JshAnalogOutputFlags flags) { // if freq<=0, the default is used
-  UNUSED(flags);
+  NOT_USED(flags);
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=1-value;
   if (value<0) value=0;
   if (value>1) value=1;
@@ -725,7 +723,7 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   uint64_t mask = 1ULL << (int)device;
   return (DEVICE_INITIALISED_FLAGS & mask) != 0L;
 
-//  UNUSED(device);
+//  NOT_USED(device);
 //  jsError(">> jshIsDeviceInitialised not implemented");
 // return 0;
 } // End of jshIsDeviceInitialised
@@ -870,7 +868,7 @@ size_t jshFlashGetMemMapAddress(size_t ptr) {
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {
-  UNUSED(options);
+  NOT_USED(options);
   jsError(">> jshSetSystemClock Not implemented");
   return 0;
 }

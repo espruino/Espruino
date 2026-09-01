@@ -201,6 +201,6 @@ void disableDAC(Pin pin){
     rtc_gpio_deinit((gpio_num_t)pin);
   }
 #else
-  UNUSED(pin);
+  NOT_USED(pin);
 #endif
 }
