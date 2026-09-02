@@ -371,6 +371,7 @@ JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx) {
 /// Get a setPixel function (assuming no clipping by caller) - if all is ok it can choose a faster draw function, but it chooses a slower one if clipping is needed
 JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2, bool coordsRotatedAlready) {
   if ((gfx->data.flags & JSGRAPHICSFLAGS_MAPPEDXY) ||
+      gfx->data.offsetX || gfx->data.offsetY ||
       graphicsSetModifiedAndClip(gfx,&x1,&y1,&x2,&y2,coordsRotatedAlready))
     return graphicsSetPixel; // fallback
   else

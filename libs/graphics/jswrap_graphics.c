@@ -438,8 +438,8 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
   int x1 = xPos, y1 = yPos, x2 = xPos+img->width-1, y2 = yPos+img->height-1;
   if (!jsvStringIteratorHasChar(it)) return; // no data
 #ifndef SAVE_ON_FLASH
-  if (!(gfx->data.flags&JSGRAPHICSFLAGS_SWAP_XY)) {
-    /* if we've not swapped X/Y we can so some optimisations
+  if (!(gfx->data.flags&JSGRAPHICSFLAGS_SWAP_XY) && !gfx->data.offsetX && !gfx->data.offsetY) {
+    /* if we've not swapped X/Y we can do some optimisations
     to reduce what we draw - but if we swapped XY there's no real point
     because of the difference in direction we scan out. Also it's hard to get right!
     see https://github.com/espruino/BangleApps/issues/4053 */
