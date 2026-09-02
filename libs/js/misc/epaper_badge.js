@@ -80,13 +80,13 @@ Badge.getAccel = function() {
 }
 
 Badge.setLEDs = function(r,g,b) {
-  var g = Graphics.createArrayBuffer(1,1,24,{color_order:"bgr"}); // use 24 bit GFX to convert color types/strings
+  var g = Graphics.createArrayBuffer(1,1,24,{color_order:"brg"}); // use 24 bit GFX to convert color types/strings
   var col = g.toColor(r,g,b);
   if (col==0) return LED_EN.reset(); // LEDs off
   LED_EN.set(); // LEDs on
-  let arr = new Uint24Array(led_rgb.buffer);
+  let arr = new Uint24Array(Badge.led_rgb.buffer);
   arr.fill(col);
-  require("neopixel").write(D21, led_rgb);
+  require("neopixel").write(D21,Badge.led_rgb);
 }
 
 // ePaper
