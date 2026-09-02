@@ -1809,8 +1809,10 @@ The offset will be reset to 0 if `g.reset()` is called, or if `g.setOffset()` is
 */
 JsVar *jswrap_graphics_setOffset(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+#ifndef SAVE_ON_FLASH
   gfx.data.offsetX = (short)x;
   gfx.data.offsetY = (short)y;
+#endif
   graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
 }
@@ -3763,8 +3765,10 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     bool fastPath =
         (!centerImage) &&  // not rotating
         (scale-floor(scale))==0 && // integer scale
-        (gfx.data.flags & JSGRAPHICSFLAGS_MAPPEDXY)==0 &&
-        !gfx.data.offsetX && !gfx.data.offsetY; // no messing with coordinates
+#ifndef SAVE_ON_FLASH
+        !gfx.data.offsetX && !gfx.data.offsetY && // no messing with coordinates
+#endif
+        (gfx.data.flags & JSGRAPHICSFLAGS_MAPPEDXY)==0;
     if (fastPath) { // fast path for non-rotated, integer scale
       int s = (int)scale;
       // Scaled blitting

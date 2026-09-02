@@ -131,6 +131,8 @@ void graphicsStructResetState(JsGraphics *gfx) {
   }
   gfx->data.fontSize = 1+JSGRAPHICS_FONTSIZE_4X6;
 #ifndef SAVE_ON_FLASH
+  gfx->data.offsetX = 0;
+  gfx->data.offsetY = 0;
   gfx->data.fontAlignX = 3;
   gfx->data.fontAlignY = 3;
   gfx->data.fontRotate = 0;
@@ -143,8 +145,6 @@ void graphicsStructResetState(JsGraphics *gfx) {
 #endif
   gfx->data.cursorX = 0;
   gfx->data.cursorY = 0;
-  gfx->data.offsetX = 0;
-  gfx->data.offsetY = 0;
 }
 
 void graphicsStructInit(JsGraphics *gfx, int width, int height, int bpp) {
@@ -268,8 +268,10 @@ size_t graphicsGetMemoryRequired(const JsGraphics *gfx) {
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y) {
 #ifndef DICKENS // For Dickens, we can use Bangle.lcdWr(0x36, xxx) to set the screen rotation
+#ifndef SAVE_ON_FLASH
   *x += gfx->data.offsetX;
   *y += gfx->data.offsetY;
+#endif
   if (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) {
     int t = *x;
     *x = *y;
@@ -290,16 +292,20 @@ void deviceToGraphicsCoordinates(const JsGraphics *gfx, int *x, int *y) {
     *x = *y;
     *y = t;
   }
+#ifndef SAVE_ON_FLASH
   *x -= gfx->data.offsetX;
   *y -= gfx->data.offsetY;
+#endif
 #endif
 }
 
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates16x(const JsGraphics *gfx, int *x, int *y) {
 #ifndef DICKENS // For Dickens, we can use Bangle.lcdWr(0x36, xxx) to set the screen rotation
+#ifndef SAVE_ON_FLASH
   *x += gfx->data.offsetX*16;
   *y += gfx->data.offsetY*16;
+#endif
   if (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) {
     int t = *x;
     *x = *y;
@@ -337,12 +343,14 @@ bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int 
   int minX = 0, minY = 0;
   int maxX = gfx->data.width-1, maxY = gfx->data.height-1;
 #endif
+#ifndef SAVE_ON_FLASH
   if (!coordsRotatedAlready) {
     *x1 += gfx->data.offsetX;
     *y1 += gfx->data.offsetY;
     *x2 += gfx->data.offsetX;
     *y2 += gfx->data.offsetY;
   }
+#endif
   if (*x1<minX) { *x1 = minX; modified = true; }
   if (*y1<minY) { *y1 = minY; modified = true; }
   if (*x2>maxX) { *x2 = maxX; modified = true; }
@@ -353,12 +361,14 @@ bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int 
   if (*y1 < gfx->data.modMinY) { gfx->data.modMinY=(short)*y1; modified = true; }
   if (*y2 > gfx->data.modMaxY) { gfx->data.modMaxY=(short)*y2; modified = true; }
 #endif
+#ifndef SAVE_ON_FLASH
   if (!coordsRotatedAlready) {
     *x1 -= gfx->data.offsetX;
     *y1 -= gfx->data.offsetY;
     *x2 -= gfx->data.offsetX;
     *y2 -= gfx->data.offsetY;
   }
+#endif
   return modified;
 }
 
@@ -375,7 +385,10 @@ void graphicsSetModified(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
 /// Get a setPixel function (assuming coordinates already clipped with graphicsSetModifiedAndClip) - if all is ok it can choose a faster draw function
 JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx) {
   if ((gfx->data.flags & JSGRAPHICSFLAGS_MAPPEDXY) ||
-      gfx->data.offsetX || gfx->data.offsetY)
+#ifndef SAVE_ON_FLASH
+      gfx->data.offsetX || gfx->data.offsetY ||
+#endif
+      false)
     return graphicsSetPixel; // fallback
   else
     return gfx->setPixel; // fast
@@ -384,7 +397,9 @@ JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx) {
 /// Get a setPixel function (assuming no clipping by caller) - if all is ok it can choose a faster draw function, but it chooses a slower one if clipping is needed
 JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2, bool coordsRotatedAlready) {
   if ((gfx->data.flags & JSGRAPHICSFLAGS_MAPPEDXY) ||
+#ifndef SAVE_ON_FLASH
       gfx->data.offsetX || gfx->data.offsetY ||
+#endif
       graphicsSetModifiedAndClip(gfx,&x1,&y1,&x2,&y2,coordsRotatedAlready))
     return graphicsSetPixel; // fallback
   else
