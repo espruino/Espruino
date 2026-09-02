@@ -232,6 +232,10 @@ static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt
       m_peripheral_conn_handle = 0x01;
       emitNRFEvent(BLE_CONNECT_EVENT,args,1); // TODO: it might be better to use the BLEP_CONNECTED handler
       if(gatts_service[g].serviceFlag == BLE_SERVICE_NUS) uart_gatts_connected = true;
+
+      // request a connection params update to high speed (why not? ESP32 draws a bunch of power anyway)
+      jsble_set_periph_connection_interval(7.5, 7.5);
+      // FIXME: Use DYNAMIC_INTERVAL_ADJUSTMENT from nRF5x port to lower connection interval when idle
     }
   }
 }
