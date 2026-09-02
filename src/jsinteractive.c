@@ -2855,6 +2855,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 }
 
 JsVarInt jsiTimerAdd(JsVar *timerPtr) {
+#ifndef SAVE_ON_FLASH
   if (jsvGetArrayLength(timerArray) == 0x7FFFFFFF) {
     // if array is at max size, instead work forward from start and find an empty index
     JsvIterator it;
@@ -2874,6 +2875,7 @@ JsVarInt jsiTimerAdd(JsVar *timerPtr) {
     }
     jsvIteratorFree(&it);
   }
+#endif
   // otherwise array is not full - just add to the end
   return jsvArrayAddToEnd(timerArray, timerPtr, 1) - 1;
 }
