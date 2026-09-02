@@ -283,7 +283,7 @@ Badge.showError = function(error) {
     g.setBgColor(3).clearRect(0,0,799,479);
     g.setBgColor(1).clearRect(20,20,779,459);
     g.setColor(3).setFontVector(80).setFontAlign(0,0).drawString("ERROR",400,120);
-    g.setColor(0).setFont("6x8:3").setFontAlign(0,0).drawString(msg,400,180);
+    g.setColor(0).setFont("6x8:3").setFontAlign(0,-1).drawString(msg,400,196);
     if (stack) g.setFont("6x8:2").setFontAlign(-1,-1).drawString(stack, 30, 240);
     var env = process.env, mem=process.memory();
     g.setFont("6x8:2").setFontAlign(-1,-1).drawString(`Espruino ${env.VERSION} (${env.GIT_COMMIT})  ${env.BOARD}
@@ -327,8 +327,33 @@ Badge.showImageFile = function(filename) {
   });
 };
 
+// Puts the badge to sleep, waiting to restart on a button press. The button can be read with ESP32.getWakeupPin()
 Badge.sleep = function() {
   LED_EN.reset(); // LEDs off
   ESP32.deepSleepExt1([BTN1,BTN2],0); // wait for buttons
 };
+
+/// Connect to wifi using details in wifi.json ({"ssid":"--","option":{"password":"---"}}). Returns a promise which only completes on success (on failure an error screen is displayed)
+Badge.connectWiFi = function() {
+  global.WIFI_INFO=require("Storage").readJSON("wifi.json",1)||{};
+  if (!WIFI_INFO.ssid) {
+    Badge.setLEDs("#101");
+    Badge.showError("No WiFi Details\n\nConnect via Bluetooth/USB\nand write wifi.json");
+    return new Promise(resolve => {}); // return a promise that never resolves
+  }
+  return new Promise(resolve => {
+    require("Wifi").connect(WIFI_INFO.ssid, WIFI_INFO.options, function(err) {
+      if (err) {
+        console.log("WiFi error: "+err);
+        Badge.showError("WiFi error: "+err).then(() => {
+          Badge.sleep();
+        });
+        return;
+      }
+      console.log("WiFi Connected");
+      resolve();
+    });
+  });
+};
+
 })();

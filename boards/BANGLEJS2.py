@@ -75,6 +75,7 @@ info = {
      'WRAPPERSOURCES += libs/graphics/jswrap_font_28.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_6x15.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_12x20.c',
+     'DEFINES+=-DESPR_FONT_14 -DESPR_FONT_17 -DESPR_FONT_22 -DESPR_FONT_28 -DESPR_FONT_6x15 -DESPR_FONT_12x20',
      'SOURCES += libs/misc/nmea.c',
      'SOURCES += libs/misc/stepcount.c',
      'SOURCES += libs/misc/hrm_vc31.c',

@@ -337,6 +337,12 @@ bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int 
   int minX = 0, minY = 0;
   int maxX = gfx->data.width-1, maxY = gfx->data.height-1;
 #endif
+  if (!coordsRotatedAlready) {
+    *x1 += gfx->data.offsetX;
+    *y1 += gfx->data.offsetY;
+    *x2 += gfx->data.offsetX;
+    *y2 += gfx->data.offsetY;
+  }
   if (*x1<minX) { *x1 = minX; modified = true; }
   if (*y1<minY) { *y1 = minY; modified = true; }
   if (*x2>maxX) { *x2 = maxX; modified = true; }
@@ -347,6 +353,12 @@ bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int 
   if (*y1 < gfx->data.modMinY) { gfx->data.modMinY=(short)*y1; modified = true; }
   if (*y2 > gfx->data.modMaxY) { gfx->data.modMaxY=(short)*y2; modified = true; }
 #endif
+  if (!coordsRotatedAlready) {
+    *x1 -= gfx->data.offsetX;
+    *y1 -= gfx->data.offsetY;
+    *x2 -= gfx->data.offsetX;
+    *y2 -= gfx->data.offsetY;
+  }
   return modified;
 }
 
@@ -362,7 +374,8 @@ void graphicsSetModified(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
 
 /// Get a setPixel function (assuming coordinates already clipped with graphicsSetModifiedAndClip) - if all is ok it can choose a faster draw function
 JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx) {
-  if (gfx->data.flags & JSGRAPHICSFLAGS_MAPPEDXY)
+  if ((gfx->data.flags & JSGRAPHICSFLAGS_MAPPEDXY) ||
+      gfx->data.offsetX || gfx->data.offsetY)
     return graphicsSetPixel; // fallback
   else
     return gfx->setPixel; // fast

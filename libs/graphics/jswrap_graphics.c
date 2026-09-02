@@ -52,10 +52,16 @@
 #ifdef ESPR_LINE_FONTS
 #include "line_font.h"
 #endif
-#if defined(BANGLEJS2) || defined(BANGLEJS3)
+#ifdef ESPR_FONT_14
 #include "jswrap_font_14.h"
+#endif
+#ifdef ESPR_FONT_17
 #include "jswrap_font_17.h"
+#endif
+#ifdef ESPR_FONT_22
 #include "jswrap_font_22.h"
+#endif
+#ifdef ESPR_FONT_28
 #include "jswrap_font_28.h"
 #endif
 
@@ -2762,29 +2768,27 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
     return 0;
   }
 
-#ifdef BANGLEJS2_TEST // Bangle.js test build has no fonts
-  const int FONTS = 0;
-  JswFindFontFont FONT[0] = {
-#else
-#if defined(BANGLEJS2) || defined(BANGLEJS3)
-  const int FONTS = 6;
   JswFindFontFont FONT[6] = {
+#ifdef ESPR_FONT_28
     {"28", 28, 1, jswrap_graphics_setFont28},
-    {"22", 22, 1, jswrap_graphics_setFont22},
-    {"17", 17, 1, jswrap_graphics_setFont17},
-    {"14", 14, 1, jswrap_graphics_setFont14},
-    {"6x8", 8, 1, jswrap_graphics_setFont6x8},
-    {"4x6", 6, 1, jswrap_graphics_setFont4x6}
-#else  // BANGLEJS1
-  const int FONTS = 4;
-  JswFindFontFont FONT[4] = {
+#else
     {"6x8:3", 24, 3, jswrap_graphics_setFont6x8},
+#endif
+#ifdef ESPR_FONT_22
+    {"22", 22, 1, jswrap_graphics_setFont22},
+#endif
+#ifdef ESPR_FONT_17
+    {"17", 17, 1, jswrap_graphics_setFont17},
+#else
     {"6x8:2", 16, 2, jswrap_graphics_setFont6x8},
+#endif
+#ifdef ESPR_FONT_14
+    {"14", 14, 1, jswrap_graphics_setFont14},
+#endif
     {"6x8", 8, 1, jswrap_graphics_setFont6x8},
     {"4x6", 6, 1, jswrap_graphics_setFont4x6}
-#endif
-#endif
   };
+  const int FONTS = sizeof(FONT) / sizeof(JswFindFontFont);
 
   int fontIdx = 0;
   // check max font size
@@ -3759,7 +3763,8 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     bool fastPath =
         (!centerImage) &&  // not rotating
         (scale-floor(scale))==0 && // integer scale
-        (gfx.data.flags & JSGRAPHICSFLAGS_MAPPEDXY)==0; // no messing with coordinates
+        (gfx.data.flags & JSGRAPHICSFLAGS_MAPPEDXY)==0 &&
+        !gfx.data.offsetX && !gfx.data.offsetY; // no messing with coordinates
     if (fastPath) { // fast path for non-rotated, integer scale
       int s = (int)scale;
       // Scaled blitting
@@ -3844,7 +3849,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       l.repeat = false;
       _jswrap_drawImageLayerInit(&l);
       int x1=l.x1>>8, y1=l.y1>>8, x2=(l.x2>>8)-1, y2=(l.y2>>8)-1;
-      graphicsSetModifiedAndClip(&gfx, &x1, &y1, &x2, &y2,false);
+      graphicsSetModifiedAndClip(&gfx, &x1, &y1, &x2, &y2, false);
       _jswrap_drawImageLayerSetStart(&l, x1, y1);
       JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelFn(&gfx);
 

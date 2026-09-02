@@ -76,6 +76,7 @@ info = {
      'WRAPPERSOURCES += libs/graphics/jswrap_font_28.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_6x15.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_12x20.c',
+     'DEFINES+=-DESPR_FONT_14 -DESPR_FONT_17 -DESPR_FONT_22 -DESPR_FONT_28 -DESPR_FONT_6x15 -DESPR_FONT_12x20',
      'SOURCES += libs/misc/stepcount.c',
      'INCLUDE += -I$(ROOT)/libs/neopixel',
      'SOURCES += libs/neopixel/neopixel_bitbang.c',
@@ -150,12 +151,12 @@ devices = { # 'V' pins are virtual
             'device' : 'CST816S', 'addr' : 0x15,
             'pin_rst' : 'V14',
           },
-  'VIBRATE' : { 
+  'VIBRATE' : {
             'pin' : 'C6',
             'pin_en' : 'V8'
   },
-  'SPEAKER' : { 
-            'pin' : 'B8', 
+  'SPEAKER' : {
+            'pin' : 'B8',
             'pin_en' : 'V7'
   },
   'ACCEL' : {

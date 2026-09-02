@@ -45,6 +45,13 @@ info = {
      'DEFINES+=-DUSE_FONT_6X8',
      'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG -DUSB', # Use on-chip USB. See ESPR_USE_USB_SERIAL_JTAG in README_BuildProcess.md
      'ESP32_FLASH_MAX=1572864',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_14.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_17.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_22.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_28.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_6x15.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_12x20.c',
+     'DEFINES+=-DESPR_FONT_14 -DESPR_FONT_17 -DESPR_FONT_22 -DESPR_FONT_28 -DESPR_FONT_6x15 -DESPR_FONT_12x20',
      'JSMODULESOURCES += _:libs/js/misc/epaper_badge.js'
    ]
  }
