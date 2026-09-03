@@ -3248,6 +3248,7 @@ JsVar *jswrap_graphics_drawLineString(JsVar *parent, JsVar *var, int x, int y, J
     ["y1","int32","The top"],
     ["x2","int32","The right"],
     ["y2","int32","The bottom"]
+
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
@@ -3299,16 +3300,61 @@ JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2
   "generate" : "jswrap_graphics_lineTo",
   "params" : [
     ["x","int32","X value"],
-    ["y","int32","Y value"]
+    ["y","int32","Y value"],
+    ["w","int32","[2v30+] the width of the line, or 1 if undefined or `<1`"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
 Draw a line from the last position of `lineTo` or `moveTo` to this position
+
+**Note:** Line width was only added for 2v30 and later, when there is enough memory available.
+On other builds it'll be ignored and a 1px wide line drawn.
 */
-JsVar *jswrap_graphics_lineTo(JsVar *parent, int x, int y) {
+JsVar *jswrap_graphics_lineTo(JsVar *parent, int x, int y, int w) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, x, y);
+#ifndef SAVE_ON_FLASH
+  if (w<=1) {
+#endif
+    graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, x, y);
+#ifndef SAVE_ON_FLASH
+  } else { // for radius>1, draw as a polygon
+    int x1 = gfx.data.cursorX<<4;
+    int y1 = gfx.data.cursorY<<4;
+    int x2 = x<<4;
+    int y2 = y<<4;
+    int dx = x2-x1;
+    int dy = y2-y1;
+    int d = int_sqrt32(dx*dx + dy*dy);
+    dx = (dx<<3)*w / d;
+    dy = (dy<<3)*w / d;
+    int ex = (dx+dy)*23 >> 5; // 23/16 = 1.4375 - close enough to sqrt(2)
+    int ey = (dy-dx)*23 >> 5;
+    /* ____________.....
+      /2            3
+    1/                   4
+    |
+    |0                   5
+    |
+    9\                   6
+      \____________7.....
+       8
+    */
+    short verts[20] = {
+      x1-dx,y1-dy, // 0 first end
+      x1+ey,y1-ex, // 1
+      x1+dy,y1-dx, // 2
+      x2+dy,y2-dx,
+      x2+ex,y2+ey,
+      x2+dx,y2+dy, // second end
+      x2-ey,y2+ex,
+      x2-dy,y2+dx,
+      x1-dy,y1+dx,
+      x1-ex,y1-ey,
+    };
+    graphicsFillPoly(&gfx, 10, verts);
+  }
+#endif
   gfx.data.cursorX = (short)x;
   gfx.data.cursorY = (short)y;
   graphicsSetVar(&gfx);

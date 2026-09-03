@@ -74,7 +74,7 @@ JsVar* jswrap_graphics_stringMetrics(JsVar *parent, JsVar *var);
 JsVar *jswrap_graphics_getVectorFontPolys(JsGraphics *gfx, JsVar *var, JsVar *options);
 JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2);
 JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2, double y2);
-JsVar *jswrap_graphics_lineTo(JsVar *parent, int x, int y);
+JsVar *jswrap_graphics_lineTo(JsVar *parent, int x, int y, int w);
 JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool antiAlias);
 JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias);
