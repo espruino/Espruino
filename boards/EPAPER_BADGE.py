@@ -42,7 +42,7 @@ info = {
      'DEFINES+=-DESP_STACK_SIZE=15000',
      'DEFINES+=-DESP_HEAP_SIZE=70000', # enough for HTTPS
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
-     'DEFINES+=-DUSE_FONT_6X8',
+     'DEFINES+=-DUSE_FONT_6X8 -DESPR_PBF_FONTS',
      'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG -DUSB', # Use on-chip USB. See ESPR_USE_USB_SERIAL_JTAG in README_BuildProcess.md
      'ESP32_FLASH_MAX=1572864',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_14.c',

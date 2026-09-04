@@ -13,17 +13,15 @@ Badge.showRendering(function(g) { // Colors are: 0=black, 1=white, 2=yellow, 3=r
 */
 (function(){
 global.LED_EN = D20;
-var led_rgb = new Uint8Array(3*10);
-require("neopixel").write(D21, led_rgb); // set all neopixels to off
-
 var i2c = new I2C();
 i2c.setup({sda:D5, scl:D6});
 
 global.Badge = {
   i2c : i2c,
-  led_rgb : led_rgb, // RGB buffer
+  led_rgb : new Uint8Array(3*10), // RGB buffer for LEDs
   epaperBusy : false
 };
+require("neopixel").write(D21, Badge.led_rgb); // set all neopixels to off
 
 //i2c.readReg(0x38, 0,1); // AHT20
 //i2c.readReg(0x1E, 0,1); // KX022-1020
@@ -58,7 +56,7 @@ Badge.getTemperature = function() {
       }, 80);
     }, 10);
   });
-}
+};
 
 Badge.getAccel = function() {
   let promise;
@@ -77,8 +75,9 @@ Badge.getAccel = function() {
       resolve((new Int16Array(data.buffer)).slice().map(n => n/16384));
     }, 20);
   });
-}
+};
 
+/// Set all LEDs to one colour - can be used with rgb values, or `Badge.setLEDs("#0f0")`
 Badge.setLEDs = function(r,g,b) {
   var g = Graphics.createArrayBuffer(1,1,24,{color_order:"brg"}); // use 24 bit GFX to convert color types/strings
   var col = g.toColor(r,g,b);
@@ -86,8 +85,15 @@ Badge.setLEDs = function(r,g,b) {
   LED_EN.set(); // LEDs on
   let arr = new Uint24Array(Badge.led_rgb.buffer);
   arr.fill(col);
-  require("neopixel").write(D21,Badge.led_rgb);
-}
+  require("neopixel").write(D21, Badge.led_rgb);
+};
+
+/// Set LEDs individually. Supply 30-element RGB array, or 'undefined' uses Badge.led_rgb
+Badge.setLEDArray = function(arr) {
+  if (arr!==undefined) Badge.led_rgb.set(arr);
+  LED_EN.set(); // LEDs on
+  require("neopixel").write(D21, Badge.led_rgb);
+};
 
 // ePaper
 const CS = D4, DC = D10, RST = D1, BUSY = D0; // BUSY keeps changing?
@@ -313,7 +319,35 @@ Badge.showRendering = function(gfxCallback) {
   });
 };
 
-/* Load a raw 800x480x2 image file from storage.
+/* Works as per showRendering, but dumps the image to the console as a URLencoded
+BMP file, which the Web IDE can interpret */
+Badge.dumpRendering = function(gfxCallback) {
+  var dev = eval(E.getConsole());
+  var fs = 75 + (800*840/2);
+  dev.println(""); // removes prompt from line
+  dev.write("data:image/bmp;base64,");
+  dev.write(btoa(E.toString([66, 77,
+            fs&255, (fs>>8)&255, (fs>>16)&255, fs>>24, // filesize
+            0, 0, 0, 0, 75, 0, 0, 0, 12, 0, 0, 0,
+            32, 3,  // 800
+            224, 1,  // 480
+            1, 0, 4,
+            0, 0, 0, 0, 255, 255, 255,  0x33, 0xcc, 0xff,  0x27, 0x37, 0xdb,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0])));
+
+  var g = Graphics.createArrayBuffer(800,12,2); /* 0=black, 1=white, 2=yellow, 3=red */
+  g.palette = new Uint16Array([0,0xFFFF,65126,55716]);
+  for (var y=468;y>=0;y-=12) {
+    g.clear(1).setOffset(0,-y).setColor(1);
+    gfxCallback(g);
+    g.setOffset(0,0);
+    dev.write(btoa(g.asBMP().substr(74)));
+  }
+  dev.write("\n");
+  return Promise.resolve();
+};
+
+/* Load a raw 800x480x2 image file from storage, return a Promise
 0=black, 1=white, 2=yellow, 3=red */
 Badge.showImageFile = function(filename) {
   if (Badge.epaperBusy) throw new Error("ePaper is busy");
