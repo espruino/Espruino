@@ -405,7 +405,11 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
 static esp_err_t event_handler(void *ctx, system_event_t *event) {
   UNUSED(ctx);
 #endif
+#if ESP_IDF_VERSION_MAJOR>=5
   jsDebug(DBG_INFO, "Event: %s (%d)\n", event_base == WIFI_EVENT ? wifiEventToString(event_id) : "OTHER", event_id);
+#else
+  jsDebug(DBG_INFO, "Wifi: Event(%d):SYSTEM_EVENT_%s\n", event->event_id, wifiEventToString(event->event_id));
+#endif
 #if ESP_IDF_VERSION_MAJOR>=5
   if (event_base == WIFI_EVENT && event_id >= WIFI_EVENT_MAX) {
     jsDebug(DBG_INFO, "Internal event ");
