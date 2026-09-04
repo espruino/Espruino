@@ -12,6 +12,9 @@
 # Buttons, and other in-built peripherals are. It is used to build documentation as well
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
+# NOTE: Run the following line to ensure LEDs don't flash at boot:
+#   espefuse.py --port /dev/ttyACM0 burn_efuse UART_PRINT_CONTROL 3
+# 
 
 
 import pinutils;
