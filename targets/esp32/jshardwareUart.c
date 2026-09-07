@@ -26,6 +26,14 @@
 #define uart_Serial2 1
 #define uart_Serial3 2
 
+#if CONFIG_IDF_TARGET_ESP32
+// Driver deletion invalidates objects on which uart_read_bytes may be waiting.
+// Coordinate setup/unsetup in the Espruino task with polling in the UART task.
+static volatile bool uartTaskRunning;
+static volatile bool uartTaskPauseRequested;
+static volatile bool uartTaskPaused;
+#endif
+
 #ifdef BLUETOOTH
 #include "BLE/esp32_gatts_func.h"
 #endif
@@ -61,7 +69,11 @@ void initUart(int uart_num, uart_config_t uart_config, int txpin, int rxpin){
   ESP_ERROR_CHECK(err);
 }
 
+#if CONFIG_IDF_TARGET_ESP32
+static void uninitSerialUnlocked(IOEventFlags device) {
+#else
 void uninitSerial(IOEventFlags device) {
+#endif
   if(device == EV_SERIAL1) {
     if (jshIsDeviceInitialised(EV_SERIAL1))
       uart_driver_delete(uart_Serial1);
@@ -79,6 +91,24 @@ void uninitSerial(IOEventFlags device) {
   }
 }
 
+#if CONFIG_IDF_TARGET_ESP32
+static void pauseUartTask() {
+  uartTaskPauseRequested = true;
+  while (uartTaskRunning && !uartTaskPaused)
+    vTaskDelay(1);
+}
+
+static void resumeUartTask() {
+  uartTaskPauseRequested = false;
+}
+
+void uninitSerial(IOEventFlags device) {
+  pauseUartTask();
+  uninitSerialUnlocked(device);
+  resumeUartTask();
+}
+#endif
+
 void initSerial(IOEventFlags device, JshUSARTInfo *inf){
   uart_config_t uart_config = {
     .baud_rate = inf->baudRate,
@@ -93,7 +123,12 @@ void initSerial(IOEventFlags device, JshUSARTInfo *inf){
     case 1: uart_config.parity = UART_PARITY_ODD; break;
     case 2: uart_config.parity = UART_PARITY_EVEN; break;
   }
+#if CONFIG_IDF_TARGET_ESP32
+  pauseUartTask();
+  uninitSerialUnlocked(device);
+#else
   uninitSerial(device);
+#endif
   if(device == EV_SERIAL1) {
     initUart(uart_Serial1, uart_config, -1, -1); // FIXME: pins?
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
@@ -102,6 +137,10 @@ void initSerial(IOEventFlags device, JshUSARTInfo *inf){
     if(inf->pinTX == 0xFF) inf->pinTX = 4; // FIXME: use what's in jspininfo
     if(inf->pinRX == 0xFF) inf->pinRX = 5;
     initUart(uart_Serial2, uart_config, inf->pinTX, inf->pinRX);
+#if CONFIG_IDF_TARGET_ESP32
+    // Do not expose receive state left by the previous pin/driver route.
+    ESP_ERROR_CHECK(uart_flush_input(uart_Serial2));
+#endif
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL2, true);
 #if ESPR_USART_COUNT>2
@@ -109,10 +148,17 @@ void initSerial(IOEventFlags device, JshUSARTInfo *inf){
     if(inf->pinTX == 0xFF) inf->pinTX = 17; // FIXME: use what's in jspininfo
     if(inf->pinRX == 0xFF) inf->pinRX = 16;
     initUart(uart_Serial3, uart_config, inf->pinTX, inf->pinRX);
+#if CONFIG_IDF_TARGET_ESP32
+    // Do not expose receive state left by the previous pin/driver route.
+    ESP_ERROR_CHECK(uart_flush_input(uart_Serial3));
+#endif
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL3, true);
 #endif
   }
+#if CONFIG_IDF_TARGET_ESP32
+  resumeUartTask();
+#endif
 }
 
 
@@ -210,6 +256,16 @@ void writeSerial(IOEventFlags device, uint8_t *buf, int len){
 }
 
 void pollSerialDevices() {
+#if CONFIG_IDF_TARGET_ESP32
+  uartTaskRunning = true;
+  if (uartTaskPauseRequested) {
+    uartTaskPaused = true;
+    while (uartTaskPauseRequested)
+      vTaskDelay(1);
+    uartTaskPaused = false;
+    return;
+  }
+#endif
   uint8_t buf[64];
   bool busy = false;
   static uint16_t idleCount = 0;
