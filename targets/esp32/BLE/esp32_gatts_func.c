@@ -373,7 +373,10 @@ void gatts_set_char_value(uint16_t handle, char *data, int len) {
 void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
   jsWarnGattsEvent(event,gatts_if);
   switch (event) {
-  case ESP_GATTS_REG_EVT:{gatts_createService(event,gatts_if,param);break;}
+  case ESP_GATTS_REG_EVT:{
+    gatts_createService(event,gatts_if,param);
+    break;
+  }
   case ESP_GATTS_CREATE_EVT:{
     gatts_service[ble_service_pos].service_handle = param->create.service_handle;
     esp_ble_gatts_start_service(gatts_service[ble_service_pos].service_handle);
@@ -443,7 +446,14 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
   case ESP_GATTS_CONF_EVT: // if (gatts_if==gatts_service[uart_gatts_service].gatts_if) UART indicate TX has finished
     break;
   case ESP_GATTS_ADD_INCL_SRVC_EVT:break;
-  case ESP_GATTS_STOP_EVT:break;
+  case ESP_GATTS_STOP_EVT: // service stopped via gatts_reset - we need to remove it now
+    if (param->stop.status == ESP_GATT_OK) {
+      // Safe to delete now that it's no longer active
+      esp_ble_gatts_delete_service(param->stop.service_handle);
+    } else {
+      jsWarn("ESP_GATTS_STOP_EVT: Stop service failed, status %d", param->stop.status);
+    }
+    break;
   case ESP_GATTS_OPEN_EVT:break;
   case ESP_GATTS_CANCEL_OPEN_EVT:break;
   case ESP_GATTS_CLOSE_EVT:break;
@@ -693,12 +703,13 @@ void gatts_reset(bool removeValues){
     return;
   }
   esp_err_t r;
-  _removeValues = removeValues;
-  if(ble_service_cnt > 0){
+  _removeValues = removeValues; 
+  if (ble_service_cnt > 0) { // FIXME: why are we removing even if removeValues=false?
     for(int i = 0; i < ble_service_cnt;i++){
       if(gatts_service[i].gatts_if != ESP_GATT_IF_NONE){
-        r = esp_ble_gatts_delete_service(gatts_service[i].service_handle);
-        if(r) jsWarn("delete service error:%d\n",r);
+        esp_ble_gatts_stop_service(gatts_service[i].service_handle);
+        if(r) jsWarn("stop service error:%d\n",r);
+        // ESP_GATTS_STOP_EVT should now be fired, and we do esp_ble_gatts_delete_service in there
       }
     }
   }
