@@ -26,6 +26,12 @@
 #define uart_Serial2 1
 #define uart_Serial3 2
 
+// Driver deletion invalidates objects on which uart_read_bytes may be waiting.
+// Coordinate setup/unsetup in the Espruino task with polling in the UART task.
+static volatile bool uartTaskRunning;
+static volatile bool uartTaskPauseRequested;
+static volatile bool uartTaskPaused;
+
 #ifdef BLUETOOTH
 #include "BLE/esp32_gatts_func.h"
 #endif
@@ -61,7 +67,7 @@ void initUart(int uart_num, uart_config_t uart_config, int txpin, int rxpin){
   ESP_ERROR_CHECK(err);
 }
 
-void uninitSerial(IOEventFlags device) {
+static void uninitSerialUnlocked(IOEventFlags device) {
   if(device == EV_SERIAL1) {
     if (jshIsDeviceInitialised(EV_SERIAL1))
       uart_driver_delete(uart_Serial1);
@@ -79,6 +85,22 @@ void uninitSerial(IOEventFlags device) {
   }
 }
 
+static void pauseUartTask() {
+  uartTaskPauseRequested = true;
+  while (uartTaskRunning && !uartTaskPaused)
+    vTaskDelay(1);
+}
+
+static void resumeUartTask() {
+  uartTaskPauseRequested = false;
+}
+
+void uninitSerial(IOEventFlags device) {
+  pauseUartTask();
+  uninitSerialUnlocked(device);
+  resumeUartTask();
+}
+
 void initSerial(IOEventFlags device, JshUSARTInfo *inf){
   uart_config_t uart_config = {
     .baud_rate = inf->baudRate,
@@ -93,7 +115,8 @@ void initSerial(IOEventFlags device, JshUSARTInfo *inf){
     case 1: uart_config.parity = UART_PARITY_ODD; break;
     case 2: uart_config.parity = UART_PARITY_EVEN; break;
   }
-  uninitSerial(device);
+  pauseUartTask();
+  uninitSerialUnlocked(device);
   if(device == EV_SERIAL1) {
     initUart(uart_Serial1, uart_config, -1, -1); // FIXME: pins?
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
@@ -113,6 +136,7 @@ void initSerial(IOEventFlags device, JshUSARTInfo *inf){
     jshSetDeviceInitialised(EV_SERIAL3, true);
 #endif
   }
+  resumeUartTask();
 }
 
 
@@ -210,6 +234,14 @@ void writeSerial(IOEventFlags device, uint8_t *buf, int len){
 }
 
 void pollSerialDevices() {
+  uartTaskRunning = true;
+  if (uartTaskPauseRequested) {
+    uartTaskPaused = true;
+    while (uartTaskPauseRequested)
+      vTaskDelay(1);
+    uartTaskPaused = false;
+    return;
+  }
   uint8_t buf[64];
   bool busy = false;
   static uint16_t idleCount = 0;
