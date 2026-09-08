@@ -605,9 +605,11 @@ static void jslGetRawString() {
     size_t stringPos = jsvStringIteratorGetIndex(&lex->it);
     lex->tokenValue = jsvNewFromStringVar(lex->sourceVar, stringPos, length);
     // skip over string
-    jsvLockAgain(lex->it.var); // jsvStringIteratorGoto assumes var was locked
-    jsvStringIteratorGoto(&lex->it, lex->sourceVar, stringPos+length);
-    jsvUnLock(lex->it.var); // jsvStringIteratorGoto assumes var was locked
+    if (lex->it.var) { // #2745 a malformed raw string (or raw str at EOF?) can push the iterator to the end and free lex->it.var
+      jsvLockAgain(lex->it.var); // jsvStringIteratorGoto assumes var was locked
+      jsvStringIteratorGoto(&lex->it, lex->sourceVar, stringPos+length);
+      jsvUnLock(lex->it.var); // jsvStringIteratorGoto assumes var was locked
+    }
   } else {
     /* if it will fit in a single string, allocate one and fill it up! */
     lex->tokenValue = jsvNewWithFlags(JSV_STRING_0 + length);
