@@ -8,7 +8,7 @@ ifeq ($(CHIP),ESP32C3)
 	SDKCONFIG = sdkconfig.defaults.esp32c3
 	FMW_BIN_NAME = espruino-esp32c3
 	PORT ?= /dev/ttyACM0
-else 
+else
 	ifeq ($(CHIP),ESP32)
 		SDKCONFIG = sdkconfig.defaults.esp32
 		FMW_BIN_NAME = espruino-esp32
@@ -17,7 +17,7 @@ else
 		ifeq ($(CHIP),ESP32S3)
 			SDKCONFIG = sdkconfig.defaults.esp32s3
 			FMW_BIN_NAME = espruino-esp32s3
-			PORT ?= /dev/ttyUSB0
+			PORT ?= /dev/ttyACM0
 		else
 			$(error Unknown ESP32 chip)
 		endif
@@ -25,7 +25,7 @@ else
 endif
 
 $(CMAKEFILE):
-	@echo "MAKE CMAKEFILE" 
+	@echo "MAKE CMAKEFILE"
 	@echo "INCLUDE_WITHOUT_GEN: $(INCLUDE_WITHOUT_GEN)"
 	@mkdir -p $(BINDIR)/main
 	@touch $(CMAKEFILE)

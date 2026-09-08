@@ -17,7 +17,7 @@ else
 		ifeq ($(CHIP),ESP32S3)
 			SDKCONFIG = sdkconfig_s3
 			FMW_BIN_NAME = espruino-esp32s3
-			PORT ?= /dev/ttyUSB0
+			PORT ?= /dev/ttyACM0
 		else
 			$(error Unknown ESP32 chip)
 		endif
