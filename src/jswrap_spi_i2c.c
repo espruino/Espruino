@@ -69,22 +69,6 @@ JsVar *jswrap_spi_constructor() {
   return jspNewObject(0,"SPI");
 }
 
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "SPI",
-  "name" : "find",
-  "deprecated" : true,
-  "ifndef" : "SAVE_ON_FLASH",
-  "generate_full" : "jshGetDeviceObjectFor(JSH_SPI1, JSH_SPIMAX, pin)",
-  "params" : [
-    ["pin","pin","A pin to search with"]
-  ],
-  "return" : ["JsVar","An object of type `SPI`, or `undefined` if one couldn't be found."]
-}
-Try and find an SPI hardware device that will work on this pin (e.g. `SPI1`)
-
-May return undefined if no device can be found.
-*/
 
 /*JSON{
   "type" : "method",
@@ -529,23 +513,6 @@ Use `I2C.setup` to configure this port.
 JsVar *jswrap_i2c_constructor() {
   return jspNewObject(0,"I2C");
 }
-
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "I2C",
-  "name" : "find",
-  "deprecated" : true,
-  "ifndef" : "SAVE_ON_FLASH",
-  "generate_full" : "jshGetDeviceObjectFor(JSH_I2C1, JSH_I2CMAX, pin)",
-  "params" : [
-    ["pin","pin","A pin to search with"]
-  ],
-  "return" : ["JsVar","An object of type `I2C`, or `undefined` if one couldn't be found."]
-}
-Try and find an I2C hardware device that will work on this pin (e.g. `I2C1`)
-
-May return undefined if no device can be found.
-*/
 
 /*JSON{
   "type" : "object",

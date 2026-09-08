@@ -101,23 +101,6 @@ Espruino boards)
  */
 // this is created in jsiIdle based on EV_SERIALx_STATUS ecents
 
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "Serial",
-  "name" : "find",
-  "deprecated" : true,
-  "ifndef" : "SAVE_ON_FLASH",
-  "generate_full" : "jshGetDeviceObjectFor(JSH_USART1, JSH_USARTMAX, pin)",
-  "params" : [
-    ["pin","pin","A pin to search with"]
-  ],
-  "return" : ["JsVar","An object of type `Serial`, or `undefined` if one couldn't be found."]
-}
-Try and find a USART (Serial) hardware device that will work on this pin (e.g.
-`Serial1`)
-
-May return undefined if no device can be found.
-*/
 
 
 /*JSON{
