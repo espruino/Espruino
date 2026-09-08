@@ -1540,7 +1540,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
       if (l--<=1) {
         *str = 0;
         jsvStringIteratorFree(&it);
-        return len;
+        return len-1;
       }
       *(str++) = jsvStringIteratorGetChar(&it);
       jsvStringIteratorNext(&it);
