@@ -1522,8 +1522,9 @@ void jslPrintTokenLineMarker_skip_callback(const char *str, void *user_data) {
 
 void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos, size_t prefixLength) {
   size_t line = 1;
-  int col = 1;
-  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, (size_t*)&col, NULL); // we don't care about extra lines - all we care is outputting correctly
+  size_t colx = 1;
+  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &colx, NULL); // we don't care about extra lines - all we care is outputting correctly
+  int col = (int)colx;
   int startOfLine = (int)jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
   int lineLength = (int)jsvGetCharsOnLine(lex->sourceVar, line);
 
