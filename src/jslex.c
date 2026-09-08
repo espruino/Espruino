@@ -1139,6 +1139,8 @@ void jslGetTokenString(char *str, size_t len) {
 char *jslGetTokenValueAsString() {
   if (lex->tokenl==0 && lex->tokenValue) // in case we didn't store the string
     lex->tokenl = (unsigned char)jsvGetString(lex->tokenValue, lex->token, JSLEX_MAX_TOKEN_LENGTH);
+  else
+    lex->token[lex->tokenl]  = 0; // add final null
   assert(lex->tokenl < JSLEX_MAX_TOKEN_LENGTH);
   if (lex->tokenl==0 && LEX_IS_RESERVED_WORD(lex->tk)) {
     // pretokenised - so we'll work out the name from our token name list
