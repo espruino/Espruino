@@ -18,6 +18,8 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_gap_ble_api.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 #include "BLE/esp32_gatts_func.h"
 #include "BLE/esp32_gap_func.h"
@@ -67,6 +69,10 @@ struct gatts_char_inst *gatts_char = NULL;
 struct gatts_descr_inst *gatts_descr = NULL;
 
 bool _removeValues;
+static volatile bool gatts_reset_in_progress = false;
+static SemaphoreHandle_t gatts_reset_complete = NULL;
+
+#define GATTS_RESET_TIMEOUT_MS 5000
 
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
 
@@ -339,13 +345,22 @@ static void gatts_check_add_char(esp_bt_uuid_t char_uuid, uint16_t attr_handle) 
 }
 static void gatts_delete_service(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if){
   NOT_USED(event);
-  esp_err_t r;
-  r = esp_ble_gatts_app_unregister(gatts_service[getIndexFromGatts_if(gatts_if)].gatts_if);
+  int serviceIndex = getIndexFromGatts_if(gatts_if);
+  if (serviceIndex < 0) {
+    jsWarn("delete event for unknown gatts_if:%d", gatts_if);
+    return;
+  }
+  esp_err_t r = esp_ble_gatts_app_unregister(gatts_service[serviceIndex].gatts_if);
   if(r) jsWarn("error in app_unregister:%d\n",r);
 }
 static void gatts_unreg_app(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if){
   NOT_USED(event);
-  gatts_service[getIndexFromGatts_if(gatts_if)].gatts_if = ESP_GATT_IF_NONE;
+  int serviceIndex = getIndexFromGatts_if(gatts_if);
+  if (serviceIndex < 0) {
+    jsWarn("unregister event for unknown gatts_if:%d", gatts_if);
+    return;
+  }
+  gatts_service[serviceIndex].gatts_if = ESP_GATT_IF_NONE;
   for(int i = 0; i < ble_service_cnt; i++){
     if(gatts_service[i].gatts_if != ESP_GATT_IF_NONE) return;
   }
@@ -357,6 +372,8 @@ static void gatts_unreg_app(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if){
   ble_char_cnt = 0;
   ble_descr_cnt = 0;
   if(_removeValues) bleRemoveChilds(execInfo.hiddenRoot);
+  gatts_reset_in_progress = false;
+  if (gatts_reset_complete) xSemaphoreGive(gatts_reset_complete);
 }
 
 // Update our hidden var with the right value
@@ -452,6 +469,9 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
       esp_ble_gatts_delete_service(param->stop.service_handle);
     } else {
       jsWarn("ESP_GATTS_STOP_EVT: Stop service failed, status %d", param->stop.status);
+      // Ensure a failed stop cannot leave a pending service replacement stuck.
+      esp_err_t r = esp_ble_gatts_app_unregister(gatts_if);
+      if (r) jsWarn("error in app_unregister after stop failure:%d", r);
     }
     break;
   case ESP_GATTS_OPEN_EVT:break;
@@ -674,9 +694,26 @@ void gatts_create_structs(bool enableUART){
 
 void gatts_set_services(JsVar *data){
   JsVar *options = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS);
-  gatts_reset(true);
+  if (ble_service_cnt > 0) {
+    if (!gatts_reset_complete)
+      gatts_reset_complete = xSemaphoreCreateBinary();
+    if (!gatts_reset_complete) {
+      jsWarn("Unable to allocate GATT reset semaphore");
+      jsvUnLock(options);
+      return;
+    }
+    // Discard a completion left by an earlier reset before starting this one.
+    while (xSemaphoreTake(gatts_reset_complete, 0) == pdTRUE) {}
+    gatts_reset(true);
+    if (gatts_reset_in_progress &&
+        xSemaphoreTake(gatts_reset_complete, pdMS_TO_TICKS(GATTS_RESET_TIMEOUT_MS)) != pdTRUE) {
+      jsWarn("Timed out waiting for GATT services to reset");
+      jsvUnLock(options);
+      return;
+    }
+  }
   jsvUnLock(gatts_services);
-  gatts_services = data;
+  gatts_services = data ? jsvLockAgain(data) : NULL;
   uart_gatts_service = -1;
   uart_tx_handle = 0;
 
@@ -702,13 +739,26 @@ void gatts_reset(bool removeValues){
     jsWarn("Not removing services for reset() as connected");
     return;
   }
+  if (gatts_reset_in_progress) {
+    _removeValues |= removeValues;
+    return;
+  }
   esp_err_t r;
-  _removeValues = removeValues; 
+  _removeValues = removeValues;
   if (ble_service_cnt > 0) { // FIXME: why are we removing even if removeValues=false?
+    int activeServices = 0;
+    for (int i = 0; i < ble_service_cnt; i++) {
+      if (gatts_service[i].gatts_if != ESP_GATT_IF_NONE) activeServices++;
+    }
+    gatts_reset_in_progress = activeServices > 0;
     for(int i = 0; i < ble_service_cnt;i++){
       if(gatts_service[i].gatts_if != ESP_GATT_IF_NONE){
-        esp_ble_gatts_stop_service(gatts_service[i].service_handle);
-        if(r) jsWarn("stop service error:%d\n",r);
+        r = esp_ble_gatts_stop_service(gatts_service[i].service_handle);
+        if (r) {
+          jsWarn("stop service error:%d\n",r);
+          r = esp_ble_gatts_app_unregister(gatts_service[i].gatts_if);
+          if (r) jsWarn("app_unregister after stop error:%d\n", r);
+        }
         // ESP_GATTS_STOP_EVT should now be fired, and we do esp_ble_gatts_delete_service in there
       }
     }
