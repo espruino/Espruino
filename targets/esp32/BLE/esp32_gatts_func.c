@@ -694,23 +694,9 @@ void gatts_create_structs(bool enableUART){
 
 void gatts_set_services(JsVar *data){
   JsVar *options = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS);
-  if (ble_service_cnt > 0) {
-    if (!gatts_reset_complete)
-      gatts_reset_complete = xSemaphoreCreateBinary();
-    if (!gatts_reset_complete) {
-      jsWarn("Unable to allocate GATT reset semaphore");
-      jsvUnLock(options);
-      return;
-    }
-    // Discard a completion left by an earlier reset before starting this one.
-    while (xSemaphoreTake(gatts_reset_complete, 0) == pdTRUE) {}
-    gatts_reset(true);
-    if (gatts_reset_in_progress &&
-        xSemaphoreTake(gatts_reset_complete, pdMS_TO_TICKS(GATTS_RESET_TIMEOUT_MS)) != pdTRUE) {
-      jsWarn("Timed out waiting for GATT services to reset");
-      jsvUnLock(options);
-      return;
-    }
+  if (ble_service_cnt > 0 && !gatts_reset(true)) {
+    jsvUnLock(options);
+    return;
   }
   jsvUnLock(gatts_services);
   gatts_services = data ? jsvLockAgain(data) : NULL;
@@ -734,14 +720,18 @@ void gatts_set_services(JsVar *data){
   gatts_reg_app();  //this starts tons of api calls creating gatts-events. Ends in gatts_reg_app
   jsvUnLock(options);
 }
-void gatts_reset(bool removeValues){
+bool gatts_reset(bool removeValues){
   if (!removeValues && gatts_if_connected()) {
     jsWarn("Not removing services for reset() as connected");
-    return;
+    return true;
   }
   if (gatts_reset_in_progress) {
     _removeValues |= removeValues;
-    return;
+    if (gatts_reset_complete &&
+        xSemaphoreTake(gatts_reset_complete, pdMS_TO_TICKS(GATTS_RESET_TIMEOUT_MS)) == pdTRUE)
+      return true;
+    jsWarn("Timed out waiting for GATT services to reset");
+    return false;
   }
   esp_err_t r;
   _removeValues = removeValues;
@@ -750,7 +740,16 @@ void gatts_reset(bool removeValues){
     for (int i = 0; i < ble_service_cnt; i++) {
       if (gatts_service[i].gatts_if != ESP_GATT_IF_NONE) activeServices++;
     }
-    gatts_reset_in_progress = activeServices > 0;
+    if (!activeServices) return true;
+    if (!gatts_reset_complete)
+      gatts_reset_complete = xSemaphoreCreateBinary();
+    if (!gatts_reset_complete) {
+      jsWarn("Unable to allocate GATT reset semaphore");
+      return false;
+    }
+    // Discard a completion left by an earlier reset before starting this one.
+    while (xSemaphoreTake(gatts_reset_complete, 0) == pdTRUE) {}
+    gatts_reset_in_progress = true;
     for(int i = 0; i < ble_service_cnt;i++){
       if(gatts_service[i].gatts_if != ESP_GATT_IF_NONE){
         r = esp_ble_gatts_stop_service(gatts_service[i].service_handle);
@@ -762,10 +761,19 @@ void gatts_reset(bool removeValues){
         // ESP_GATTS_STOP_EVT should now be fired, and we do esp_ble_gatts_delete_service in there
       }
     }
+    if (xSemaphoreTake(gatts_reset_complete, pdMS_TO_TICKS(GATTS_RESET_TIMEOUT_MS)) != pdTRUE) {
+      jsWarn("Timed out waiting for GATT services to reset");
+      return false;
+    }
   }
+  return true;
 }
 // called from NRF.updateServices
 void gatts_update_service(uint16_t char_handle, char *data, int len, bool isNotify, bool isIndicate){
+  if (gatts_reset_in_progress) {
+    jsWarn("Cannot update GATT services while reset is in progress");
+    return;
+  }
   gatts_set_char_value(char_handle, data, len);
   if (isNotify || isIndicate) {
     for(uint16_t pos = 0; pos < ble_char_cnt; pos++){
