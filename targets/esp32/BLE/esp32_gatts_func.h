@@ -77,7 +77,7 @@ void gatts_set_services(JsVar *data);
 void gatts_update_service(uint16_t char_handle, char *data, int len, bool isNotify, bool isIndicate);
 
 uint16_t gatts_get_service_cnt();
-void gatts_reset(bool removeValues);
+bool gatts_reset(bool removeValues);
 
 // For BLE UART
 void gatts_sendNUSNotification(int c);
