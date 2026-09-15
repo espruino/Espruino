@@ -354,7 +354,30 @@ Badge.showImageFile = function(filename) {
   Badge.epaperBusy = true;
   return epdInit().then(() => {
     eC(0x10);
-    eD(require("Storage").read(filename));
+    let img = require("Storage").read(filename);
+    if (!img) throw new Error(`File "${filename}" not found`);
+    eD(img);
+    return epdUpdate();
+  }).then(epdSleep).then(() => {
+    Badge.epaperBusy = false;
+  });
+};
+
+/* Load a raw 800x480x2 image file from storage, but call gfxCallback with a Graphics instance on the first 800xheight slice, return a Promise
+0=black, 1=white, 2=yellow, 3=red */
+Badge.showImageFileRendering = function(filename, height, gfxCallback) {
+  if (Badge.epaperBusy) throw new Error("ePaper is busy");
+  Badge.epaperBusy = true;
+  return epdInit().then(() => {
+    eC(0x10);
+    let img = require("Storage").read(filename);
+    if (!img) throw new Error(`File "${filename}" not found`);
+    let g = Graphics.createArrayBuffer(800,height,2);
+    g.setBgColor(1).setColor(0);
+    new Uint8Array(g.buffer).set(img);
+    gfxCallback(g);
+    eD(g.buffer); // render the modified bit
+    eD(img.substr(800*height>>2)); // render the rest
     return epdUpdate();
   }).then(epdSleep).then(() => {
     Badge.epaperBusy = false;
