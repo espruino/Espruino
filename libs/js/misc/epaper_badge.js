@@ -12,7 +12,7 @@ Badge.showRendering(function(g) { // Colors are: 0=black, 1=white, 2=yellow, 3=r
 });
 */
 (function(){
-global.LED_EN = D20;
+global.LED_EN = D4;
 var i2c = new I2C();
 i2c.setup({sda:D5, scl:D6});
 
@@ -21,7 +21,7 @@ global.Badge = {
   led_rgb : new Uint8Array(3*10), // RGB buffer for LEDs
   epaperBusy : false
 };
-require("neopixel").write(D21, Badge.led_rgb); // set all neopixels to off
+require("neopixel").write(D20, Badge.led_rgb); // set all neopixels to off
 
 //i2c.readReg(0x38, 0,1); // AHT20
 //i2c.readReg(0x1E, 0,1); // KX022-1020
@@ -85,18 +85,18 @@ Badge.setLEDs = function(r,g,b) {
   LED_EN.set(); // LEDs on
   let arr = new Uint24Array(Badge.led_rgb.buffer);
   arr.fill(col);
-  require("neopixel").write(D21, Badge.led_rgb);
+  require("neopixel").write(D20, Badge.led_rgb);
 };
 
 /// Set LEDs individually. Supply 30-element RGB array, or 'undefined' uses Badge.led_rgb
 Badge.setLEDArray = function(arr) {
   if (arr!==undefined) Badge.led_rgb.set(arr);
   LED_EN.set(); // LEDs on
-  require("neopixel").write(D21, Badge.led_rgb);
+  require("neopixel").write(D20, Badge.led_rgb);
 };
 
 // ePaper
-const CS = D4, DC = D10, RST = D1, BUSY = D0; // BUSY keeps changing?
+const CS = D10, DC = D21, RST = D1, BUSY = D0; // BUSY keeps changing?
 const Source_BITS  = 800;
 const Gate_BITS   = 680;
 const ALLSCREEN_BYTES =  96000;
@@ -105,8 +105,6 @@ CS.set();
 DC.set();
 RST.set();
 BUSY.read();
-/*var spi = new SPI();
-spi.setup({ sck : D7, mosi: D8 });*/
 var spi = SPI1;
 spi.setup({ baud : 4000000, sck : D7, mosi: D8 });
 
