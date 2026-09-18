@@ -89,6 +89,7 @@ devices = {
           },
   'LCD' : {
             'width' : 320, 'height' : 480, 'bpp' : 16, 'controller' : 'ST7796',
+            'bitrate' : 80000000,
             'pin_dc' : 'D3',
             'pin_cs' : 'D4', # this may not be connected. schematic doesn't show it but D4 is free anyway
             'pin_sck' : 'D5',
