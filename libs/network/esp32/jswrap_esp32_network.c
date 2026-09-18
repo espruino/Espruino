@@ -1843,7 +1843,7 @@ static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
     esp_netif_dhcpc_stop(netif);  // CLIENT DHCP for STA
     err = esp_netif_set_ip_info(netif, &info);
 #else
-    tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_STA);
+    tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
     err = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &info);
 #endif
   }
@@ -1865,7 +1865,7 @@ static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
 // Schedule callback
   if (jsvIsFunction(jsCallback)) {
     JsVar *params[1];
-    params[0] = err ? jsvNewWithFlags(JSV_NULL) : jsvNewFromString("Failure");
+    params[0] = err ? jsvNewFromString("Failure") : jsvNewWithFlags(JSV_NULL);
     jsiQueueEvents(NULL, jsCallback, params, 1);
     jsvUnLock(params[0]);
   }
