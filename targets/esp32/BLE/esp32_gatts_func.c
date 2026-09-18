@@ -736,11 +736,6 @@ bool gatts_reset(bool removeValues){
   esp_err_t r;
   _removeValues = removeValues;
   if (ble_service_cnt > 0) { // FIXME: why are we removing even if removeValues=false?
-    int activeServices = 0;
-    for (int i = 0; i < ble_service_cnt; i++) {
-      if (gatts_service[i].gatts_if != ESP_GATT_IF_NONE) activeServices++;
-    }
-    if (!activeServices) return true;
     if (!gatts_reset_complete)
       gatts_reset_complete = xSemaphoreCreateBinary();
     if (!gatts_reset_complete) {
@@ -748,10 +743,10 @@ bool gatts_reset(bool removeValues){
       return false;
     }
     // Discard a completion left by an earlier reset before starting this one.
-    while (xSemaphoreTake(gatts_reset_complete, 0) == pdTRUE) {}
-    gatts_reset_in_progress = true;
     for(int i = 0; i < ble_service_cnt;i++){
       if(gatts_service[i].gatts_if != ESP_GATT_IF_NONE){
+        while (xSemaphoreTake(gatts_reset_complete, 0) == pdTRUE) {}
+          gatts_reset_in_progress = true;
         r = esp_ble_gatts_stop_service(gatts_service[i].service_handle);
         if (r) {
           jsWarn("stop service error:%d\n",r);
@@ -759,12 +754,13 @@ bool gatts_reset(bool removeValues){
           if (r) jsWarn("app_unregister after stop error:%d\n", r);
         }
         // ESP_GATTS_STOP_EVT should now be fired, and we do esp_ble_gatts_delete_service in there
+        // wait for gatts_reset_complete which means ESP_GATTS_STOP_EVT has fired
+        if (xSemaphoreTake(gatts_reset_complete, pdMS_TO_TICKS(GATTS_RESET_TIMEOUT_MS)) != pdTRUE) { 
+          jsWarn("Timed out waiting for GATT services to reset");
+          return false;
+        }
       }
-    }
-    if (xSemaphoreTake(gatts_reset_complete, pdMS_TO_TICKS(GATTS_RESET_TIMEOUT_MS)) != pdTRUE) {
-      jsWarn("Timed out waiting for GATT services to reset");
-      return false;
-    }
+    }    
   }
   return true;
 }
