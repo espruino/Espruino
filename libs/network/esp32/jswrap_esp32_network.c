@@ -105,11 +105,17 @@ static system_event_sta_disconnected_t g_lastEventStaDisconnected;
 // Are we connected as a station?
 static bool g_isStaConnected = false;
 
+// Has the station interface started?
+static bool g_isStaStarted = false;
+
 // Has the AP started?
 static bool g_isAPStarted = false;
 
 /// Number of retries when connecting
 static int g_retryCounter = 0;
+
+/// Should WIFI_EVENT_STA_START complete a pending Wifi.connect() request?
+static bool g_connectAfterStaStart = false;
 
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOPT)
@@ -479,10 +485,21 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
 #else
   if (event->event_id == SYSTEM_EVENT_STA_START) {
 #endif
-    // Wifi has started, perform an esp_wifi_connect
-    esp_err_t err = esp_wifi_connect();
-    if (err != ESP_OK)
-      jsDebug(DBG_INFO, "Wifi: event_handler STA_START: esp_wifi_connect: %d(%s)\n", err,wifiErrorToString(err));
+    g_isStaStarted = true;
+    // Complete a pending Wifi.connect() request after the station has started.
+    if (g_connectAfterStaStart) {
+      g_connectAfterStaStart = false;
+      esp_err_t err = esp_wifi_connect();
+      if (err != ESP_OK)
+        jsDebug(DBG_INFO, "Wifi: event_handler STA_START: esp_wifi_connect: %d(%s)\n", err,wifiErrorToString(err));
+    }
+  } else
+#if ESP_IDF_VERSION_MAJOR>=5
+  if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_STOP) {
+#else
+  if (event->event_id == SYSTEM_EVENT_STA_STOP) {
+#endif
+    g_isStaStarted = false;
   } else
 #if ESP_IDF_VERSION_MAJOR>=5
   if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
@@ -680,6 +697,7 @@ void jswrap_wifi_disconnect(JsVar *jsCallback) {
 #if !(ESP_IDF_VERSION_MAJOR>=4)
   esp_wifi_set_auto_connect(false);
 #endif
+  g_connectAfterStaStart = false;
   g_retryCounter = 0; // flag so we don't attempt to reconnect
   err = esp_wifi_disconnect();
   if (err != ESP_OK) {
@@ -847,11 +865,21 @@ void jswrap_wifi_connect(
   if (g_isStaConnected) {
     jsDebug(DBG_INFO, "jswrap_wifi_connect: disconnecting so we can reconnect\n");
     esp_wifi_disconnect();
-  } else { // not connected - call esp_wifi_start
+  } else if (g_isStaStarted) {
+    // Scanning or APSTA operation may already have started the station.
+    // In that case esp_wifi_start() will not generate another STA_START event.
+    err = esp_wifi_connect();
+    if (err != ESP_OK) {
+      jsError( "jswrap_wifi_connect: esp_wifi_connect: %d(%s)", err,wifiErrorToString(err));
+      return;
+    }
+  } else { // station not started - call esp_wifi_start
     // Perform an esp_wifi_start
     jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_start %s\n",ssid);
+    g_connectAfterStaStart = true;
     err = esp_wifi_start();
     if (err != ESP_OK) {
+      g_connectAfterStaStart = false;
       jsError( "jswrap_wifi_connect: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
       return;
     }
@@ -859,7 +887,7 @@ void jswrap_wifi_connect(
 
   // Save the callback for later execution.
   g_jsGotIpCallback = jsvLockAgainSafe(jsCallback);
-  // esp_wifi_connect gets called from the WIFI_EVENT_STA_START event - it errors if we call it here
+  // A stopped station connects from STA_START; an already started station connects above.
 }
 
 void jswrap_wifi_scan(JsVar *jsCallback) {
