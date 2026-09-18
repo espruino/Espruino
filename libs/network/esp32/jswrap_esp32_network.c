@@ -192,6 +192,7 @@ static char *htModeToString(wifi_second_chan_t htMode) {
 /// Convert a Wifi reason code to a string representation.
 const char *wifiReasonToString(int r) {
   switch (r) {
+    case 0: return "UNINITIALIZED"; // For wifi.getDetails().status
     case WIFI_REASON_UNSPECIFIED: return "UNSPECIFIED";
     case WIFI_REASON_AUTH_EXPIRE: return "AUTH_EXPIRE";
     case WIFI_REASON_AUTH_LEAVE: return "AUTH_LEAVE";
@@ -330,17 +331,16 @@ static void event_handler_scan_done() {
       jsvObjectSetStringChild(jsCurrentAccessPoint, "authMode", authModeToString(list[i].authmode));
 
       // The SSID may **NOT** be NULL terminated ... so handle that.
-      char temp[32 + 1];
-      strncpy((char *)temp, list[i].ssid, 32);
-      temp[32] = '\0';
+      char temp[sizeof(list[i].ssid) + 1] = {0}; // zero-fill array
+      memcpy(temp, list[i].ssid, sizeof(list[i].ssid));
       jsvObjectSetStringChild(jsCurrentAccessPoint, "ssid", temp);
       sprintf(temp, MACSTR, MAC2STR(list[i].bssid));
       jsvObjectSetStringChild(jsCurrentAccessPoint, "mac", temp);
       sprintf(temp, "%d", list[i].primary);
       jsvObjectSetStringChild(jsCurrentAccessPoint, "channel", temp);
-      // Can't find a flag for this?  http://esp-idf.readthedocs.io/en/latest/api-reference/wifi/esp_wifi.html?highlight=wifi_ap_record_t
-      //jsvObjectSetBoolChild(jsCurrentAccessPoint, "isHidden", list[i].ssid_hidden);
-      // Add the new record to the array
+      // Detect hidden SSIDs (length 0 or first byte is empty)
+      bool isHidden = (list[i].ssid[0] == '\0');
+      jsvObjectSetBoolChild(jsCurrentAccessPoint, "isHidden", isHidden);
       jsvArrayPush(jsAccessPointArray, jsCurrentAccessPoint);
       jsvUnLock(jsCurrentAccessPoint);
     }
@@ -622,9 +622,7 @@ void esp32_wifi_init() {
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 #endif
 
-  // Don't init wifi yet - wait until wifi.connect/startAP is called
-  //ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP)); // WIFI_MODE_STA/WIFI_MODE_APSTA
-  //ESP_ERROR_CHECK(esp_wifi_start());
+  // Don't init wifi yet - wait until wifi.connect/startAP/setScan is called
 }
 
 /**
@@ -902,7 +900,6 @@ void jswrap_wifi_scan(JsVar *jsCallback) {
     EXPECT_CB_EXCEPTION(jsCallback);
     return;
   }
-  g_jsScanCallback = jsvLockAgainSafe(jsCallback);
 
   // We need to be in some kind of a station mode in order to perform a scan
   // Now we determine the mode we are currently in and set our new mode appropriately.
@@ -939,10 +936,14 @@ void jswrap_wifi_scan(JsVar *jsCallback) {
     return;
   }
 
+  g_jsScanCallback = jsvLockAgainSafe(jsCallback);
+
   // Perform an esp_wifi_start
   err = esp_wifi_start();
   if (err != ESP_OK) {
-    jsError( "jswrap_wifi_connect: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
+    jsError( "jswrap_wifi_scan: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
+    jsvUnLock(g_jsScanCallback);
+    g_jsScanCallback = NULL;
     return;
   }
 
@@ -952,7 +953,13 @@ void jswrap_wifi_scan(JsVar *jsCallback) {
      .channel = 0,
      .show_hidden = true
   };
-  esp_wifi_scan_start(&scanConf, false); // Don't block for scan.
+  err = esp_wifi_scan_start(&scanConf, false); // Don't block for scan.
+  if (err != ESP_OK) {
+    jsError( "jswrap_wifi_scan: esp_wifi_scan_start: %d(%s)", err,wifiErrorToString(err));
+    jsvUnLock(g_jsScanCallback);
+    g_jsScanCallback = NULL;
+    return;
+  }
   // When the scan completes, we will be notified by an arriving event that is handled
   // in the event handler.  The event handler will see that we have a callback function
   // registered and will invoke that callback at that time.
