@@ -74,6 +74,7 @@ info = {
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
      'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG -DUSB', # Use on-chip USB. See ESPR_USE_USB_SERIAL_JTAG in README_BuildProcess.md
+     'DEFINES+=-DESPR_WIFI_DELAY_START=1',
      'ESP32_FLASH_MAX=1572864'
    ]
  }
