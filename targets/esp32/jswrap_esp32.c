@@ -24,7 +24,9 @@
 #include "esp_sleep.h"
 #include "esp_heap_caps.h"
 #include "esp_ota_ops.h"
+#if ESP_IDF_VERSION_MAJOR >= 4
 #include "esp_chip_info.h"
+#endif
 #include "esp_flash.h"
 
 #ifdef ESPR_USE_USB_SERIAL_JTAG
