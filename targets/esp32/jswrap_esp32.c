@@ -26,8 +26,10 @@
 #include "esp_ota_ops.h"
 #if ESP_IDF_VERSION_MAJOR >= 4
 #include "esp_chip_info.h"
-#endif
 #include "esp_flash.h"
+#else
+#include "esp_spi_flash.h"
+#endif
 
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #include "hal/usb_serial_jtag_ll.h"
