@@ -400,8 +400,7 @@ JsVar *jswrap_ESP32_getState() {
   jsvObjectSetIntChild(esp32State, "freeHeap", esp_get_free_heap_size());
   jsvObjectSetBoolChild(esp32State, "BLE", ESP32_Get_NVS_Status(ESP_NETWORK_BLE));
   jsvObjectSetBoolChild(esp32State, "Wifi", ESP32_Get_NVS_Status(ESP_NETWORK_WIFI));
-  jsvObjectSetIntChild(esp32State, "minHeap", heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
-  jsvObjectSetIntChild(esp32State, "psramSize", heap_caps_get_total_size(MALLOC_CAP_SPIRAM));
+  jsvObjectSetIntChild(esp32State, "minHeap", (JsVarInt)heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
   jsvObjectSetIntChild(esp32State, "psramSize", (JsVarInt)psram_size);
   jsvObjectSetStringChild(esp32State, "model", CONFIG_IDF_TARGET);
   jsvObjectSetIntChild(esp32State, "cores", chip_info.cores);
