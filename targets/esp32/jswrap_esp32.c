@@ -30,6 +30,12 @@
 #else
 #include "esp_spi_flash.h"
 #endif
+#if ESP_IDF_VERSION_MAJOR >= 5
+#include "esp_private/esp_clk.h"
+#else
+#include "esp_clk.h"
+#endif
+
 
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #include "hal/usb_serial_jtag_ll.h"
@@ -407,6 +413,7 @@ JsVar *jswrap_ESP32_getState() {
   jsvObjectSetIntChild(esp32State, "revision", chip_info.revision);
   jsvObjectSetIntChild(esp32State, "flashSize", flash_size);
   jsvObjectSetBoolChild(esp32State, "embeddedFlash", is_emb_flash);
+  jsvObjectSetIntChild(esp32State, "cpuFrequency", (JsVarInt)esp_clk_cpu_freq());
   return esp32State;
 } // End of jswrap_ESP32_getState
 
