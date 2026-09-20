@@ -24,6 +24,8 @@
 #include "esp_sleep.h"
 #include "esp_heap_caps.h"
 #include "esp_ota_ops.h"
+#include "esp_chip_info.h"
+#include "esp_flash.h"
 
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #include "hal/usb_serial_jtag_ll.h"
@@ -358,17 +360,35 @@ following fields:
 * `BLE` - Status of BLE, enabled if true.
 * `Wifi` - Status of Wifi, enabled if true.
 * `minHeap` - Minimum heap, calculated by heap_caps_get_minimum_free_size
-
+* `psramSize`- Total PSRAM Size (in Bytes)
+* `model` - The SoC model name (e.g. esp32, esp32s3, esp32c3)
+* `cores` - Number of CPU cores available on the silicon chip
+* `revision` - Silicon revision version number
+* `flashSize` - Total physical flash chip capacity in bytes
+* `embeddedFlash` - True if flash memory is embedded within the SoC die
 */
 JsVar *jswrap_ESP32_getState() {
   // Create a new variable and populate it with the properties of the ESP32 that we
   // wish to return.
+  esp_chip_info_t chip_info;
+  esp_chip_info(&chip_info);
+
+  uint32_t flash_size = 0;
+  esp_flash_get_size(NULL, &flash_size);
+  bool is_emb_flash = (chip_info.features & CHIP_FEATURE_EMB_FLASH) != 0;
+
   JsVar *esp32State = jsvNewObject();
   jsvObjectSetStringChild(esp32State, "sdkVersion", esp_get_idf_version());
   jsvObjectSetIntChild(esp32State, "freeHeap", esp_get_free_heap_size());
   jsvObjectSetBoolChild(esp32State, "BLE", ESP32_Get_NVS_Status(ESP_NETWORK_BLE));
   jsvObjectSetBoolChild(esp32State, "Wifi", ESP32_Get_NVS_Status(ESP_NETWORK_WIFI));
   jsvObjectSetIntChild(esp32State, "minHeap", heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
+  jsvObjectSetIntChild(esp32State, "psramSize", heap_caps_get_total_size(MALLOC_CAP_SPIRAM));
+  jsvObjectSetStringChild(esp32State, "model", CONFIG_IDF_TARGET);
+  jsvObjectSetIntChild(esp32State, "cores", chip_info.cores);
+  jsvObjectSetIntChild(esp32State, "revision", chip_info.revision);
+  jsvObjectSetIntChild(esp32State, "flashSize", flash_size);
+  jsvObjectSetBoolChild(esp32State, "embeddedFlash", is_emb_flash);
   return esp32State;
 } // End of jswrap_ESP32_getState
 
