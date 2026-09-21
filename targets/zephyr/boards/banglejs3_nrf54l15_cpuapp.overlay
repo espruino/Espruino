@@ -126,10 +126,6 @@
 			};
 		};
 	};
- 	zephyr,user {
-		/* Reference our external flash node */
-		ext-flash = &extflash;
-	};
 };
 
 /*

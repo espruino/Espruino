@@ -4,8 +4,7 @@
 typedef enum {
   PY32_CMD_NONE,
   PY32_CMD_SET_OUTPUT,
-  PY32_CMD_DISPLAY = 128 // display starting row 0
-  // 129 = row 2, 130 = row 4, ...
+  PY32_CMD_DISPLAY
 } PY32Command;
 /*
 PY32_CMD_NONE:
@@ -17,7 +16,8 @@ PY32_CMD_SET_OUTPUT:
   eg. [1,1,0] enables backlight
 
 PY32_CMD_DISPLAY:
-  [2, ....pixel data...]
+  [2, first_row_idx]
+  [....pixel data...]
 */
 
 typedef enum {

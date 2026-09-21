@@ -132,13 +132,6 @@
 			};
 		};
 	};
-zephyr,user {
-		/* Reference our external flash node */
-		ext-flash = &extflash;
-
-		/* You can even define the XIP base here for use in C */
-		xip-base = <0x60000000>;
-	};
 };
 
 /delete-node/ &mx25r64;
@@ -161,7 +154,7 @@ zephyr,user {
 		t-reset-pulse = <10000>;
 		t-reset-recovery = <35000>;
 
-		mspi-max-frequency = <DT_FREQ_M(32)>;
+		mspi-max-frequency = <DT_FREQ_M(8)>;
 		mspi-io-mode = "MSPI_IO_MODE_QUAD_1_4_4";
 		mspi-data-rate = "MSPI_DATA_RATE_SINGLE";
 		mspi-hardware-ce-num = <1>;

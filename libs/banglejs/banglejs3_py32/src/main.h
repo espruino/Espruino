@@ -19,7 +19,8 @@
 typedef struct {
   volatile bool initialised;
   volatile bool spiInProgress;
-  volatile bool displayInProgress;
+  volatile bool displayInProgress; // true if we're currently writing to the display
+  volatile uint8_t displayY; // the y coordinate of the first row to send
   volatile bool buttonPressed;
   volatile bool irqAsserted;
   volatile uint8_t buttonMask;

@@ -255,6 +255,10 @@ V7.set();w.startOutput(B8,4000);
 
 ## TODO
 
+* Passing button status while also updating screen
+* JS Timeout when going to launcher??
+* Add recovery menu in py32
+* Add SWD to nRF54 for reflashing py32
 * Touchscreen sometimes misses lift events (touch IRQ has been missed by PY32)
   * To fix, change display update so we send an SPI display update packet first, and *then* the data
 * Graphics updates of <16px (and non-even row start) - using SPI display update packet

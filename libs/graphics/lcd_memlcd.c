@@ -23,8 +23,9 @@
 // ======================================================================
 
 #define LCD_SPI EV_SPI1
-#if LCD_BPP==6
-#define LCD_ROWHEADER 1 // 6 bit LCD uses row headers for LCD command
+#ifdef LCD_CONTROLLER_ZJ012BD01A
+#include "banglejs3_py32/src/const.h"
+#define LCD_ROWHEADER 0
 #define LCD_CS_ON 0
 #define LCD_CS_OFF 1
 #else
@@ -382,12 +383,6 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
 
   int y1 = gfx->data.modMinY;
   int y2 = gfx->data.modMaxY;
-#ifdef LCD_CONTROLLER_ZJ012BD01A
-  // on this we can only start on even lines, and only send 8 at a time
-  y1 = y1 & ~1;
-  y2 = (y2+1) & ~1;
-  y2 = y1 + ((15+y2-y1)&~15) - 1; // pad out to 16px (see LCD_ROWS_BUFFERED in controller)
-#endif
   int l = 1+y2-y1;
 
   bool hasOverlay = false;
@@ -410,6 +405,13 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
 #endif
 #ifdef LCD_CONTROLLER_ZJ012BD01A
   jshDelayMicroseconds(10); // give it time to wake
+  uint8_t cmdbuf[2] = {PY32_CMD_DISPLAY, y1};
+  extern void jshPY32Transfer(uint8_t *buf, int count);
+  jshPY32Transfer(cmdbuf, 2); // send command by soft SPI
+  // CS already turned off by jshPY32Transfer
+  jshDelayMicroseconds(200+y1*2); // time to process NSS and get to correct riw
+  jshPinSetValue(LCD_SPI_CS, LCD_CS_ON);
+  jshDelayMicroseconds(10);
 #endif
   if (hasOverlay) {
     /* If lcdOverlayImage is defined, we want to overlay this image
@@ -492,9 +494,6 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   memset(lcdBuffer,0,sizeof(lcdBuffer));
 #if LCD_ROWHEADER>0
   for (int y=0;y<LCD_HEIGHT;y++) {
-#ifdef LCD_CONTROLLER_ZJ012BD01A
-  lcdBuffer[y*LCD_STRIDE] = 128+(y>>1); // PY32_CMD_DISPLAY
-#else
   #if LCD_BPP==3
       lcdBuffer[y*LCD_STRIDE]=jswrap_espruino_reverseByte(0b10000000);
   #endif
@@ -502,7 +501,6 @@ void lcdMemLCD_init(JsGraphics *gfx) {
       lcdBuffer[y*LCD_STRIDE]=jswrap_espruino_reverseByte(0b10010000);
   #endif
       lcdBuffer[(y*LCD_STRIDE)+1]=jswrap_espruino_reverseByte(y+1);
-#endif
   }
 #endif
 

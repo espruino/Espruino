@@ -2513,7 +2513,7 @@ void HAL_SPI_IRQHandler(SPI_HandleTypeDef *hspi)
   }
 
   /* SPI in Error Treatment --------------------------------------------------*/
-  if (((SPI_CHECK_FLAG(itflag, SPI_FLAG_MODF) != RESET) || (SPI_CHECK_FLAG(itflag, SPI_FLAG_OVR) != RESET)) && 
+  if (((SPI_CHECK_FLAG(itflag, SPI_FLAG_MODF) != RESET) || (SPI_CHECK_FLAG(itflag, SPI_FLAG_OVR) != RESET)) &&
        (SPI_CHECK_IT_SOURCE(itsource, SPI_IT_ERR) != RESET))
   {
     /* SPI Overrun error interrupt occurred ----------------------------------*/
@@ -3123,7 +3123,7 @@ static void SPI_DMAAbortOnError(DMA_HandleTypeDef *hdma)
   SPI_HandleTypeDef *hspi = (SPI_HandleTypeDef *)(((DMA_HandleTypeDef *)hdma)->Parent); /* Derogation MISRAC2012-Rule-11.5 */
   hspi->RxXferCount = 0U;
   hspi->TxXferCount = 0U;
-
+  SET_BIT(hspi->ErrorCode, HAL_SPI_ERROR_DMA);
   /* Call user error callback */
 #if (USE_HAL_SPI_REGISTER_CALLBACKS == 1U)
   hspi->ErrorCallback(hspi);
@@ -3272,7 +3272,7 @@ static void SPI_DMARxAbortCallback(DMA_HandleTypeDef *hdma)
   * @retval None
   */
 static void SPI_2linesRxISR_8BIT(struct __SPI_HandleTypeDef *hspi)
-{ 
+{
   /* Receive data in 8 Bit mode */
   *hspi->pRxBuffPtr = *((__IO uint8_t *)&hspi->Instance->DR);
   hspi->pRxBuffPtr++;
@@ -3342,7 +3342,7 @@ static void SPI_2linesRxISR_8BITCRC(struct __SPI_HandleTypeDef *hspi)
   * @retval None
   */
 static void SPI_2linesTxISR_8BIT(struct __SPI_HandleTypeDef *hspi)
-{  
+{
   /* Transmit data in 8 Bit mode */
   *(__IO uint8_t *)&hspi->Instance->DR = (*hspi->pTxBuffPtr);
   hspi->pTxBuffPtr++;
@@ -3419,7 +3419,7 @@ static void SPI_2linesRxISR_16BITCRC(struct __SPI_HandleTypeDef *hspi)
   /* Read 16bit CRC to flush Data Register */
   tmpreg = READ_REG(hspi->Instance->DR);
   /* To avoid GCC warning */
-  UNUSED(tmpreg);  
+  UNUSED(tmpreg);
 
   /* Disable RXNE interrupt */
   __HAL_SPI_DISABLE_IT(hspi, SPI_IT_RXNE);
@@ -3776,7 +3776,7 @@ static HAL_StatusTypeDef SPI_WaitFifoStateUntilTimeout(SPI_HandleTypeDef *hspi, 
       if(count == 0U)
       {
         tmp_timeout = 0U;
-      }      
+      }
       count--;
     }
   }

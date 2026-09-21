@@ -2053,6 +2053,7 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
   deviceToGraphicsCoordinates(&graphicsInternal, &tx, &ty);
 
 #if defined(BANGLEJS3) // if screen is in compatibility mode, update touch coordinates
+  if (pts>=127) return; // it was a bad read
   if (lcdMemLCD_getFake176()) {
     tx -= 32;
     ty -= 32;
@@ -2152,6 +2153,7 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
 #endif
 #ifdef TOUCH_I2C
 void jswrap_banglejs_touchHandler(bool state, IOEventFlags flags) {
+  if (state) jsiConsolePrintf("Toff"); // only interested in when low
   if (state) return; // only interested in when low
   // Ok, now get touch info
   unsigned char buf[6];

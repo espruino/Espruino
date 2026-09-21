@@ -299,7 +299,10 @@ bool jshIsInInterrupt() {
 }
 
 void jshDelayMicroseconds(int microsec) {
-  k_usleep(microsec);
+  if (microsec<2000) {
+    k_busy_wait(microsec);  // k_usleep isn't reliable for short periods
+  } else
+    k_usleep(microsec);
 }
 
 static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
