@@ -1580,6 +1580,16 @@ NO_INLINE JsVar *jspeAddNamedFunctionParameter(JsVar *funcVar, JsVar *name) {
     char buf[JSLEX_MAX_TOKEN_LENGTH+1];
     buf[0] = '\xFF';
     jsvGetString(name, &buf[1], JSLEX_MAX_TOKEN_LENGTH);
+    // this is currently only reached while parsing arrow function parameters -
+    // regular 'function' arguments are handled separately by jspeFunctionArguments,
+    // where repeated names are legal in non-strict mode. Arrow functions must
+    // never allow duplicate parameter names, so check for that here.
+    JsVar *existingParam = jsvFindChildFromString(funcVar, buf);
+    if (existingParam) {
+      jsvUnLock(existingParam);
+      jsExceptionHere(JSET_SYNTAXERROR, "Duplicate parameter name not allowed in this context");
+      return funcVar;
+    }
     JsVar *param = jsvAddNamedChild(funcVar, 0, buf);
     param = jsvMakeFunctionParameter(param);
     jsvUnLock(param);
