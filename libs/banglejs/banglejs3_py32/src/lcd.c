@@ -230,5 +230,4 @@ void lcd_clear() {
   ymin=0;
   ymax=LCD_DATA_HEIGHT-1;
 #endif
-  lcd_flip();
 }

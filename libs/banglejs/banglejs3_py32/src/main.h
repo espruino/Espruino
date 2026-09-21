@@ -20,10 +20,13 @@ typedef struct {
   volatile bool initialised;
   volatile bool spiInProgress;
   volatile bool displayInProgress; // true if we're currently writing to the display
+  bool showMenu; // should we be showing the recovery menu?
+  uint8_t menuItem; // menu item that is selected
   volatile uint8_t displayY; // the y coordinate of the first row to send
   volatile bool buttonPressed;
   volatile bool irqAsserted;
   volatile uint8_t buttonMask;
+  volatile uint8_t oldButtonMask;
   volatile uint16_t buttonLength; // amount of time button held down for
   volatile PY32OutputState output; // current output state
   volatile PY32InputState input; // current input state

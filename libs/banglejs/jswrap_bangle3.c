@@ -86,7 +86,11 @@ void jshPY32Update(bool setOutput) {
   #endif
 
   sxValues = (sxValues&~15) | (pyButtonState&15);
-  if (pyButtonState & 16) jswrap_banglejs_touchHandler(0,0); // touch handler IRQ
+  PY32InputState inputState = pyButtonState>>4;
+  if (inputState & PY32_IN_TOUCH_IRQ)
+    jswrap_banglejs_touchHandler(0,0); // touch handler IRQ
+  if (inputState & PY32_REDRAW_REQUEST)
+    graphicsSetModified(&graphicsInternal,0,0,LCD_WIDTH,LCD_HEIGHT); // PY32 wants a redraw
 }
 
 void jshVirtualPinInitialise() {

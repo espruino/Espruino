@@ -41,6 +41,7 @@ typedef enum {
 
 typedef enum {
   PY32_IN_TOUCH_IRQ = 1,
+  PY32_REDRAW_REQUEST = 2, // PY32 wants the screen data to be resent...
 } PY32InputState;
 
 

@@ -252,17 +252,16 @@ V7.set();w.startOutput(B8,4000);
 * Using external Flash memory in QSPI mode (and 64mbyte)
 * WiFi https: requests
 * Speaker via analogWrite
+* Recovery menu in py32
 
 ## TODO
 
 * Passing button status while also updating screen
-* JS Timeout when going to launcher??
-* Add recovery menu in py32
-* Add SWD to nRF54 for reflashing py32
 * Touchscreen sometimes misses lift events (touch IRQ has been missed by PY32)
   * To fix, change display update so we send an SPI display update packet first, and *then* the data
-* Graphics updates of <16px (and non-even row start) - using SPI display update packet
-* Gyro
+* JS Timeout when going to launcher?
+* Add SWD to nRF54 for reflashing py32
+* Gyro event
 * Pressure sensor
 * BME690 gas sensing
 * Microphone (analogRead in ISR, plus ranging)

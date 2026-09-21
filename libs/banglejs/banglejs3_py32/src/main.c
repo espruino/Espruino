@@ -49,6 +49,54 @@ volatile uint16_t spiBufferBytes[2]; // is first or second part of the SPI buffe
 
 PY32State state;
 
+
+void menu_draw() {
+  lcd_clear();
+  lcd_print("RECOVERY MENU\r\n");
+  lcd_print("-----------------\r\n");
+  lcd_print((state.menuItem==0) ? " +" : "  ");
+  lcd_print(" RESTART\r\n");
+  lcd_print((state.menuItem==1) ? " +" : "  ");
+  lcd_print(" ENTER BOOTLOADER\r\n");
+  lcd_print((state.menuItem==2) ? " +" : "  ");
+  lcd_print(" TURN OFF\r\n");
+  lcd_print((state.menuItem==3) ? " +" : "  ");
+  lcd_print(" EXIT\r\n");
+  lcd_flip();
+}
+
+// Called when state.buttonMask has changed (a button was pressed)
+void menu_update() {
+  if (state.oldButtonMask!=0) return; // only update when
+  if (state.buttonMask == 1) // BTN1
+    state.menuItem = (state.menuItem+3) % 4;
+  if (state.buttonMask == 2) { // BTN2
+    lcd_clear();
+    lcd_print("PLEASE WAIT...");
+    lcd_flip();
+    state.showMenu = false;
+    switch (state.menuItem) {
+      case 0: rtt_printf("-> Reboot\n"); nrf_reboot(); break;
+      case 1: rtt_printf("-> Bootloader\n");break; // FIXME: enter bootloader
+      case 2: rtt_printf("-> Off\n");break; // FIXME: turn off
+      case 3: rtt_printf("-> Exit\n");
+              state.input |= PY32_REDRAW_REQUEST;
+              Set_State_Changed();
+              break; // just exit
+    }
+  }
+  if (state.buttonMask == 4) // BTN3
+    state.menuItem = (state.menuItem+1) % 4;
+  menu_draw();
+}
+
+// Called when state.buttonMask has changed (a button was pressed)
+void menu_start() {
+  state.showMenu = true;
+  state.menuItem = 0;
+  menu_draw();
+}
+
 void APP_ErrorHandler(void)
 {
   int flash=11;
@@ -146,15 +194,18 @@ void check_buttons() {
       state.buttonLength = 0;
       // FIXME: what about a button pressed so quick it changes before we can poll?
       rtt_printf("BTN %d\n",nearest);
+      state.oldButtonMask = state.buttonMask;
       state.buttonMask = nearest;
-      Set_State_Changed();
+      if (state.showMenu) menu_update();
+      else Set_State_Changed();
     } else {
       if (state.buttonLength < 65535)
         state.buttonLength++;
       // 4 button long-press reboot
-      if (state.buttonLength==PY32_4BTN_REBOOT_DELAY && state.buttonMask==15) {
-        rtt_printf("nRF reboot\n");
-        nrf_reboot();
+      if (state.buttonLength==PY32_4BTN_REBOOT_DELAY &&
+          state.buttonMask==15 &&
+          !state.showMenu) {
+        menu_start();
       }
     }
   }
@@ -417,7 +468,7 @@ void SPI1_NSS_Callback() {
     if (!wasDisplayUpdate) { // we can't restart if we're currently writing to the screen!
       SPI1_HandlePacket(bytes_received);
       SPI1_Reset_Buffer(4);
-      state.input &= ~PY32_IN_TOUCH_IRQ; // so we definitely sent touch IRQ state - clear the flag
+      state.input &= ~(PY32_IN_TOUCH_IRQ|PY32_REDRAW_REQUEST); // so we definitely sent touch IRQ state - clear the flag
     }
     //rtt_printf("-\n");
     SET_BIT(SPI1->CR1, SPI_CR1_SSI); // disable SPI
@@ -466,7 +517,7 @@ void Touch_IRQ_Callback() {
     // touch pin is pulsed, so we don't care about current state
     state.input |= PY32_IN_TOUCH_IRQ;
     rtt_printf("T+\n");
-    Set_State_Changed();
+    if (!state.showMenu) Set_State_Changed();
   }
   // FIXME: update input state
 }
@@ -528,7 +579,9 @@ int main(void) {
     if (state.buttonPressed) {
       check_buttons();
     }
-    if (state.displayInProgress) {
+    if (state.showMenu) {
+
+    } else if (state.displayInProgress) {
       flip_from_spi();
     } else if (!state.spiInProgress && !state.buttonPressed && !state.irqAsserted) {
       // don't suspend if IRQ is asserted since we'll be woken up very soon anyway
