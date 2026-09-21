@@ -20,6 +20,9 @@
 #include "socketserver.h"
 
 #include "../network.h"
+#if defined(ESP32)
+#include "jshardwareESP32.h"
+#endif
 
 #if defined(ESP8266)
 extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
@@ -121,7 +124,11 @@ void jswrap_telnet_init(void) {
 #ifdef LINUX
   tnSrvMode = telnetEnabled ? MODE_ON : MODE_OFF;
 #else
+#if defined (ESP32)
+  tnSrvMode = ESP32_Get_NVS_Status(ESP_NETWORK_WIFI) ? MODE_ON : MODE_OFF;
+#else
   tnSrvMode = MODE_ON; // hardcoded for now
+#endif
 #endif
 }
 
