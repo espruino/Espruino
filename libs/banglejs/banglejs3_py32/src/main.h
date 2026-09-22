@@ -39,8 +39,19 @@ extern PY32State state;
 
 /// Reboots nRF54 using the reset pin
 extern void nrf_reboot();
+/// Update the physical state of outputs based on state.output
+extern void Update_Outputs();
+extern void Fatal_Error(const char *msg);
 extern void APP_ErrorHandler(void);
 extern void Set_State_Changed();
+
+/// Called when touchscreen state changes
+extern void Touch_IRQ_Callback();
+/// Called when SPI NSS state has changed
+void SPI1_NSS_Callback();
+/// Called when the button GPIO state has changed
+void BTN_Callback();
+
 // ----------------------------------------
 extern EXTI_HandleTypeDef hexti_pa0;
 extern EXTI_HandleTypeDef hexti_pa11;
