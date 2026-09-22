@@ -11,8 +11,8 @@
  * LCD driver firmware for Bangle.js 3
  * ----------------------------------------------------------------------------
  */
-#include "py32f07x_hal.h"
 #include "main.h"
+#include "menu.h"
 #include "swd.h"
 #include "lcd.h"
 #include "mini_rtt.h"
@@ -49,53 +49,9 @@ volatile uint16_t spiBufferBytes[2]; // is first or second part of the SPI buffe
 
 PY32State state;
 
-
-void menu_draw() {
-  lcd_clear();
-  lcd_print("RECOVERY MENU\r\n");
-  lcd_print("-----------------\r\n");
-  lcd_print((state.menuItem==0) ? " +" : "  ");
-  lcd_print(" RESTART\r\n");
-  lcd_print((state.menuItem==1) ? " +" : "  ");
-  lcd_print(" ENTER BOOTLOADER\r\n");
-  lcd_print((state.menuItem==2) ? " +" : "  ");
-  lcd_print(" TURN OFF\r\n");
-  lcd_print((state.menuItem==3) ? " +" : "  ");
-  lcd_print(" EXIT\r\n");
-  lcd_flip();
-}
-
-// Called when state.buttonMask has changed (a button was pressed)
-void menu_update() {
-  if (state.oldButtonMask!=0) return; // only update when
-  if (state.buttonMask == 1) // BTN1
-    state.menuItem = (state.menuItem+3) % 4;
-  if (state.buttonMask == 2) { // BTN2
-    lcd_clear();
-    lcd_print("PLEASE WAIT...");
-    lcd_flip();
-    state.showMenu = false;
-    switch (state.menuItem) {
-      case 0: rtt_printf("-> Reboot\n"); nrf_reboot(); break;
-      case 1: rtt_printf("-> Bootloader\n");break; // FIXME: enter bootloader
-      case 2: rtt_printf("-> Off\n");break; // FIXME: turn off
-      case 3: rtt_printf("-> Exit\n");
-              state.input |= PY32_REDRAW_REQUEST;
-              Set_State_Changed();
-              break; // just exit
-    }
-  }
-  if (state.buttonMask == 4) // BTN3
-    state.menuItem = (state.menuItem+1) % 4;
-  menu_draw();
-}
-
-// Called when state.buttonMask has changed (a button was pressed)
-void menu_start() {
-  state.showMenu = true;
-  state.menuItem = 0;
-  menu_draw();
-}
+// ----------------------------------------
+void Write_IRQ(bool asserted);
+// ----------------------------------------
 
 void APP_ErrorHandler(void)
 {
@@ -408,6 +364,7 @@ void Update_Outputs() {
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, (o&PY32_OUT_HRM_AUX)?1:0);
 }
 
+/// Reboots nRF54 using the reset pin
 void nrf_reboot() {
   // set up nRST pin
   GPIO_InitTypeDef  GPIO_InitStruct;

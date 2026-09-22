@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "py32f07x_hal.h"
 #include "const.h"
 
 typedef struct {
@@ -34,7 +35,12 @@ typedef struct {
   // IR light status?
 } PY32State;
 
+extern PY32State state;
+
+/// Reboots nRF54 using the reset pin
+extern void nrf_reboot();
 extern void APP_ErrorHandler(void);
+extern void Set_State_Changed();
 // ----------------------------------------
 extern EXTI_HandleTypeDef hexti_pa0;
 extern EXTI_HandleTypeDef hexti_pa11;
