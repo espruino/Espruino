@@ -100,7 +100,7 @@ void jshPY32Update(PY32Command cmd, int data) {
   if (inputState & PY32_REDRAW_REQUEST)
     graphicsSetModified(&graphicsInternal,0,0,LCD_WIDTH,LCD_HEIGHT); // PY32 wants a redraw
   uint16_t changed = lastState ^ sxValues;
-  //jsiConsolePrintf("I %02x %02x %02x  %x %x (%d %d)\n", buf[0],buf[1],buf[2],sxValues, changed, cmd, data);
+  //jsiConsolePrintf("I %02x %02x %02x  %x %x upd(%d,%d)\n", buf[0],buf[1],buf[2],sxValues, changed, cmd, data);
   if (changed & 15) {
     for (int i=0;i<ESPR_EXTI_COUNT;i++)
       if (((changed&1) && eventFlagsToPin[i]==BTN1_PININDEX) ||
@@ -119,11 +119,13 @@ void jshVirtualPinInitialise() {
 
 void jshVirtualPinSetValue(Pin pin, bool state) {
   // Check we're not being called while LCD is updating - if we are, wait
-  int timeout = 1000000;
-  while (lcdMemLCD_isBusy() && --timeout);
-  if (timeout==0) {
-    jsiConsolePrintf("jshVirtualPinSetValue(%d,%d) timeout\n",pin,state);
-    return;
+  if (lcdMemLCD_isBusy()) {
+    //jsiConsolePrintf("jshVirtualPinSetValue busy\n");
+    int timeout = 10000000;
+    while (lcdMemLCD_isBusy() && --timeout);
+    if (timeout==0)
+      return jsiConsolePrintf("jshVirtualPinSetValue(%d,%d) timeout\n",pin,state);
+    jshDelayMicroseconds(100); // give PY32 time to finish
   }
   int p = pinInfo[pin].pin;
   unsigned short oldsxValues = sxValues;

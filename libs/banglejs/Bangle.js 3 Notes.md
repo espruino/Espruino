@@ -264,7 +264,7 @@ V7.set();w.startOutput(B8,4000);
 * BME690 gas sensing
 * Microphone (analogRead in ISR, plus ranging)
 * Wrap Waveform handling to allow sounds to be played more easily
-* LCD update speed (12fps currently, not async)
+* LCD update speed (12fps currently)
 * WiFi (Use `AT+CIPRECVMODE=1` for flow control)
 * ... much more
 

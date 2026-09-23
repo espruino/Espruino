@@ -673,25 +673,42 @@ void jshUSARTKick(IOEventFlags device) {
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 }
 
+static void jshSPISendManyCallback(const struct device *dev, int result, void *data) {
+  if (result < 0) {
+    // Handle SPI bus runtime or hardware failure
+    jsWarn("SPI err %d\n",result);
+  }
+  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI when done
+  void (*callback)() = data;
+  callback();
+}
+
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
 #if ESPR_SPI_COUNT>0
-  struct spi_buf tx_buf = { .buf = tx, .len = count  };
-  struct spi_buf rx_buf = { .buf = rx, .len = count  };
-  struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
-  struct spi_buf_set rx_set = { .buffers = &rx_buf, .count = 1 };
+  static struct spi_buf tx_buf, rx_buf;
+  static struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
+  static struct spi_buf_set rx_set = { .buffers = &rx_buf, .count = 1 };
+  tx_buf.buf = tx;
+  tx_buf.len = count;
+  rx_buf.buf = rx;
+  rx_buf.len = count;
   int err;
   pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_RESUME); // restart SPI
-  if (rx) err = spi_transceive(spi1_dev, &spi1_config, &tx_set, &rx_set);
-  else err = spi_write(spi1_dev, &spi1_config, &tx_set);
+  if (callback) { // we can be async
+    if (rx) err = spi_transceive_cb(spi1_dev, &spi1_config, &tx_set, &rx_set, jshSPISendManyCallback, callback);
+    else err = spi_transceive_cb(spi1_dev, &spi1_config, &tx_set, NULL, jshSPISendManyCallback, callback);
+  } else {
+    if (rx) err = spi_transceive(spi1_dev, &spi1_config, &tx_set, &rx_set);
+    else err = spi_write(spi1_dev, &spi1_config, &tx_set);
+  }
   if (err < 0) {
       // Handle SPI bus runtime or hardware failure
       jsWarn("SPI err %d\n",err);
       return false;
   }
-  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI when done
-
-  // FIXME use spi_transceive_cb for async writes (and use CONFIG_SPI_ASYNC=y)
-  if (callback) callback();
+  if (!callback) // not async. async uses jshSPISendManyCallback
+    pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI when done
+  // FIXME use spi_transceive_cb for async writes (and use =y)
 #endif
   return true;
 }

@@ -106,10 +106,10 @@ static ALWAYS_INLINE unsigned int lcdMemLCD_convert16toLCD(unsigned int c, int x
  * is on the LCD.
  */
 static ALWAYS_INLINE void lcdMemLCD_waitForSendComplete() {
-  int timeout = 1000000;
+  volatile int timeout = 10000000;
   while (lcdIsBusy && --timeout) {};
   if (lcdIsBusy) {
-    // LCD timeout! Do we want to log this?
+    jsWarn("LCD timeout");
     lcdIsBusy = false;
   }
 }
@@ -365,6 +365,8 @@ void lcdMemLCD_flip_spi_callback() {
 #endif
   lcdIsBusy = false;
   if (lcdFinishedCallback) {
+    jsiConsolePrintf("lcdFinishedCallback\n");
+    jshDelayMicroseconds(10); // give CS time to settle
     lcdFinishedCallback();
     lcdFinishedCallback = NULL;
   }
@@ -599,8 +601,10 @@ void lcdMemLCD_setCallbacks(JsGraphics *gfx) {
 }
 
 void lcdMemLCD_callWhenIdle(lcdMemLCDCallbackFn callback) {
-  if (lcdIsBusy)
+  if (lcdIsBusy) {
+    if (lcdFinishedCallback)
+      jsWarn("duplicate lcdFinishedCallback\n");
     lcdFinishedCallback = callback;
-  else
+  } else
     callback();
 }
