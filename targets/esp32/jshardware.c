@@ -561,8 +561,8 @@ bool jshGetPinAddress(Pin pin, JshGetPinAddressResult *result) {
   if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
     return false;
   gpio_num_t gpioNum = pinToESP32Pin(pin);
-  bool port0 = true;
 #ifndef CONFIG_IDF_TARGET_ESP32C3
+  bool port0 = true;
   if (gpioNum >= 32) {
     gpioNum -= 32;
     port0 = false;
@@ -570,12 +570,17 @@ bool jshGetPinAddress(Pin pin, JshGetPinAddressResult *result) {
 #endif
   bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
   result->mask = 1 << gpioNum;
+
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+  result->in_addr = &GPIO.in.val;
+  result->set_addr = negated ? &GPIO.out_w1tc.val : &GPIO.out_w1ts.val;
+  result->clr_addr = negated ? &GPIO.out_w1ts.val : &GPIO.out_w1tc.val;
+#else
   if (port0) {
-    result->in_addr = &GPIO.in.val;
-    result->set_addr = negated ? &GPIO.out_w1tc.val : &GPIO.out_w1ts.val;
-    result->clr_addr = negated ? &GPIO.out_w1ts.val : &GPIO.out_w1tc.val;
+    result->in_addr = &GPIO.in;
+    result->set_addr = negated ? &GPIO.out_w1tc : &GPIO.out_w1ts;
+    result->clr_addr = negated ? &GPIO.out_w1ts : &GPIO.out_w1tc;
   }
-#ifndef CONFIG_IDF_TARGET_ESP32C3
   else {
     result->in_addr = &GPIO.in1.val;
     result->set_addr = negated ? &GPIO.out1_w1tc.val : &GPIO.out1_w1ts.val;
