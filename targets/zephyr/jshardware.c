@@ -102,9 +102,8 @@ const struct device *serial2_dev = DEVICE_DT_GET(DT_NODELABEL(uart21));
 #if ESPR_SPI_COUNT>0
 const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi30));
 #endif
-const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
+const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller)); // on spi00
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
-const struct device *qspi_dev = DEVICE_DT_GET(DT_NODELABEL(sqspi)); // for extflash
 const struct device *utiltimer_dev = DEVICE_DT_GET(DT_NODELABEL(timer00));
 const struct device *adc_dev = DEVICE_DT_GET(DT_NODELABEL(adc));
 #if ESPR_HAS_PWM
@@ -739,7 +738,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
 
   if (extflashEnabled) { // FIXME: do we sleep flash if timeUntilWake < ???
     pm_device_action_run(extflash_dev, PM_DEVICE_ACTION_SUSPEND);
-    pm_device_action_run(qspi_dev, PM_DEVICE_ACTION_SUSPEND);
     extflashEnabled = false;
   }
 
@@ -810,7 +808,6 @@ const struct device *jshFlashGetDevice(uint32_t *addr) {
     *addr -= SPIFLASH_BASE;
     flash = extflash_dev;
     if (!extflashEnabled) {
-      pm_device_action_run(qspi_dev, PM_DEVICE_ACTION_RESUME);
       pm_device_action_run(extflash_dev, PM_DEVICE_ACTION_RESUME);
       extflashEnabled = true;
     }
