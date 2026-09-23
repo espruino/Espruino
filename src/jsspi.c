@@ -30,6 +30,7 @@ void jsspiHardwareFunc(unsigned char *tx, unsigned char *rx, unsigned int len, s
   jshSPISendMany(device, tx, rx, len, NULL/*no callback - sync*/);
 }
 
+// TODO: We could go even faster than this using jshGetPinAddress
 void jsspiFastSoftwareFunc(
   unsigned char *tx, unsigned char *rx, unsigned int len,
 	spi_sender_data *info

@@ -532,9 +532,9 @@ JsVar *jswrap_io_getPinMode(Pin pin) {
 typedef struct {
   Pin pins[jswrap_io_shiftOutDataMax];
   Pin clk;
-#ifdef STM32
-  volatile uint32_t *addrs[jswrap_io_shiftOutDataMax];
-  volatile uint32_t *clkAddr;
+#ifndef SAVE_ON_FLASH
+  JshGetPinAddressResult pinAddrs[jswrap_io_shiftOutDataMax];
+  JshGetPinAddressResult clkAddr;
 #endif
   bool clkPol; // clock polarity
 
@@ -547,28 +547,34 @@ void jswrap_io_shiftOutCallback(int val, void *data) {
   int n, i;
   for (i=0;i<d->repeat;i++) {
     for (n=d->cnt-1; n>=0; n--) {
-  #ifdef STM32
-      if (d->addrs[n])
-        *d->addrs[n] = val&1;
-  #else
       if (jshIsPinValid(d->pins[n]))
           jshPinSetValue(d->pins[n], val&1);
-  #endif
       val>>=1;
     }
-#ifdef STM32
-    if (d->clkAddr) {
-        *d->clkAddr = d->clkPol;
-        *d->clkAddr = !d->clkPol;
-    }
-#else
     if (jshIsPinValid(d->clk)) {
       jshPinSetValue(d->clk, d->clkPol);
       jshPinSetValue(d->clk, !d->clkPol);
     }
-#endif
   }
 }
+
+#ifndef SAVE_ON_FLASH
+void jswrap_io_shiftOutFastCallback(int val, void *data) {
+  jswrap_io_shiftOutData *d = (jswrap_io_shiftOutData*)data;
+  int n, i;
+  for (i=0;i<d->repeat;i++) {
+    for (n=d->cnt-1; n>=0; n--) {
+      if (val&1)
+        *d->pinAddrs[n].set_addr = d->pinAddrs[n].mask;
+      else
+        *d->pinAddrs[n].clr_addr = d->pinAddrs[n].mask;
+      val>>=1;
+    }
+    *d->clkAddr.set_addr = d->clkAddr.mask; // we adjust these based on clkPol
+    *d->clkAddr.clr_addr = d->clkAddr.mask;
+  }
+}
+#endif
 
 /*JSON{
   "type" : "function",
@@ -653,6 +659,9 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
     d.pins[d.cnt++] = jshGetPinFromVar(pins);
   }
 
+#ifndef SAVE_ON_FLASH
+  bool fastMode = true;
+#endif
   // Set pins as outputs
   int i;
   for (i=0;i<d.cnt;i++) {
@@ -661,12 +670,17 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
         jshPinSetState(d.pins[i], JSHPINSTATE_GPIO_OUT);
     }
     // on STM32, try and get the pin's output address
-#ifdef STM32
-    d.addrs[i] = jshGetPinAddress(d.pins[i], JSGPAF_OUTPUT);
+#ifndef SAVE_ON_FLASH
+    fastMode &= jshGetPinAddress(d.pins[i], &d.pinAddrs[i]);
 #endif
   }
-#ifdef STM32
-  d.clkAddr = jshGetPinAddress(d.clk, JSGPAF_OUTPUT);
+#ifndef SAVE_ON_FLASH
+  fastMode &= jshGetPinAddress(d.clk, &d.clkAddr);
+  if (fastMode && !d.clkPol) { // if clock polarity is swapped, swap set+clr
+    uint32_t *t = d.clkAddr.set_addr;
+    d.clkAddr.set_addr = d.clkAddr.clr_addr;
+    d.clkAddr.clr_addr = t;
+  }
 #endif
   if (jshIsPinValid(d.clk))
     jshPinSetState(d.clk, JSHPINSTATE_GPIO_OUT);
@@ -674,6 +688,10 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
   // Now run through the data, pushing it out
 #ifdef ESP32
   vTaskSuspendAll();
+#endif
+#ifndef SAVE_ON_FLASH
+  if (fastMode) jsvIterateCallback(data, jswrap_io_shiftOutFastCallback, &d);
+  else
 #endif
   jsvIterateCallback(data, jswrap_io_shiftOutCallback, &d);
 #ifdef ESP32

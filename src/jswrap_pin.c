@@ -262,8 +262,10 @@ Get information about this pin and its capabilities. Of the form:
   "negated"     : (2v29+) // true if the pin is negated in firmware, field missing if not
   "mode"        : (2v25+) // string: the pin's mode (same as Pin.getMode())
   "output"      : (2v25+) // 0/1: the state of the pin's output register
-  "in_addr"     : 0x..., // (if available) the address of the pin's input address in bit-banded memory (can be used with peek)
-  "out_addr"    : 0x..., // (if available) the address of the pin's output address in bit-banded memory (can be used with poke)
+  "in_addr"     : 0x..., // [2v30+] (if available) the address of the pin input register in memory (can be used with peek)
+  "set_addr"    : 0x..., // [2v30+] (if available) the address in memory to write to set this pin (can be used with poke)
+  "clr_addr"    : 0x..., // [2v30+] (if available) the address in memory to write to clear this pin (can be used with poke)
+  "mask"        : ...,   // [2v30+] (if available) the mask used to access the pin's value in in_addr/set_addr/clr_addr
   "analog"      : { ADCs : [1], channel : 12 }, // If analog input is available
   "functions"   : {
     "TIM1":{type:"CH1, af:0},
@@ -271,7 +273,7 @@ Get information about this pin and its capabilities. Of the form:
   }
 }
 ```
-Will return undefined if pin is not valid.
+Will return `undefined` if pin is not valid.
 */
 JsVar *jswrap_pin_getInfo(
     JsVar *parent //!< The class instance representing the pin.
@@ -293,12 +295,14 @@ JsVar *jswrap_pin_getInfo(
   jsvObjectSetChildAndUnLock(obj, "mode", jshGetPinStateString(state));
   jsvObjectSetIntChild(obj, "output", (state&JSHPINSTATE_PIN_IS_ON)?1:0);
 
-#ifdef STM32
-  volatile uint32_t *addr;
-  addr = jshGetPinAddress(pin, JSGPAF_INPUT);
-  if (addr) jsvObjectSetIntChild(obj, "in_addr", (JsVarInt)addr);
-  addr = jshGetPinAddress(pin, JSGPAF_OUTPUT);
-  if (addr) jsvObjectSetIntChild(obj, "out_addr", (JsVarInt)addr);
+#ifndef SAVE_ON_FLASH
+  JshGetPinAddressResult a;
+  if (jshGetPinAddress(pin, &a)) {
+    jsvObjectSetIntChild(obj, "in_addr", (JsVarInt)a.in_addr);
+    jsvObjectSetIntChild(obj, "set_addr", (JsVarInt)a.set_addr);
+    jsvObjectSetIntChild(obj, "clr_addr", (JsVarInt)a.clr_addr);
+    jsvObjectSetIntChild(obj, "mask", (JsVarInt)a.mask);
+  }
 #endif
   // ADC
   if (inf->analog) {

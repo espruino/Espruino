@@ -1737,7 +1737,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
         nrf_drv_gpiote_in_event_disable(p);
         uint32_t pin_number = p;
 #if NRF_SD_BLE_API_VERSION>5
-        NRF_GPIO_Type * reg = nrf_gpio_pin_port_decode(&pin_number);
+        NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&pin_number);
 #else
         NRF_GPIO_Type *reg = NRF_GPIO;
 #endif
@@ -1770,6 +1770,25 @@ void jshKickWatchDog() {
 #endif
   NRF_WDT->RR[0] = 0x6E524635;
 }
+
+bool jshGetPinAddress(Pin pin, JshGetPinAddressResult *result) {
+  if (!jshIsPinValid(pin)) return false;
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return false;
+  uint32_t ipin = (uint32_t)pinInfo[pin].pin;
+#if NRF_SD_BLE_API_VERSION>5
+  NRF_GPIO_Type *port = nrf_gpio_pin_port_decode(&ipin);
+#else
+  NRF_GPIO_Type *port = NRF_GPIO;
+#endif
+  bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
+  result->mask = 1 << pinInfo[pin].pin;
+  result->in_addr = &port->IN;
+  result->set_addr = negated ? &port->OUTCLR : &port->OUTSET;
+  result->clr_addr = negated ? &port->OUTSET : &port->OUTCLR;
+  return true;
+}
+
 
 /** Check the pin associated with this EXTI - return true if it is a 1 */
 bool jshGetWatchedPinState(IOEventFlags device) {
@@ -2279,7 +2298,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   uint32_t err_code;
   bool *twiInitialised = &twi0Initialised;
   JshPinFunction pinFuncDevice = JSH_I2C1;
-#if ESPR_I2C_COUNT > 1  
+#if ESPR_I2C_COUNT > 1
   switch (device) {
     case EV_I2C1:
       twiInitialised = &twi0Initialised;
@@ -2290,7 +2309,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
       pinFuncDevice = JSH_I2C2;
       break;
   }
-#endif  
+#endif
 #ifdef I2C_SLAVE
   if ((device == EV_I2C1) && nrf_drv_twis_is_enabled(TWIS0_INSTANCE_INDEX)) {
     nrf_drv_twis_disable(&TWIS0);

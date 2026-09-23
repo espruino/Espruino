@@ -220,6 +220,7 @@ static ALWAYS_INLINE uint32_t stmExtI(Pin ipin) {
 
 static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
   JsvPinInfoPort port = pinInfo[pin].port&JSH_PORT_MASK;
+  if (port == JSH_PORTV) return 0;
   return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
   /*if (port == JSH_PORTA) return GPIOA;
   if (port == JSH_PORTB) return GPIOB;
@@ -3067,18 +3068,19 @@ void jshKickWatchDog() {
   IWDG_ReloadCounter();
 }
 
-volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
-  if (!jshIsPinValid(pin)) return 0;
+bool jshGetPinAddress(Pin pin, JshGetPinAddressResult *result) {
+  if (!jshIsPinValid(pin)) return false;
   GPIO_TypeDef *port = stmPort(pin);
-  volatile uint32_t *regAddr;
-  if (flags == JSGPAF_INPUT)
-    regAddr = &port->IDR;
-  else
-    regAddr = &port->ODR;
-
-  uint32_t addr =  0x42000000 + ((((uint32_t)regAddr)-PERIPH_BASE)<<5) + (((uint32_t)(pinInfo[pin].pin - JSH_PIN0)<<2));
-
-  return (uint32_t*)addr;
+  if (!port) return false;
+  bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
+  // The F4 doesn't have BRR (just BSRR) but it does have bit banding
+  #define BITBAND(regAddr, bit) 0x42000000 + ((((uint32_t)regAddr)-PERIPH_BASE)<<5) + (((uint32_t)(bit)<<2))
+  result->mask = 1;
+  result->in_addr = BITBAND(&port->IDR, pinInfo[pin].pin);
+  result->set_addr = BITBAND(&port->BSRR, pinInfo[pin].pin);
+  result->clr_addr = BITBAND(&port->BSRR, pinInfo[pin].pin+16);
+  #undef BITBAND
+  return true;
 }
 
 
