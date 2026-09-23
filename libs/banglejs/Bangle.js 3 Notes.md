@@ -256,9 +256,8 @@ V7.set();w.startOutput(B8,4000);
 
 ## TODO
 
-* Occasional LCD glitched rows when scrolling
+* Occasional LCD glitches rows when scrolling
 * Touchscreen sometimes glitches (I2C error?)
-* JS Timeout when going to launcher?
 * Add SWD to nRF54 for reflashing py32
 * Gyro event
 * Pressure sensor
