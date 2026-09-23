@@ -342,31 +342,35 @@ void jshPinSetState(
   gpio_mode_t mode;
   gpio_pull_mode_t pull_mode=GPIO_FLOATING;
   bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
+  bool isOutput = false;
   switch(state) {
   case JSHPINSTATE_UNDEFINED:
     mode = GPIO_MODE_DISABLE;
     break;
   case JSHPINSTATE_GPIO_OUT:
     mode = GPIO_MODE_INPUT_OUTPUT;
+    isOutput = true;
     break;
   case JSHPINSTATE_GPIO_IN:
     mode = GPIO_MODE_INPUT;
     break;
   case JSHPINSTATE_GPIO_IN_PULLUP:
     mode = GPIO_MODE_INPUT;
-    pull_mode= negated ? GPIO_PULLDOWN_ONLY : GPIO_PULLUP_ONLY;
+    pull_mode = negated ? GPIO_PULLDOWN_ONLY : GPIO_PULLUP_ONLY;
     break;
   case JSHPINSTATE_GPIO_IN_PULLDOWN:
     mode = GPIO_MODE_INPUT;
-    pull_mode= negated ? GPIO_PULLUP_ONLY : GPIO_PULLDOWN_ONLY;
+    pull_mode = negated ? GPIO_PULLUP_ONLY : GPIO_PULLDOWN_ONLY;
     break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
     mode = GPIO_MODE_INPUT_OUTPUT_OD;
+    isOutput = true;
     if (negated) jsError( "jshPinSetState: can't do Open Drain on negated pin");
     break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP: // not possible if negated
     mode = GPIO_MODE_INPUT_OUTPUT_OD;
-    pull_mode= GPIO_PULLUP_ONLY;
+    pull_mode = GPIO_PULLUP_ONLY;
+    isOutput = true;
     if (negated) jsError( "jshPinSetState: can't do Open Drain on negated pin");
     break;
   case JSHPINSTATE_ADC_IN:
@@ -385,6 +389,13 @@ void jshPinSetState(
 #else
   gpio_pad_select_gpio(gpioNum);
 #endif
+  if (isOutput) { // reset pin to be GPIO in case it was used as rmt or something else
+#if ESP_IDF_VERSION_MAJOR>=5
+    esp_rom_gpio_connect_out_signal(gpioNum, SIG_GPIO_OUT_IDX, false, false);
+#else
+    gpio_matrix_out(gpioNum,SIG_GPIO_OUT_IDX,0,0);
+#endif
+  }
   g_pinState[pin] = state; // remember what we set this to...
 }
 
@@ -417,12 +428,6 @@ void jshPinSetValue(
   ) {
   if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
   gpio_num_t gpioNum = pinToESP32Pin(pin);
-  // FIXME: gpio_matrix_out/etc should really be in PinSetState
-#if ESP_IDF_VERSION_MAJOR>=5
-  esp_rom_gpio_connect_out_signal(gpioNum, SIG_GPIO_OUT_IDX, false, false); // reset pin to be GPIO in case it was used as rmt or something else
-#else
-  gpio_matrix_out(gpioNum,SIG_GPIO_OUT_IDX,0,0);  // reset pin to be GPIO in case it was used as rmt or something else
-#endif
   gpio_set_level(gpioNum, (uint32_t)value);
 }
 
