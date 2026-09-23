@@ -17,6 +17,7 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 #include "jswrap_bangle3.h"
+#include "lcd_memlcd.h"
 
 #include <zephyr/kernel.h>
 #include <zephyr/pm/device.h>
@@ -36,21 +37,22 @@ extern const struct device *jshToZephyrPort(JsvPinInfoPort port);
 #define PY32_OUT_SHIFT 4
 /// bottom 4 bits are buttons, higher bits are outputs
 unsigned short sxValues = (PY32_OUT_DEFAULTS << PY32_OUT_SHIFT);
-
+volatile bool inPY32Update = false;
 
 // Simple write to PY32 - we bit-bang this as setting up SPI for 1 byte takes too long and doesn't work in an IRQ
 void jshPY32Transfer(uint8_t *buf, int count) {
   // assume display SPI is currently disabled as we only enable it for LCD flip
   //pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND);
-
-  jshPinSetValue(LCD_SPI_CS, 0);
   const JshPinInfo *mosi = &pinInfo[LCD_SPI_MOSI];
   const JshPinInfo *miso = &pinInfo[LCD_SPI_MISO];
   const JshPinInfo *sck = &pinInfo[LCD_SPI_SCK];
   const struct device *mosiport = jshToZephyrPort(mosi->port);
   const struct device *misoport = jshToZephyrPort(miso->port);
   const struct device *sckport = jshToZephyrPort(sck->port);
-  for (volatile int i=0;i<1000;i++); // delay (we can't use k_usleep as we could be in an IRQ here)
+  gpio_pin_set_raw(sckport, sck->pin, 0);
+  jshPinSetValue(LCD_SPI_CS, 0);
+  // FIXME can delay less if we know the IRQ line as asserted as the chip is awake
+  for (volatile int i=0;i<1000;i++); // delay as PY32 must wake (we can't use k_usleep as we could be in an IRQ here)
   for (unsigned int i=0;i<count;i++) {
     int data = buf[i], rxdata = 0;
     int bit;
@@ -66,13 +68,19 @@ void jshPY32Transfer(uint8_t *buf, int count) {
 }
 
 // Send state to PY32
-void jshPY32Update(bool setOutput) {
+void jshPY32Update(PY32Command cmd, int data) {
+  if (inPY32Update)
+    return jsiConsolePrintf("inPY32Update (%d %d)\n", cmd, data);
+  inPY32Update = true;
   uint8_t buf[3];
-  if (setOutput) {
+  buf[0] = cmd;
+  if (cmd == PY32_CMD_SET_OUTPUT) {
     PY32OutputState pyOutputState = sxValues>>PY32_OUT_SHIFT; // current output values
-    buf[0] = PY32_CMD_SET_OUTPUT;
     buf[1] = pyOutputState&255;
     buf[2] = pyOutputState>>8;
+  } else if (cmd==PY32_CMD_DISPLAY) {
+    buf[1] = data;
+    buf[2] = 0;
   } else {
     buf[0] = PY32_CMD_NONE;
     buf[1] = 0;
@@ -84,13 +92,25 @@ void jshPY32Update(bool setOutput) {
   #if PY32_OUT_SHIFT!=4
   #error PY32_OUT_SHIFT=4
   #endif
-
+  uint16_t lastState = sxValues;
   sxValues = (sxValues&~15) | (pyButtonState&15);
   PY32InputState inputState = pyButtonState>>4;
   if (inputState & PY32_IN_TOUCH_IRQ)
     jswrap_banglejs_touchHandler(0,0); // touch handler IRQ
   if (inputState & PY32_REDRAW_REQUEST)
     graphicsSetModified(&graphicsInternal,0,0,LCD_WIDTH,LCD_HEIGHT); // PY32 wants a redraw
+  uint16_t changed = lastState ^ sxValues;
+  //jsiConsolePrintf("I %02x %02x %02x  %x %x (%d %d)\n", buf[0],buf[1],buf[2],sxValues, changed, cmd, data);
+  if (changed & 15) {
+    for (int i=0;i<ESPR_EXTI_COUNT;i++)
+      if (((changed&1) && eventFlagsToPin[i]==BTN1_PININDEX) ||
+          ((changed&2) && eventFlagsToPin[i]==BTN2_PININDEX) ||
+          ((changed&4) && eventFlagsToPin[i]==BTN3_PININDEX) ||
+          ((changed&8) && eventFlagsToPin[i]==BTN4_PININDEX)) {
+        jshPushIOWatchEvent(EV_EXTI0+i);
+      }
+  }
+  inPY32Update = false;
 }
 
 void jshVirtualPinInitialise() {
@@ -98,13 +118,23 @@ void jshVirtualPinInitialise() {
 }
 
 void jshVirtualPinSetValue(Pin pin, bool state) {
+  // Check we're not being called while LCD is updating - if we are, wait
+  int timeout = 1000000;
+  while (lcdMemLCD_isBusy() && --timeout);
+  if (timeout==0) {
+    jsiConsolePrintf("jshVirtualPinSetValue(%d,%d) timeout\n",pin,state);
+    return;
+  }
   int p = pinInfo[pin].pin;
+  unsigned short oldsxValues = sxValues;
   if (!IS_PIN_A_BUTTON(pin)) { // buttons read only
     if (state) sxValues |= 1<<p;
     else sxValues &= ~(1<<p);
+    if (oldsxValues != sxValues) {
+      // set status flags for PY32 only if changed
+      jshPY32Update(PY32_CMD_SET_OUTPUT, 128+pin);
+    }
   }
-  // set status flags for PY32
-  jshPY32Update(true);
 }
 
 bool jshVirtualPinGetValue(Pin pin) {
@@ -121,24 +151,8 @@ JshPinState jshVirtualPinGetState(Pin pin) {
 
 /// called when we're sure the LCD SPI interface is idle!
 void jshVirtualPinIRQWorker() {
-  static volatile bool alreadyInWorker = false;
-  if (alreadyInWorker) return;
-  alreadyInWorker = true;
-  uint16_t lastState = sxValues;
-  jshPY32Update(false); // no set
-  uint16_t changed = lastState ^ sxValues;
-  /*if (changed & 16)
-    jsiConsolePrintf("Touch IRQ");*/ // FIXME we do this in jshPY32Update at the moment
-  if (changed & 15) {
-    for (int i=0;i<ESPR_EXTI_COUNT;i++)
-      if (((changed&1) && eventFlagsToPin[i]==BTN1_PININDEX) ||
-          ((changed&2) && eventFlagsToPin[i]==BTN2_PININDEX) ||
-          ((changed&4) && eventFlagsToPin[i]==BTN3_PININDEX) ||
-          ((changed&8) && eventFlagsToPin[i]==BTN4_PININDEX)) {
-        jshPushIOWatchEvent(EV_EXTI0+i);
-      }
-  }
-  alreadyInWorker = false;
+  if (inPY32Update) return;
+  jshPY32Update(PY32_CMD_NONE, 2); // no set
 }
 
 void jshVirtualPinIRQHandler(bool state, IOEventFlags flags) {
@@ -291,7 +305,7 @@ void jswrap_banglejs3_hwinit() {
   jshPinSetState(LCD_SPI_CS, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(LCD_SPI_IRQ, JSHPINSTATE_GPIO_IN_PULLUP);
   jshDelayMicroseconds(100); // wait for pins to settle
-  jshPY32Update(false); // update current status (and clear IRQ line)
+  jshPY32Update(PY32_CMD_NONE, 0); // update current status (and clear IRQ line)
   IOEventFlags channel = jshPinWatch(LCD_SPI_IRQ, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, jshVirtualPinIRQHandler);
 }

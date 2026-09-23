@@ -31,7 +31,9 @@ Disable RTT (or make it switchable?)
 #define LCD_ROW_BYTES 180 // 240 * 6 bit (in bytes)
 #define LCD_ROW_STRIDE LCD_ROW_BYTES // 240 * 6 bit (in bytes)
 #define SPI_BUFFER_LEN (LCD_ROW_STRIDE*(LCD_ROWS_BUFFERED*2)) // enough for display - 2x sets of lines (with first byte as command byte)
-uint8_t spiBuffer[SPI_BUFFER_LEN];
+uint8_t spiBuffer[SPI_BUFFER_LEN]; // SPI buffer for display
+uint8_t spiCmdRxBuffer[16]; // SPI buffer for commands
+uint8_t spiCmdTxBuffer[16]; // SPI buffer for commands
 uint8_t spiWriteIdx; //< index we're currently writing to
 volatile uint16_t spiBufferBytes[2]; // is first or second part of the SPI buffer ready?
 
@@ -76,15 +78,20 @@ static void D() { /*for (volatile int i=0;i<0;i++);*/ }
 static void DX() { for (volatile int i=0;i<100;i++); }
 
 /// Reset the buffer contents for next SPI transaction
-void SPI1_Reset_Buffer(int p) {
+void SPI1_Reset_Buffer(int reason) {
+  __disable_irq();
   HAL_SPI_DMAStop(&hspi1); // ensure HAL_SPI_TransmitReceive_DMA can succeed
-  spiBufferBytes[0] = 0;
-  spiBufferBytes[1] = 0;
-  spiWriteIdx = 0;
-  uint8_t *buf = spiBuffer;
-  buf[0] = state.buttonMask | (state.input<<4);
-  buf[1] = state.output&255;
-  buf[2] = state.output>>8;
+  if (state.displayInProgress) {
+    spiBufferBytes[0] = 0;
+    spiBufferBytes[1] = 0;
+    spiWriteIdx = 0;
+  } else {
+    uint8_t *buf = spiCmdTxBuffer;
+    buf[0] = state.buttonMask | (state.input<<4);
+    buf[1] = state.output&255;
+    buf[2] = state.output>>8;
+    buf[3] = LCD_VERSION_BYTE;
+  }
 
   // Totally reset SPI peripheral to clear out unsent bytes
   uint32_t oldCR1 = SPI1->CR1;
@@ -92,17 +99,22 @@ void SPI1_Reset_Buffer(int p) {
   __HAL_RCC_SPI1_RELEASE_RESET();
   SPI1->CR1 |= oldCR1;
   // Queue up new data
-  HAL_StatusTypeDef err = HAL_SPI_TransmitReceive_DMA(&hspi1, spiBuffer, spiBuffer, SPI_BUFFER_LEN);
+  HAL_StatusTypeDef err;
+  if (state.displayInProgress) // big buffer for display updates
+    err = HAL_SPI_TransmitReceive_DMA(&hspi1, spiBuffer, spiBuffer, SPI_BUFFER_LEN);
+  else // small buffer for commands
+    err = HAL_SPI_TransmitReceive_DMA(&hspi1, spiCmdTxBuffer, spiCmdRxBuffer, sizeof(spiCmdTxBuffer));
+  __enable_irq();
   if (err != HAL_OK) {
     rtt_printf("SPI_TR_DMA err %d\n", err);
     char buf[32] = "SPI DMA restart 0";
-    buf[16] += p;
+    buf[16] += reason;
     Fatal_Error(buf);
   }
 }
 
 // Call if state.buttonPressed - this checks the ADC to figure out if a button has been pressed
-void check_buttons() {
+void check_buttons(int timePassed) {
   static uint32_t lastVal = 0;
   static uint16_t valStable = 0;
 
@@ -111,7 +123,8 @@ void check_buttons() {
   if (diff<0) diff = -diff;
   lastVal = val;
   if (diff<10) {
-    if(valStable<65535) valStable++;
+    if (valStable<65535-timePassed) valStable+=timePassed;
+    else valStable=65535;
   } else valStable=0;
   //rtt_printf("b%d %d %d\n",val, diff, valStable);
   if (valStable>200) { // wait until a stable reading
@@ -143,8 +156,9 @@ void check_buttons() {
       if (state.showMenu) menu_update();
       else Set_State_Changed();
     } else {
-      if (state.buttonLength < 65535)
-        state.buttonLength++;
+      if (state.buttonLength < 65535-timePassed)
+        state.buttonLength+=timePassed;
+      else state.buttonLength = 65535;
       // 4 button long-press reboot
       if (state.buttonLength==PY32_4BTN_REBOOT_DELAY &&
           state.buttonMask==15 &&
@@ -157,7 +171,7 @@ void check_buttons() {
 
 void flip_from_spi() {
   int spiIdx = 0; // 0 or 1 for first/second half
-  rtt_printf("y=%d\n", state.displayY);
+  rtt_printf("flip y=%d\n", state.displayY);
 
   volatile uint32_t *GPIOA_ODR = &GPIOA->ODR;
   volatile uint32_t *GPIOA_BSRR = &GPIOA->BSRR;
@@ -185,11 +199,10 @@ void flip_from_spi() {
     int timeout = 500000;
     while (!spiBufferBytes[spiIdx]) {
       if (state.buttonPressed)
-        check_buttons(); // check button state when waiting for SPI data
+        check_buttons(80); // check button state when waiting for SPI data
       if (--timeout <= 0) {
         rtt_printf("timeout\n");
         LCD_ENB(0); // flash LED to show we've had a timeout error
-        SPI1_Reset_Buffer(2);
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 1);
         HAL_Delay(50);
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 0);
@@ -199,7 +212,7 @@ void flip_from_spi() {
     }
     // now start sending data
     uint8_t *buf = spiIdx ? &spiBuffer[SPI_BUFFER_LEN>>1] : spiBuffer;
-    rtt_printf("->%d\n", spiIdx+1);
+    //rtt_printf("->%d\n", spiIdx+1);
 #define LCD_FAST 1
 #define NO_REORDER __asm__ __volatile__("" ::: "memory")
 
@@ -316,7 +329,6 @@ void flip_from_spi() {
     if (!spiBufferBytes[spiIdx] && !state.spiInProgress) {
       rtt_printf("End %d %d\n", spiBufferBytes[spiIdx], state.spiInProgress);
       LCD_ENB(0); // cancelled - exit.
-      SPI1_Reset_Buffer(10);
       Write_IRQ(state.irqAsserted); // re-enable IRQ if it should have been asserted
       return;
     }
@@ -371,21 +383,18 @@ void nrf_reboot() {
 
 /// Called when an SPI transaction has completed (or the buffer is full!)
 void SPI1_HandlePacket(int bytes_received) {
-  uint8_t *buf = spiBuffer;
+  uint8_t *buf = spiCmdRxBuffer;
   uint8_t cmd = buf[0];
+  Write_IRQ(false); // assume status was read
+  state.input &= ~(PY32_IN_TOUCH_IRQ|PY32_REDRAW_REQUEST); // we definitely sent touch IRQ state - clear the flag
   switch (cmd) {
     case PY32_CMD_NONE:
-      Write_IRQ(false); // assume status is read
       break;
     case PY32_CMD_SET_OUTPUT:
-      Write_IRQ(false); // assume status is read
       state.output = buf[1] | (buf[2]<<8);
       Update_Outputs();
       break;
     case PY32_CMD_DISPLAY:
-      bool irqWasAsserted = state.irqAsserted;
-      Write_IRQ(false); // if we're busy with the LCD, don't assert the IRQ line
-      state.irqAsserted |= irqWasAsserted;
       state.displayInProgress = true;
       state.displayY = buf[1];
       break;
@@ -397,26 +406,24 @@ void SPI1_NSS_Callback() {
   bool nss_pin_state = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15) == GPIO_PIN_SET;
   if (nss_pin_state) { // idle - so transaction is complete
     /* If we've sent exactly half an SPI buffer then HAL_SPI_TxRx*CpltCallback has
-    already been called at this point. However we could use bytes_received to allow
-    us to cope with what happens when only part of a buffer has been sent to allow
-    us to do smaller updates. */
+    already been called at this point. */
     state.spiInProgress = false;
     bool wasDisplayUpdate = state.displayInProgress;
     state.displayInProgress = false;
-    //__HAL_DMA_GET_COUNTER(hspi1.hdmarx);//
     uint32_t bytes_left = hspi1.hdmarx->Instance->CNDTR;
-    uint32_t bytes_received = SPI_BUFFER_LEN - bytes_left;
-    if (spiWriteIdx) // second half of buffer
-      bytes_received -= SPI_BUFFER_LEN>>1;
-    // FIXME: use bytes_received to handle partial updates being sent to display
-    rtt_printf("NSS %d %d\n", bytes_received, spiBuffer[0]);
-    spiBufferBytes[spiWriteIdx] = bytes_received;
-    // restart SPI transaction for next packet
-    if (!wasDisplayUpdate) { // we can't restart if we're currently writing to the screen!
+    if (wasDisplayUpdate) {
+      uint32_t bytes_received = SPI_BUFFER_LEN - bytes_left;
+      rtt_printf("NSS disp %db\n", bytes_received, spiBuffer[0]);
+      if (spiWriteIdx) // second half of buffer
+        bytes_received -= SPI_BUFFER_LEN>>1;
+      spiBufferBytes[spiWriteIdx] = bytes_received;
+    } else { // no commands in display updates
+      uint32_t bytes_received = sizeof(spiCmdRxBuffer) - bytes_left;
+      rtt_printf("NSS cmd(%d) %d\n", spiCmdRxBuffer[0], bytes_received);
       SPI1_HandlePacket(bytes_received);
-      SPI1_Reset_Buffer(4);
-      state.input &= ~(PY32_IN_TOUCH_IRQ|PY32_REDRAW_REQUEST); // so we definitely sent touch IRQ state - clear the flag
     }
+    // get ready for next packet
+    SPI1_Reset_Buffer(4);
     //rtt_printf("-\n");
     SET_BIT(SPI1->CR1, SPI_CR1_SSI); // disable SPI
   } else { // transaction start
@@ -429,10 +436,8 @@ void SPI1_NSS_Callback() {
 // Called when the DMA finishes transferring the FIRST half of the buffer (index 0 to BUFFER_SIZE/2 - 1)
 void HAL_SPI_TxRxHalfCpltCallback(SPI_HandleTypeDef *hspi) {
   // Safe to read/write the FIRST half of tx_buffer and rx_buffer
-  // Process rx_buffer[0] through rx_buffer[(BUFFER_SIZE/2) - 1]
+  // Process spiBuffer[0] through spiBuffer[(SPI_BUFFER_LEN/2) - 1]
   if (hspi->Instance == SPI1) {
-    if (!state.displayInProgress) // if we're displaying, main loop should handle this when spiWriteSecondHalf changed
-      SPI1_HandlePacket(sizeof(spiBuffer[0]));
     spiBufferBytes[0] = SPI_BUFFER_LEN>>1; // first half is ready
     spiWriteIdx = 1;
   }
@@ -441,7 +446,7 @@ void HAL_SPI_TxRxHalfCpltCallback(SPI_HandleTypeDef *hspi) {
 // Called when the DMA finishes transferring the SECOND half of the buffer (index BUFFER_SIZE/2 to BUFFER_SIZE - 1)
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
   // Safe to read/write the SECOND half of tx_buffer and rx_buffer
-  // Process rx_buffer[BUFFER_SIZE/2] through rx_buffer[BUFFER_SIZE - 1]
+  // Process rx_buffer[spiBuffer/2] through spiBuffer[SPI_BUFFER_LEN - 1]
   if (hspi->Instance == SPI1) {
     spiBufferBytes[1] = SPI_BUFFER_LEN>>1; // second half is ready now
     spiWriteIdx = 0;
@@ -523,11 +528,10 @@ int main(void) {
 
   while (1) {
     //HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
-    if (state.buttonPressed) {
-      check_buttons();
-    }
+    if (state.buttonPressed)
+      check_buttons(1);
     if (state.showMenu) {
-
+      // don't sleep, ignore commands from main CPU
     } else if (state.displayInProgress) {
       flip_from_spi();
     } else if (!state.spiInProgress && !state.buttonPressed && !state.irqAsserted) {

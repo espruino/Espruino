@@ -12,8 +12,14 @@
  * ----------------------------------------------------------------------------
  */
 
+#include "banglejs3_py32/src/const.h"
+
 void jswrap_banglejs_setRGB(int r, int g, int b);
 void jswrap_banglejs_enableUART(bool en);
 
 void jswrap_banglejs3_hwinit();
 bool jswrap_banglejs3_idle();
+
+
+void jshPY32Transfer(uint8_t *buf, int count);
+void jshPY32Update(PY32Command cmd, int data);

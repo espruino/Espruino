@@ -256,9 +256,8 @@ V7.set();w.startOutput(B8,4000);
 
 ## TODO
 
-* Passing button status while also updating screen
-* Touchscreen sometimes misses lift events (touch IRQ has been missed by PY32)
-  * To fix, change display update so we send an SPI display update packet first, and *then* the data
+* Occasional LCD glitched rows when scrolling
+* Touchscreen sometimes glitches (I2C error?)
 * JS Timeout when going to launcher?
 * Add SWD to nRF54 for reflashing py32
 * Gyro event

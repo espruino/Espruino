@@ -24,7 +24,7 @@
 
 #define LCD_SPI EV_SPI1
 #ifdef LCD_CONTROLLER_ZJ012BD01A
-#include "banglejs3_py32/src/const.h"
+#include "jswrap_bangle3.h"
 #define LCD_ROWHEADER 0
 #define LCD_CS_ON 0
 #define LCD_CS_OFF 1
@@ -405,10 +405,8 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
 #endif
 #ifdef LCD_CONTROLLER_ZJ012BD01A
   jshDelayMicroseconds(10); // give it time to wake
-  uint8_t cmdbuf[2] = {PY32_CMD_DISPLAY, y1};
-  extern void jshPY32Transfer(uint8_t *buf, int count);
-  jshPY32Transfer(cmdbuf, 2); // send command by soft SPI
-  // CS already turned off by jshPY32Transfer
+  jshPY32Update(PY32_CMD_DISPLAY, y1); // send command by soft SPI
+  // CS already turned off by jshPY32Update/jshPY32Transfer
   jshDelayMicroseconds(200+y1*2); // time to process NSS and get to correct riw
   jshPinSetValue(LCD_SPI_CS, LCD_CS_ON);
   jshDelayMicroseconds(10);
