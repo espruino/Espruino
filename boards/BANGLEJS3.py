@@ -91,6 +91,7 @@ info = {
      'JSMODULESOURCES += libs/js/banglejs/Layout.min.js',
      'JSMODULESOURCES+=libs/js/AT.min.js',
      'JSMODULESOURCES+=libs/js/banglejs/Wifi.js', # FIXME:Minify
+     'SOURCES += libs/banglejs/banglejs3_py32/src/swd.c',
    ]
  }
 };
@@ -179,7 +180,9 @@ devices = { # 'V' pins are virtual
             'pin_wifi_boot' : 'V11',
             'pin_aux_swap' : 'V12',
             'pin_aux_power' : 'V13',
-            'pin_hrm_aux' : 'V15'
+            'pin_hrm_aux' : 'V15',
+            'pin_py32_swdio' : 'B9',
+            'pin_py32_swdck' : 'B10'
   }
 };
 
