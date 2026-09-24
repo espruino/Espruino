@@ -29,6 +29,8 @@
 #include "lcd_memlcd.h" // for lcdMemLCD_callWhenIdle
 #include "graphics.h" // for error screen
 #include "banglejs3_py32/src/const.h"
+#include "banglejs3_py32/src/swd.h"
+#include "banglejs3_py32/py32_firmware.h"
 
 // ------------------------------------------------------ from jshardware.c
 extern Pin eventFlagsToPin[ESPR_EXTI_COUNT];
@@ -67,12 +69,15 @@ void jshPY32Transfer(uint8_t *buf, int count) {
   jshPinSetValue(LCD_SPI_CS, 1);
 }
 
-// Send state to PY32
-void jshPY32Update(PY32Command cmd, int data) {
-  if (inPY32Update)
-    return jsiConsolePrintf("inPY32Update (%d %d)\n", cmd, data);
+// Send state to PY32. Return 4th buffer byte (version if cmd=PY32_INITIALISE, 0 otherwise)
+int jshPY32Update(PY32Command cmd, int data) {
+  if (inPY32Update) {
+    jsiConsolePrintf("inPY32Update (%d %d)\n", cmd, data);
+    return 0;
+  }
   inPY32Update = true;
-  uint8_t buf[3];
+  uint8_t buf[4] = {cmd,0,0,0};
+  int bufLen = 3;
   buf[0] = cmd;
   if (cmd == PY32_CMD_SET_OUTPUT) {
     PY32OutputState pyOutputState = sxValues>>PY32_OUT_SHIFT; // current output values
@@ -80,15 +85,17 @@ void jshPY32Update(PY32Command cmd, int data) {
     buf[2] = pyOutputState>>8;
   } else if (cmd==PY32_CMD_DISPLAY) {
     buf[1] = data;
-    buf[2] = 0;
   } else {
+    if (cmd==PY32_CMD_INITIALISE) {
+      // We use this to do a bigger SPI read that normal and get version info
+      // and we expect the CMD to be set to PY32_CMD_NONE below
+      bufLen = 4;
+    }
     buf[0] = PY32_CMD_NONE;
-    buf[1] = 0;
-    buf[2] = 0;
   }
-  jshPY32Transfer(buf, sizeof(buf));
+  jshPY32Transfer(buf, bufLen);
   uint8_t pyButtonState = buf[0];
-  //jsiConsolePrintf("B %d %d %d\n", buf[0],buf[1],buf[2]);
+  //jsiConsolePrintf("B %d %d %d %d\n", buf[0],buf[1],buf[2],buf[3]);
   #if PY32_OUT_SHIFT!=4
   #error PY32_OUT_SHIFT=4
   #endif
@@ -111,6 +118,7 @@ void jshPY32Update(PY32Command cmd, int data) {
       }
   }
   inPY32Update = false;
+  return buf[3];
 }
 
 void jshVirtualPinInitialise() {
@@ -306,10 +314,22 @@ void jswrap_banglejs3_hwinit() {
   jshPinSetValue(LCD_SPI_CS, 1);
   jshPinSetState(LCD_SPI_CS, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(LCD_SPI_IRQ, JSHPINSTATE_GPIO_IN_PULLUP);
-  jshDelayMicroseconds(100); // wait for pins to settle
-  jshPY32Update(PY32_CMD_NONE, 0); // update current status (and clear IRQ line)
+  jshDelayMicroseconds(1000); // wait for pins to settle
+  jshPY32Update(PY32_CMD_NONE, 0); // dummy write
   IOEventFlags channel = jshPinWatch(LCD_SPI_IRQ, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, jshVirtualPinIRQHandler);
+}
+
+/*JSON{
+  "type" : "init",
+  "generate" : "jswrap_banglejs3_init"
+}*/
+void jswrap_banglejs3_init() {
+ /* int version = jshPY32Update(PY32_CMD_INITIALISE, 0); // update current status (and clear IRQ line)
+  jsiConsolePrintf("LCD firmware 0x%02x\n", version);
+  if (version != py32_firmware_version) {
+    jsiConsolePrintf("LCD firmware needs update to 0x%02x\n", py32_firmware_version);
+  }*/
 }
 
 /*JSON{
@@ -323,4 +343,55 @@ bool jswrap_banglejs3_idle() {
     lcdMemLCD_callWhenIdle(jshVirtualPinIRQWorker);
 
   return false;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "lcdUpdateFirmware",
+    "generate" : "jswrap_banglejs_lcdUpdateFirmware",
+    "ifdef" : "BANGLEJS3"
+}
+Reflash the firmware on the LCD controller
+*/
+void jswrap_banglejs_lcdUpdateFirmware() {
+  if (py32_firmware_len&3) {
+    jsWarn("Firmware not multiple of 4 bytes");
+    return;
+  }
+  // SWD test
+  jshPinSetValue(LCD_SPI_CS, 0); // CS will wake device up
+  jshDelayMicroseconds(100); // wait wakeup
+  swdInit(); // DAP ID 0x0bc11477
+  swdHalt();
+  jshPinSetValue(LCD_SPI_CS, 1); // disable CS
+  swdPY32FlashWriteInit();
+  jsiConsolePrintf("Erase\n");
+  swdPY32FlashErase();
+  jsiConsolePrintf("Write\n");
+  swdPY32FlashWrite(0x08000000, (uint32_t*)&py32_firmware, py32_firmware_len);
+  jsiConsolePrintf("Read\n");
+  swdReadMem(0x08000000);
+
+  swdSoftReset();
+  swdKill();
+  jsiConsolePrintf("Wait for reboot\n");
+  jshDelayMicroseconds(1000000); // wait 1s for reboot
+  jshPY32Update(PY32_CMD_NONE, 0); // dummy write
+  // Force a redraw next time around idle loop
+  graphicsSetModified(&graphicsInternal,0,0,LCD_WIDTH,LCD_HEIGHT);
+  jsiConsolePrintf("Done\n");
+
+  /* pyocd
+0000301 I DP IDR = 0x0bc11477 (v1 MINDP rev0) [dap]
+0000323 I AHB-AP#0 IDR = 0x04770031 (AHB-AP var3 rev0) [discovery]
+0000337 I AHB-AP#0 Class 0x1 ROM table #0 @ 0xe00ff000 (designer=43b:Arm part=4c0) [rom_table]
+0000348 I [0]<e000e000:SCS v6-M class=14 designer=43b:Arm part=008> [rom_table]
+0000354 I [1]<e0001000:DWT v6-M class=14 designer=43b:Arm part=00a> [rom_table]
+0000360 I [2]<e0002000:BPU v6-M class=14 designer=43b:Arm part=00b> [rom_table]
+0000365 I debugvar 'DbgMCU_APB_Fz1' = 0x0 (0) [pack_target]
+0000365 I debugvar 'DbgMCU_APB_Fz2' = 0x0 (0) [pack_target]
+0000365 I debugvar 'DbgMCU_CR' = 0x2 (2) [pack_target]
+0000389 I CPU core #0: Cortex-M0+ r0p1, v6.0-M architecture [cortex_m]
+  */
 }

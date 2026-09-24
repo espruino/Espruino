@@ -21,7 +21,8 @@
 typedef enum {
   PY32_CMD_NONE,
   PY32_CMD_SET_OUTPUT,
-  PY32_CMD_DISPLAY
+  PY32_CMD_DISPLAY,
+  PY32_CMD_INITIALISE = 0xFF // this isn't sent but is replaced by PY32_CMD_NONE jshPY32Update. We use this to do a bigger SPI read that normal and get version info
 } PY32Command;
 /*
 PY32_CMD_NONE:

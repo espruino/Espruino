@@ -3,6 +3,7 @@
 PROJECT			?= banglejs3lcd
 # The path for generated files
 BUILD_DIR		= bin
+OUT_C_FILE  = py32_firmware.c
 
 # MCU types:
 MCU_TYPE		= PY32F072xB # actually PY32F040
@@ -47,7 +48,7 @@ LDSCRIPT		= libs/ld/$(PYOCD_DEVICE).ld
 
 CFILES		+= libs/system_py32f07x.c
 
-CDIRS		+= libs/hal/src 
+CDIRS		+= libs/hal/src
 INCLUDES	+= libs/hal/inc
 LIB_FLAGS   += USE_HAL_DRIVER
 # Startup file
@@ -175,7 +176,7 @@ $(BDIR)/$(PROJECT).elf: $(OBJS) $(TOP)/$(LDSCRIPT)
 # Listing
 %.lst: %.elf
 	@printf "  OBJCP LST\t$@\n"
-	$(Q)$(OBJDUMP) -x -S $< > $@ 
+	$(Q)$(OBJDUMP) -x -S $< > $@
 
 lst: $(BDIR)/$(PROJECT).lst
 
@@ -186,6 +187,15 @@ flash: $(BDIR)/$(PROJECT).hex
 	sudo $(PYOCD_EXE) erase -t $(PYOCD_DEVICE) --chip --config $(TOP)/misc/pyocd.yaml
 	sudo $(PYOCD_EXE) load $(BDIR)/$(PROJECT).hex -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml
 
+c: $(BDIR)/$(PROJECT).bin
+	echo '// Bangle.js 3 PY32 LCD Controller Firmware' > $(OUT_C_FILE)
+	echo '// Auto-generated via 'make c' in Espruino/libs/banglejs/banglejs3_py32' >> $(OUT_C_FILE)
+	echo 'const int py32_firmware_version = $(shell sed -ne "s/.*LCD_VERSION_BYTE\(.*\)/\1/p" src/const.h);' >> $(OUT_C_FILE)
+	echo 'const int py32_firmware_len = $(shell wc -c < $(BDIR)/$(PROJECT).bin);' >> $(OUT_C_FILE)
+	echo 'const char py32_firmware[$(shell wc -c < $(BDIR)/$(PROJECT).bin)] = {' >> $(OUT_C_FILE)
+	hexdump -v -e '/1 "%d,"' $(BDIR)/$(PROJECT).bin >> $(OUT_C_FILE)
+	echo '};' >> $(OUT_C_FILE)
+
 reset:
 	sudo $(PYOCD_EXE) reset -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml
 
@@ -195,4 +205,5 @@ gdb:
 rtt:
 	sudo $(PYOCD_EXE) rtt -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml
 
-
+dump:
+	sudo $(PYOCD_EXE) cmd -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml -c reset halt -c savemem 0 0x10000 dump.bin

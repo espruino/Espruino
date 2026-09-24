@@ -92,6 +92,7 @@ info = {
      'JSMODULESOURCES+=libs/js/AT.min.js',
      'JSMODULESOURCES+=libs/js/banglejs/Wifi.js', # FIXME:Minify
      'SOURCES += libs/banglejs/banglejs3_py32/src/swd.c',
+     'SOURCES += libs/banglejs/banglejs3_py32/py32_firmware.c',
    ]
  }
 };

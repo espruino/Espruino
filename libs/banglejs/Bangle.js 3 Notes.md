@@ -149,6 +149,28 @@ PF6    - Vibration EN                              => V8
 PF9    - NC
 ```
 
+If the PY32 flash gets corrupted such that the vector table is broken, pyocd can refuse to write it. If so,
+you need to manually start pyocd without the device type specified (so it defaults to generic Cortex-M)
+and poke the registers to erase all.
+
+```
+sudo pyocd commander
+# unlock
+rw 0x40022014
+ww 0x40022008 0x45670123
+ww 0x40022008 0xCDEF89AB
+rw 0x40022014
+# erase (rw 0x40022010=1 means busy)
+rw 0x40022010
+ww 0x40022014 0x00000004
+ww 0x08000000 0x12344321
+rw 0x40022010
+ww 0x40022014 0x00000000
+# check if erased
+rw 0x08000000
+# should be ffffffff
+```
+
 ## WiFi
 
 Using ESP8684H4X

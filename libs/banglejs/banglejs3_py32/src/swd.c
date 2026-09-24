@@ -227,7 +227,8 @@ void nrfHalt() {
   nrfWrite(SWDTX_AP|0,    0); // NRF reset disable
   swdWrite(SWDTX_DP|SWDTX_DP_SELECT,    0); // port select
 }*/
-void swdSoftReset() { // ARM Core System Reset
+/// ARM Core System Reset
+void swdSoftReset() {
   swdWrite(SWDTX_DP|SWDTX_DP_SELECT, 0x00000000);
   swdWrite(SWDTX_AP|SWDTX_AP_TAR,    0xE000ED0C); // target address
   swdWrite(SWDTX_AP|SWDTX_AP_DRW,    0x05FA0004); // value -> reset
@@ -265,7 +266,8 @@ void swdPY32WaitFlashBusy() {
   swdWriteMem(0x40022010, 0x00008011); // FLASH_SR clear flags
 }
 
-// Erase a page, addr=0x08000000 onwards?
+
+// Erase entire PY32 flash memory
 void swdPY32FlashErase() {
   swdPY32Unlock();
   swdPY32WaitFlashBusy();
@@ -275,6 +277,7 @@ void swdPY32FlashErase() {
   swdWriteMem(0x40022014, 0x00000000); // FLASH_CR disable erase bit
 }
 
+// Initialise PY32 flash write registers
 void swdPY32FlashWriteInit() {
 #if 0
   swdWriteMem(0x40022030/*FLASH_TPS*/,  16); // 16 mhz
@@ -293,18 +296,44 @@ void swdPY32FlashWriteInit() {
 #endif
 }
 
-// write to flash - len in bytes. Start at 256b boundary, write 256b
-void swdPY32FlashWrite(uint32_t addr, uint32_t *buf, int len) {
+// write to flash - len in bytes. Start at 256b boundary, write up to 256b (pads remainder with 0xFF)
+void swdPY32FlashWritePage(uint32_t addr, uint32_t *buf, int len) {
   swdPY32Unlock();
   swdPY32WaitFlashBusy();
   swdWriteMem(0x40022014, 0x00000001); // FLASH_CR PG
-  for (int i=0;i<len;i+=4) {
-    if (((i>>2)&63)==63) // set PGSTART before final word
+  int wordLen = len>>2;
+  for (int i=0;i<64;i++) {
+    if (i==63) // set PGSTART before final word
       swdWriteMem(0x40022014, 0x00080001); // FLASH_CR PG + PGSTRT
-    swdWriteMem(addr+i, buf[i>>2]); // write data
+    if (i<wordLen) swdWriteMem(addr, buf[i]); // write data
+    else swdWriteMem(addr, 0xFFFFFFFF); // write data
+    addr += 4;
   }
   swdPY32WaitFlashBusy();
   swdWriteMem(0x40022014, 0x00000000); // FLASH_CR disable write bit
+}
+
+// write to flash - len in bytes. Must start at 256b boundary, but no size limit
+void swdPY32FlashWrite(uint32_t addr, uint32_t *buf, int len) {
+  while (len>0) {
+    int wrlen = len;
+    if (wrlen>256) wrlen=256;
+    swdPY32FlashWritePage(addr, buf, wrlen);
+    addr += wrlen;
+    buf += wrlen>>2;
+    len -= wrlen;
+  }
+}
+
+void swdHalt() {
+  // halt the core
+  // Bit 0 (C_DEBUGEN) = 1 (Enable Debugging)
+  // Bit 1 (C_HALT)    = 1 (Halt Core)
+  swdWriteMem(0xE000EDF0, 0xA05F0003); // DHCSR
+}
+
+void swdResume() {
+  swdWriteMem(0xE000EDF0, 0xA05F0001); // DHCSR resume
 }
 
 void swdInit() {
@@ -328,7 +357,7 @@ void swdInit() {
   lcd_print("ID ");
   lcd_print_hex(idcode);
   lcd_println("");
-#ifdef BANGLEJS3 // this is to program the PY32
+
   // bring up SWD
   swdWrite(SWDTX_DP|SWDTX_DP_CTRL_STAT, 0x50000000); // CDBGPWRUPREQ | CSYSPWRUPREQ
   // Poll CTRL/STAT until both Acknowledge bits are set
@@ -346,41 +375,12 @@ void swdInit() {
   // Initialize MEM-AP CSW register (32-bit width, auto-increment off or on)
   swdWrite(SWDTX_DP|SWDTX_DP_SELECT, 0x00000000); // Select AP 0, Bank 0
   swdWrite(SWDTX_AP|SWDTX_AP_CSW, 0x23000002); // Set CSW: 32-bit access width
-  // halt the core
-  // Bit 0 (C_DEBUGEN) = 1 (Enable Debugging)
-  // Bit 1 (C_HALT)    = 1 (Halt Core)
-  swdWriteMem(0xE000EDF0, 0xA05F0003); // DHCSR
 
-  swdReadMem(0);
-  swdReadMem(4);
-  swdReadMem(8);
-  jsiConsolePrintf("Erase\n");
-  swdPY32FlashErase();
-  jsiConsolePrintf("Read\n");
-  swdReadMem(0);
-  swdReadMem(4);
-  swdReadMem(8);
-  swdReadMem(128);
-  jsiConsolePrintf("Write\n");
-  swdPY32FlashWriteInit();
-  uint32_t b[64] = { 0x1234, 0x4567, 0x89AB, 0xCDEF };
-  swdPY32FlashWrite(0x08000000, b, sizeof(b));
-  jsiConsolePrintf("Read\n");
-  swdReadMem(0);
-  swdReadMem(4);
-  swdReadMem(8);
-  swdReadMem(128);
-  swdReadMem(0x20000000);
-  swdWriteMem(0x20000000,0xDEADBEEF);
-  swdReadMem(0x20000000);
-
-  swdWriteMem(0xE000EDF0, 0xA05F0001); // DHCSR resume
-#endif
-
-
-  nrfAbort(); // this initialises the interface
+  //nrfAbort(); // this initialises the interface
   //nrfHalt();
 }
+
+
 
 
 void swdKill() {
