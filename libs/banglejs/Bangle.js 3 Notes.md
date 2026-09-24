@@ -173,7 +173,7 @@ rw 0x08000000
 
 ## WiFi
 
-Using ESP8684H4X
+Using ESP8684H4X - 4MB flash
 
 Firmware is ESP32C2-AT from https://github.com/espressif/esp-at/releases
 
@@ -275,12 +275,16 @@ V7.set();w.startOutput(B8,4000);
 * WiFi https: requests
 * Speaker via analogWrite
 * Recovery menu in py32
+* nRF54 can reflash py32 over SWD
 
 ## TODO
 
-* Occasional LCD glitches rows when scrolling
-* Touchscreen sometimes glitches (I2C error?)
-* Add SWD to nRF54 for reflashing py32
+* Check Vibration motor
+* Check PY32 version number at boot and update firmware if it doesn't match (current code doesn't work)
+* Customise ESP-AT partitions to add `ota_1`, and also a Bangle.js factory firmware partition (`esp-at.bin`=1.3MB, but ota_0 is 3.8MB)
+* Create minimal nRF54 code that runs in RAM and uses `AT+SYSFLASH=2,"<partition_name>",<offset>,<length>` on the ESP32 to read flash and stream it into nRF54 flash
+* Include minimal nRF54 code in PY32 firmware, ensure recovery mode menu option writes that code to RAM and boots the nRF54 into it
+* Fix Occasional LCD glitches rows when scrolling
 * Gyro event
 * Pressure sensor
 * BME690 gas sensing
@@ -289,6 +293,10 @@ V7.set();w.startOutput(B8,4000);
 * LCD update speed (12fps currently)
 * WiFi (Use `AT+CIPRECVMODE=1` for flow control)
 * ... much more
+
+## Nice to have
+
+* During PY32 firmware update, we could upload code to PY32 RAM that showed progress on the LCD
 
 ## Testing
 

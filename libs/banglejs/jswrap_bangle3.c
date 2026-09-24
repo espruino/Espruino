@@ -105,7 +105,7 @@ int jshPY32Update(PY32Command cmd, int data) {
   if (inputState & PY32_IN_TOUCH_IRQ)
     jswrap_banglejs_touchHandler(0,0); // touch handler IRQ
   if (inputState & PY32_REDRAW_REQUEST)
-    graphicsSetModified(&graphicsInternal,0,0,LCD_WIDTH,LCD_HEIGHT); // PY32 wants a redraw
+    graphicsSetModified(&graphicsInternal,0,0,LCD_WIDTH-1,LCD_HEIGHT-1); // PY32 wants a redraw
   uint16_t changed = lastState ^ sxValues;
   //jsiConsolePrintf("I %02x %02x %02x  %x %x upd(%d,%d)\n", buf[0],buf[1],buf[2],sxValues, changed, cmd, data);
   if (changed & 15) {
@@ -379,7 +379,7 @@ void jswrap_banglejs_lcdUpdateFirmware() {
   jshDelayMicroseconds(1000000); // wait 1s for reboot
   jshPY32Update(PY32_CMD_NONE, 0); // dummy write
   // Force a redraw next time around idle loop
-  graphicsSetModified(&graphicsInternal,0,0,LCD_WIDTH,LCD_HEIGHT);
+  graphicsSetModified(&graphicsInternal,0,0,LCD_WIDTH-1,LCD_HEIGHT-1);
   jsiConsolePrintf("Done\n");
 
   /* pyocd
