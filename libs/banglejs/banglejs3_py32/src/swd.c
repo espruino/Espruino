@@ -151,29 +151,35 @@ uint32_t swdReadBits(int bits) {
 
 // Perform an SWD transfer depending on the flags. true on success
 bool swdTransfer(SWD_TX_Flags flags, uint32_t *data) {
-  bool parity = (((flags&SWDTX_APnDP)?1:0) ^
-                 ((flags&SWDTX_RnW)?1:0) ^
-                 ((flags&SWDTX_A1)?1:0) ^
-                 ((flags&SWDTX_A2)?1:0));
-  flags |= SWDTX_START | (parity ? SWDTX_PARITY : 0) | SWDTX_PARK;
-  swdWriteBits(flags, 8);
-  int response = swdReadBits(3);
-  if (response == 1) {
-    if (flags & SWDTX_RnW) { // Read 32 bits from SWD
-      *data = swdReadBits(32);
-      if (swdReadBits(1) == swdParity(*data)) {
+  int retries = 100;
+  int response = 2;
+  while (response==2 && retries>0) {
+    retries--;
+    bool parity = (((flags&SWDTX_APnDP)?1:0) ^
+                  ((flags&SWDTX_RnW)?1:0) ^
+                  ((flags&SWDTX_A1)?1:0) ^
+                  ((flags&SWDTX_A2)?1:0));
+    flags |= SWDTX_START | (parity ? SWDTX_PARITY : 0) | SWDTX_PARK;
+    swdWriteBits(flags, 8);
+    response = swdReadBits(3);
+    if (response == 1) {
+      if (flags & SWDTX_RnW) { // Read 32 bits from SWD
+        *data = swdReadBits(32);
+        if (swdReadBits(1) == swdParity(*data)) {
+          swdWriteBits(0, 1);
+          return true;
+        }
+      } else { // Writing 32 bits to SWD
+        swdWriteBits(*data, 32);
+        swdWriteBits(swdParity(*data), 1);
         swdWriteBits(0, 1);
         return true;
       }
-    } else { // Writing 32 bits to SWD
-      swdWriteBits(*data, 32);
-      swdWriteBits(swdParity(*data), 1);
-      swdWriteBits(0, 1);
-      return true;
     }
+    if (response!=2) jsiConsolePrintf("SWD ERR %d\n", response);
+    swdWriteBits(0, 32); // send reset on failure
   }
-  jsiConsolePrintf("FAULT %d\n", response);
-  swdWriteBits(0, 32); // send reset on failure
+  if (retries==0) jsiConsolePrintf("SWD ERR %d (timeout)\n", response);
   return false;
 }
 
@@ -287,14 +293,16 @@ void swdPY32FlashWriteInit() {
 #endif
 }
 
-// write to flash - len in bytes. Start at 128b boundary, write 128b
+// write to flash - len in bytes. Start at 256b boundary, write 256b
 void swdPY32FlashWrite(uint32_t addr, uint32_t *buf, int len) {
   swdPY32Unlock();
   swdPY32WaitFlashBusy();
   swdWriteMem(0x40022014, 0x00000001); // FLASH_CR PG
-  for (int i=0;i<len;i+=4)
+  for (int i=0;i<len;i+=4) {
+    if (((i>>2)&63)==63) // set PGSTART before final word
+      swdWriteMem(0x40022014, 0x00080001); // FLASH_CR PG + PGSTRT
     swdWriteMem(addr+i, buf[i>>2]); // write data
-  swdWriteMem(0x40022014, 0x00080001); // FLASH_CR PGSTRT
+  }
   swdPY32WaitFlashBusy();
   swdWriteMem(0x40022014, 0x00000000); // FLASH_CR disable write bit
 }
@@ -338,8 +346,11 @@ void swdInit() {
   // Initialize MEM-AP CSW register (32-bit width, auto-increment off or on)
   swdWrite(SWDTX_DP|SWDTX_DP_SELECT, 0x00000000); // Select AP 0, Bank 0
   swdWrite(SWDTX_AP|SWDTX_AP_CSW, 0x23000002); // Set CSW: 32-bit access width
+  // halt the core
+  // Bit 0 (C_DEBUGEN) = 1 (Enable Debugging)
+  // Bit 1 (C_HALT)    = 1 (Halt Core)
+  swdWriteMem(0xE000EDF0, 0xA05F0003); // DHCSR
 
-  /*
   swdReadMem(0);
   swdReadMem(4);
   swdReadMem(8);
@@ -349,18 +360,23 @@ void swdInit() {
   swdReadMem(0);
   swdReadMem(4);
   swdReadMem(8);
+  swdReadMem(128);
   jsiConsolePrintf("Write\n");
   swdPY32FlashWriteInit();
-  uint32_t b[32] = { 0x1234, 0x4567, 0x89AB, 0xCDEF };
-  swdPY32FlashWrite(0x08000000, b, sizeof(b)); // this does not appear to work yet
+  uint32_t b[64] = { 0x1234, 0x4567, 0x89AB, 0xCDEF };
+  swdPY32FlashWrite(0x08000000, b, sizeof(b));
   jsiConsolePrintf("Read\n");
   swdReadMem(0);
   swdReadMem(4);
   swdReadMem(8);
+  swdReadMem(128);
   swdReadMem(0x20000000);
   swdWriteMem(0x20000000,0xDEADBEEF);
-  swdReadMem(0x20000000);*/
+  swdReadMem(0x20000000);
+
+  swdWriteMem(0xE000EDF0, 0xA05F0001); // DHCSR resume
 #endif
+
 
   nrfAbort(); // this initialises the interface
   //nrfHalt();
