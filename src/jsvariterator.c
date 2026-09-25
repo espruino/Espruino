@@ -41,6 +41,10 @@ bool jsvIterateCallback(
     if (jsvIsFunction(callbackVar)) {
       JsVar *result = jspExecuteFunction(callbackVar,0,0,NULL);
       jsvUnLock(callbackVar);
+      if (jspIsInterrupted()) {
+        jsvUnLock(result);
+        return false;
+      }
       if (result) {
         bool r = jsvIterateCallback(result, callback, callbackData);
         jsvUnLock(result);

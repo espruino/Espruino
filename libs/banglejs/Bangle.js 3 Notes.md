@@ -149,9 +149,31 @@ PF6    - Vibration EN                              => V8
 PF9    - NC
 ```
 
+If the PY32 flash gets corrupted such that the vector table is broken, pyocd can refuse to write it. If so,
+you need to manually start pyocd without the device type specified (so it defaults to generic Cortex-M)
+and poke the registers to erase all.
+
+```
+sudo pyocd commander
+# unlock
+rw 0x40022014
+ww 0x40022008 0x45670123
+ww 0x40022008 0xCDEF89AB
+rw 0x40022014
+# erase (rw 0x40022010=1 means busy)
+rw 0x40022010
+ww 0x40022014 0x00000004
+ww 0x08000000 0x12344321
+rw 0x40022010
+ww 0x40022014 0x00000000
+# check if erased
+rw 0x08000000
+# should be ffffffff
+```
+
 ## WiFi
 
-Using ESP8684H4X
+Using ESP8684H4X - 4MB flash
 
 Firmware is ESP32C2-AT from https://github.com/espressif/esp-at/releases
 
@@ -253,22 +275,28 @@ V7.set();w.startOutput(B8,4000);
 * WiFi https: requests
 * Speaker via analogWrite
 * Recovery menu in py32
+* nRF54 can reflash py32 over SWD
 
 ## TODO
 
-* Passing button status while also updating screen
-* Touchscreen sometimes misses lift events (touch IRQ has been missed by PY32)
-  * To fix, change display update so we send an SPI display update packet first, and *then* the data
-* JS Timeout when going to launcher?
-* Add SWD to nRF54 for reflashing py32
+* Check Vibration motor
+* Check PY32 version number at boot and update firmware if it doesn't match (current code doesn't work)
+* Customise ESP-AT partitions to add `ota_1`, and also a Bangle.js factory firmware partition (`esp-at.bin`=1.3MB, but ota_0 is 3.8MB)
+* Create minimal nRF54 code that runs in RAM and uses `AT+SYSFLASH=2,"<partition_name>",<offset>,<length>` on the ESP32 to read flash and stream it into nRF54 flash
+* Include minimal nRF54 code in PY32 firmware, ensure recovery mode menu option writes that code to RAM and boots the nRF54 into it
+* Fix Occasional LCD glitches rows when scrolling
 * Gyro event
 * Pressure sensor
 * BME690 gas sensing
 * Microphone (analogRead in ISR, plus ranging)
 * Wrap Waveform handling to allow sounds to be played more easily
-* LCD update speed (12fps currently, not async)
+* LCD update speed (12fps currently)
 * WiFi (Use `AT+CIPRECVMODE=1` for flow control)
 * ... much more
+
+## Nice to have
+
+* During PY32 firmware update, we could upload code to PY32 RAM that showed progress on the LCD
 
 ## Testing
 

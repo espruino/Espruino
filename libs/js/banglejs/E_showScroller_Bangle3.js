@@ -43,10 +43,11 @@ var drawTimeout, draw = () => {
     if (drawTimeout) clearTimeout(drawTimeout);
     drawTimeout = setTimeout(function scrollOn() {
       drawTimeout=undefined;
+      if (!s.isActive()) return; // may have been killed mid-animation
       var scroll = getScrollAmt();
       if (!scroll) return;
       ui.drag({dy:scroll});
-      setTimeout(scrollOn,20);
+      drawTimeout = setTimeout(scrollOn,20);
     }, 20);
   }
 };

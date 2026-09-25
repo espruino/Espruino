@@ -1,10 +1,28 @@
+/*
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ * Copyright (C) 2026 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * Constants/types for LCD driver firmware for Bangle.js 3
+ * ----------------------------------------------------------------------------
+ */
+#ifndef PY32_CONST_H
+#define PY32_CONST_H
+
 #define LCD_VERSION "0.06"
+#define LCD_VERSION_BYTE 0x06
 
 // See ../../Bangle.js 3 Notes.md for pin assignments
 typedef enum {
   PY32_CMD_NONE,
   PY32_CMD_SET_OUTPUT,
-  PY32_CMD_DISPLAY
+  PY32_CMD_DISPLAY,
+  PY32_CMD_INITIALISE = 0xFF // this isn't sent but is replaced by PY32_CMD_NONE jshPY32Update. We use this to do a bigger SPI read that normal and get version info
 } PY32Command;
 /*
 PY32_CMD_NONE:
@@ -47,3 +65,5 @@ typedef enum {
 
 #define PY32_TIMEOUT_MS(ms) (ms*400/1000)
 #define PY32_4BTN_REBOOT_DELAY PY32_TIMEOUT_MS(10000) // how long do we hold 4 buttons down for before PY32 issues a reboot?
+
+#endif// PY32_CONST_H

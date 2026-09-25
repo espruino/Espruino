@@ -102,9 +102,8 @@ const struct device *serial2_dev = DEVICE_DT_GET(DT_NODELABEL(uart21));
 #if ESPR_SPI_COUNT>0
 const struct device *spi1_dev = DEVICE_DT_GET(DT_NODELABEL(spi30));
 #endif
-const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
+const struct device *intflash_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller)); // on spi00
 const struct device *extflash_dev = DEVICE_DT_GET(FLASH_NODE);
-const struct device *qspi_dev = DEVICE_DT_GET(DT_NODELABEL(sqspi)); // for extflash
 const struct device *utiltimer_dev = DEVICE_DT_GET(DT_NODELABEL(timer00));
 const struct device *adc_dev = DEVICE_DT_GET(DT_NODELABEL(adc));
 #if ESPR_HAS_PWM
@@ -674,25 +673,42 @@ void jshUSARTKick(IOEventFlags device) {
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 }
 
+static void jshSPISendManyCallback(const struct device *dev, int result, void *data) {
+  if (result < 0) {
+    // Handle SPI bus runtime or hardware failure
+    jsWarn("SPI err %d\n",result);
+  }
+  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI when done
+  void (*callback)() = data;
+  callback();
+}
+
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
 #if ESPR_SPI_COUNT>0
-  struct spi_buf tx_buf = { .buf = tx, .len = count  };
-  struct spi_buf rx_buf = { .buf = rx, .len = count  };
-  struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
-  struct spi_buf_set rx_set = { .buffers = &rx_buf, .count = 1 };
+  static struct spi_buf tx_buf, rx_buf;
+  static struct spi_buf_set tx_set = { .buffers = &tx_buf, .count = 1 };
+  static struct spi_buf_set rx_set = { .buffers = &rx_buf, .count = 1 };
+  tx_buf.buf = tx;
+  tx_buf.len = count;
+  rx_buf.buf = rx;
+  rx_buf.len = count;
   int err;
   pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_RESUME); // restart SPI
-  if (rx) err = spi_transceive(spi1_dev, &spi1_config, &tx_set, &rx_set);
-  else err = spi_write(spi1_dev, &spi1_config, &tx_set);
+  if (callback) { // we can be async
+    if (rx) err = spi_transceive_cb(spi1_dev, &spi1_config, &tx_set, &rx_set, jshSPISendManyCallback, callback);
+    else err = spi_transceive_cb(spi1_dev, &spi1_config, &tx_set, NULL, jshSPISendManyCallback, callback);
+  } else {
+    if (rx) err = spi_transceive(spi1_dev, &spi1_config, &tx_set, &rx_set);
+    else err = spi_write(spi1_dev, &spi1_config, &tx_set);
+  }
   if (err < 0) {
       // Handle SPI bus runtime or hardware failure
       jsWarn("SPI err %d\n",err);
       return false;
   }
-  pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI when done
-
-  // FIXME use spi_transceive_cb for async writes (and use CONFIG_SPI_ASYNC=y)
-  if (callback) callback();
+  if (!callback) // not async. async uses jshSPISendManyCallback
+    pm_device_action_run(spi1_dev, PM_DEVICE_ACTION_SUSPEND); // stop SPI when done
+  // FIXME use spi_transceive_cb for async writes (and use =y)
 #endif
   return true;
 }
@@ -739,7 +755,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
 
   if (extflashEnabled) { // FIXME: do we sleep flash if timeUntilWake < ???
     pm_device_action_run(extflash_dev, PM_DEVICE_ACTION_SUSPEND);
-    pm_device_action_run(qspi_dev, PM_DEVICE_ACTION_SUSPEND);
     extflashEnabled = false;
   }
 
@@ -810,7 +825,6 @@ const struct device *jshFlashGetDevice(uint32_t *addr) {
     *addr -= SPIFLASH_BASE;
     flash = extflash_dev;
     if (!extflashEnabled) {
-      pm_device_action_run(qspi_dev, PM_DEVICE_ACTION_RESUME);
       pm_device_action_run(extflash_dev, PM_DEVICE_ACTION_RESUME);
       extflashEnabled = true;
     }

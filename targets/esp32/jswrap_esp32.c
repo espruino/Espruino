@@ -358,6 +358,7 @@ following fields:
 * `BLE` - Status of BLE, enabled if true.
 * `Wifi` - Status of Wifi, enabled if true.
 * `minHeap` - Minimum heap, calculated by heap_caps_get_minimum_free_size
+* `largestBlock` - Maximum block size that can be allocated (due to fragmentation)
 
 */
 JsVar *jswrap_ESP32_getState() {
@@ -369,6 +370,7 @@ JsVar *jswrap_ESP32_getState() {
   jsvObjectSetBoolChild(esp32State, "BLE", ESP32_Get_NVS_Status(ESP_NETWORK_BLE));
   jsvObjectSetBoolChild(esp32State, "Wifi", ESP32_Get_NVS_Status(ESP_NETWORK_WIFI));
   jsvObjectSetIntChild(esp32State, "minHeap", heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
+  jsvObjectSetIntChild(esp32State, "largestBlock", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
   return esp32State;
 } // End of jswrap_ESP32_getState
 

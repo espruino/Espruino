@@ -66,7 +66,7 @@
 
 /* Software QSPI using the FLPR */
 &pinctrl {
-	sqspi_default: sqspi_default {
+/*	sqspi_default: sqspi_default {
 		group1 {
 			psels = <NRF_PSEL(SDP_MSPI_SCK, 2, 1)>,
 				<NRF_PSEL(SDP_MSPI_CS0, 2, 5)>,
@@ -93,37 +93,23 @@
 				<NRF_PSEL(SDP_MSPI_DQ2, 2, 3)>,
 				<NRF_PSEL(SDP_MSPI_DQ3, 2, 0)>;
 		};
+	};*/
+
+	/* SPI flash */
+	/omit-if-no-ref/ spi00_default: spi00_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 2, 1)>,
+				<NRF_PSEL(SPIM_MOSI, 2, 2)>,
+				<NRF_PSEL(SPIM_MISO, 2, 4)>;
+		};
 	};
-};
 
-&cpuflpr_vpr {
-	pinctrl-0 = <&sqspi_default>;
-	pinctrl-1 = <&sqspi_sleep>;
-	pinctrl-names = "default", "sleep";
-	interrupts = <76 NRF_DEFAULT_IRQ_PRIORITY>;
-	status = "okay";
-};
-
-/ {
-	reserved-memory {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges;
-
-		softperipheral_ram: memory@2003c000 {
-			reg = <0x2003c000 0x4000>;
-			ranges = <0 0x2003c000 0x4000>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			sqspi: sqspi@3b40 {
-				compatible = "nordic,nrf-sqspi";
-				#address-cells = <1>;
-				#size-cells = <0>;
-				reg = <0x3b40 0x200>;
-				status = "okay";
-				zephyr,pm-device-runtime-auto;
-			};
+	/omit-if-no-ref/ spi00_sleep: spi00_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 2, 1)>,
+				<NRF_PSEL(SPIM_MOSI, 2, 2)>,
+				<NRF_PSEL(SPIM_MISO, 2, 4)>;
+			low-power-enable;
 		};
 	};
 };
@@ -176,14 +162,21 @@ sfdp-ff84 = [
 jedec-id = [0b 65 1a];
 */
 
-&sqspi {
+&spi00 {
+	status = "okay";
+	pinctrl-0 = <&spi00_default>;
+	pinctrl-1 = <&spi00_sleep>;
+	pinctrl-names = "default", "sleep";
+	cs-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>;
+
 	extflash: extflash@0 {
 		// our part is the XTX XT25W512BWSIGA
-		compatible = "mxicy,mx25r", "jedec,mspi-nor";
+		compatible = "jedec,spi-nor";
 		status = "okay";
-		reg = <0>;
+		reg = <0 DT_SIZE_M(64)>; /* 512 Mbit / 64 MB */
+                size = <536870912>; /* 512 Mbit / 64 MB */
+		spi-max-frequency = <32000000>;
 		jedec-id = [0b 65 1a];
-		quad-enable-requirements = "S2B1v1";
 		/* Basic Flash Parameter Table (BFPT) 9-word / 36-byte array for 64Mbit NOR */
 		sfdp-bfp = [
 			e5 20 fb ff  ff ff ff 1f  44 eb 08 6b  08 3b 80 bb
@@ -191,21 +184,23 @@ jedec-id = [0b 65 1a];
 			10 d8 00 ff  4f c2 11 ff  82 e4 14 62  a8 cc 68 46
 			7a 75 7a 75  f7 c7 d5 5c  19 b6 4d ff  e8 50 f9 a5
 		];
-		size = <536870912>; /* 512 Mbit / 64 MB */
-		has-dpd;
-		t-enter-dpd = <10000>;
-		t-exit-dpd = <35000>;
-		t-reset-pulse = <10000>;
-		t-reset-recovery = <35000>;
-
-		mspi-max-frequency = <DT_FREQ_M(8)>; // 16+ doesn't work
-		//mspi-io-mode = "MSPI_IO_MODE_QUAD_1_4_4"; // works for reads, but not writes
-		mspi-io-mode = "MSPI_IO_MODE_QUAD_1_1_4";
-		//mspi-io-mode = "MSPI_IO_MODE_SINGLE"; // fallback
-		mspi-data-rate = "MSPI_DATA_RATE_SINGLE";
-		mspi-hardware-ce-num = <1>;
-		mspi-cpp-mode = "MSPI_CPP_MODE_0";
-		mspi-endian = "MSPI_BIG_ENDIAN";
-		mspi-ce-polarity = "MSPI_CE_ACTIVE_LOW";
 	};
+};
+
+&gpio2 {
+/* Force WP pin (P2.03) to output high permanently */
+    wp_hog {
+        gpio-hog;
+        gpios = <3 GPIO_ACTIVE_HIGH>;
+        output-high;
+        line-name = "flash-wp-high";
+    };
+
+    /* Force HOLD/RESET pin (P2.00) to output high permanently */
+    hold_hog {
+        gpio-hog;
+        gpios = <0 GPIO_ACTIVE_HIGH>;
+        output-high;
+        line-name = "flash-hold-high";
+    };
 };
