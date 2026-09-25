@@ -28,6 +28,7 @@
 #include "esp_event.h"
 #include "mdns.h"
 #include "ping/ping.h"
+#include "ping/ping_sock.h"
 #include "esp_ping.h"
 #include "esp_sntp.h"
 #include "esp_mac.h"
@@ -1597,8 +1598,57 @@ void jswrap_wifi_setHostname(JsVar *jsHostname, JsVar *jsCallback) {
   }
 }
 
-static uint8_t seq_no;
+static uint8_t g_seq_no;
+#if ESP_IDF_VERSION_MAJOR >= 5
+// Helper function to build the Espruino JS object from IDF5 profiles
+static void emit_espruino_ping_event(esp_ping_handle_t hdl, uint32_t elapsed_time) {
+    if (g_jsPingCallback == NULL) return;
 
+    uint32_t transmitted = 0;
+    uint32_t received = 0;
+    uint32_t total_time_ms = 0;
+    uint32_t bytes_received = 0;
+
+    esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &bytes_received, sizeof(bytes_received));
+
+    JsVar *jsPingResponse = jsvNewObject();
+    
+    jsvObjectSetIntChild(jsPingResponse, "totalCount", transmitted);
+    jsvObjectSetIntChild(jsPingResponse, "totalBytes", received * bytes_received); 
+    jsvObjectSetIntChild(jsPingResponse, "totalTime", total_time_ms);
+    jsvObjectSetIntChild(jsPingResponse, "respTime", elapsed_time);
+    jsvObjectSetIntChild(jsPingResponse, "seqNo", ++g_seq_no);
+    jsvObjectSetIntChild(jsPingResponse, "timeoutCount", (transmitted > received) ? (transmitted - received) : 0);
+    jsvObjectSetIntChild(jsPingResponse, "bytes", bytes_received);
+    jsvObjectSetIntChild(jsPingResponse, "error", (transmitted > received) ? (transmitted - received) : 0);
+
+    JsVar *params[1];
+    params[0] = jsPingResponse;
+    jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
+
+    jsvUnLock(jsPingResponse);
+}
+
+// IDF v5 Callback: Executed on successful ICMP Echo Reply
+static void esp5_ping_on_success(esp_ping_handle_t hdl, void *args) {
+    uint32_t elapsed_time = 0;
+    esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
+    emit_espruino_ping_event(hdl, elapsed_time);
+}
+
+// IDF v5 Callback: Executed if a packet drops or times out
+static void esp5_ping_on_timeout(esp_ping_handle_t hdl, void *args) {
+    emit_espruino_ping_event(hdl, 0); 
+}
+
+// IDF v5 Callback: Executed when 'ping_count' runs out or session stops
+static void esp5_ping_on_end(esp_ping_handle_t hdl, void *args) {
+    esp_ping_delete_session(hdl);
+}
+#else
 esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
 	//printf("AvgTime:%.1fmS Sent:%d Rec:%d Err:%d min(mS):%d max(mS):%d ",
   //(float)pf->total_time/pf->recv_count, pf->send_count, pf->recv_count, pf->err_count, pf->min_time, pf->max_time );
@@ -1610,7 +1660,7 @@ esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
     jsvObjectSetIntChild(jsPingResponse, "totalTime", pingResp->total_time);
     jsvObjectSetIntChild(jsPingResponse, "respTime", pingResp->resp_time);
     // don't have a sequence
-    jsvObjectSetIntChild(jsPingResponse, "seqNo", ++seq_no);
+    jsvObjectSetIntChild(jsPingResponse, "seqNo", ++g_seq_no);
     jsvObjectSetIntChild(jsPingResponse, "timeoutCount", pingResp->timeout_count);
     jsvObjectSetIntChild(jsPingResponse, "bytes", pingResp->bytes);
     jsvObjectSetIntChild(jsPingResponse, "error", pingResp->err_count);
@@ -1619,44 +1669,39 @@ esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
     jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
     jsvUnLock(jsPingResponse);
   }
-	return ESP_OK;
+  return ESP_OK;
 }
+#endif
 
 void jswrap_wifi_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
 ) {
-  // If the parameter is a string, get the IP address from the string
-  // representation.
+  // If the parameter is a string, get the IP address from the string representation.
   ip4_addr_t ip;
   if (jsvIsString(ipAddr)) {
     char ipString[20];
     jsvGetString(ipAddr, ipString, sizeof(ipString)-1);
     ip.addr = networkParseIPAddress(ipString);
     if (ip.addr == 0) {
-        jsExceptionHere(JSET_ERROR, "Not a valid IP address");
+      jsExceptionHere(JSET_ERROR, "Not a valid IP address");
       return;
     }
-  } else
-  // If the parameter is an integer, treat it as an IP address.
-  if (jsvIsInt(ipAddr)) {
+  } else if (jsvIsInt(ipAddr)) { // If the parameter is an integer, treat it as an IP address.
     ip.addr = jsvGetInteger(ipAddr);
-  } else
-  // The parameter was neither a string nor an IP address and hence we don't
-  // know how to get the IP address of the partner to ping so throw an
-  // exception.
-  {
-      jsExceptionHere(JSET_ERROR, "IP address must be string or integer");
+  } else { // Invalid parameter type
+    jsExceptionHere(JSET_ERROR, "IP address must be string or integer");
     return;
   }
 
+  // Validate and handle the callback binding
   if (jsvIsUndefined(pingCallback) || jsvIsNull(pingCallback)) {
     if (g_jsPingCallback != NULL) {
       jsvUnLock(g_jsPingCallback);
     }
     g_jsPingCallback = NULL;
   } else if (!jsvIsFunction(pingCallback)) {
-      jsExceptionHere(JSET_ERROR, "Callback is not a function");
+    jsExceptionHere(JSET_ERROR, "Callback is not a function");
     return;
   } else {
     if (g_jsPingCallback != NULL) {
@@ -1671,16 +1716,48 @@ void jswrap_wifi_ping(
   uint32_t ping_count = 5;  //how many pings per report
   uint32_t ping_timeout = 1000; //mS till we consider it timed out
   uint32_t ping_delay = 500; //mS between pings
+
+#if ESP_IDF_VERSION_MAJOR < 5
   esp_ping_set_target(PING_TARGET_IP_ADDRESS_COUNT, &ping_count, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_RCV_TIMEO, &ping_timeout, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_DELAY_TIME, &ping_delay, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_IP_ADDRESS, &ip.addr, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_RES_FN, &pingResults, sizeof(pingResults));
-  seq_no=0;
-  #if ESP_IDF_VERSION_MAJOR < 5
+  g_seq_no = 0;
   ping_init();
-  #endif
+#else
+  esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
+  
+  // Create a clean LwIP container and map the parsed IPv4 address to it safely
+  ip_addr_t ping_target;
+  memset(&ping_target, 0, sizeof(ip_addr_t));
+#if defined(ip_addr_set_ip4val)
+  ip4_addr_t lwip_ip = { .addr = ip.addr };
+  ip_addr_set_ip4val(&ping_target, &lwip_ip);
+#else
+  // Native macro/struct copy assignment abstraction fallback
+  ping_target.addr = ip.addr; 
+#endif
+  // Assign the target container cleanly to the session configuration
+  ping_config.target_addr = ping_target;
+  ping_config.count = ping_count;
+  ping_config.timeout_ms = ping_timeout;
+  ping_config.interval_ms = ping_delay;
+  esp_ping_callbacks_t cbs = {
+    .on_ping_success = esp5_ping_on_success,
+    .on_ping_timeout = esp5_ping_on_timeout,
+    .on_ping_end = esp5_ping_on_end,
+    .cb_args = NULL
+  };
+  esp_ping_handle_t ping_handle;
+  if (esp_ping_new_session(&ping_config, &cbs, &ping_handle) == ESP_OK) {
+    esp_ping_start(ping_handle);
+  } else {
+    jsExceptionHere(JSET_ERROR, "Failed to initialize ping session");
+  }
+#endif
 }
+
 void jswrap_wifi_setSNTP(JsVar *jsServer, JsVar *jsZone) {
   if (!jsvIsString(jsZone)) {
     jsExceptionHere(JSET_ERROR, "Zone is not a string");
