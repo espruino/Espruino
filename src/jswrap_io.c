@@ -307,7 +307,7 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
   "name"     : "digitalWrite",
   "generate" : "jswrap_io_digitalWrite",
   "params"   : [
-    ["pin",   "JsVar","The pin to use"],
+    ["pin",   "JsVar","The pin to use (or an array of pins)"],
     ["value", "JsVar","Whether to write a high (true) or low (false) value"]
   ],
   "typescript" : "declare function digitalWrite(pin: Pin, value: boolean): void;"
@@ -324,7 +324,7 @@ reset pin's state to `"output"`
 
 If pin argument is an array of pins (e.g. `[A2,A1,A0]`) the value argument will
 be treated as an array of bits where the last array element is the least
-significant bit.
+significant bit. An array may contain 'undefined' for a pin to ignore that bit.
 
 In this case, pin values are set least significant bit first (from the
 right-hand side of the array of pins). This means you can use the same pin
@@ -351,9 +351,8 @@ void jswrap_io_digitalWrite(
     JsVarRef pinName = jsvGetLastChild(pinVar); // NOTE: start at end and work back!
     while (pinName) {
       JsVar *pinNamePtr = jsvLock(pinName);
-      JsVar *pinPtr = jsvSkipName(pinNamePtr);
-      jshPinOutput(jshGetPinFromVar(pinPtr), value&1);
-      jsvUnLock(pinPtr);
+      Pin p = jshGetPinFromVarAndUnLock(jsvSkipName(pinNamePtr));
+      if (p!=PIN_UNDEFINED) jshPinOutput(p, value&1);
       pinName = jsvGetPrevSibling(pinNamePtr);
       jsvUnLock(pinNamePtr);
       value = value>>1; // next bit down
@@ -581,7 +580,7 @@ void jswrap_io_shiftOutFastCallback(int val, void *data) {
   "name" : "shiftOut",
   "generate" : "jswrap_io_shiftOut",
   "params" : [
-    ["pins","JsVar","A pin, or an array of pins to use"],
+    ["pins","JsVar","A pin, or an array of pins to use. An array may contain 'undefined' for a pin to ignore that bit"],
     ["options","JsVar","Options, for instance the clock (see below)"],
     ["data","JsVar","The data to shift out (see `E.toUint8Array` for info on the forms this can take)"]
   ],
@@ -661,6 +660,13 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
 
 #ifndef SAVE_ON_FLASH
   bool fastMode = true;
+  uint32_t dummy; // if undefined, set to write to this var
+  JshGetPinAddressResult dummyPin = {
+    .in_addr = &dummy,
+    .set_addr = &dummy,
+    .clr_addr = &dummy,
+    .mask = 0
+  };
 #endif
   // Set pins as outputs
   int i;
@@ -671,7 +677,9 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
     }
     // on STM32, try and get the pin's output address
 #ifndef SAVE_ON_FLASH
-    fastMode &= jshGetPinAddress(d.pins[i], &d.pinAddrs[i]);
+    if (jshIsPinValid(d.pins[i]))
+      fastMode &= jshGetPinAddress(d.pins[i], &d.pinAddrs[i]);
+    else d.pinAddrs[i] = dummyPin; // otherwise allow fast mode by doing dummy write
 #endif
   }
 #ifndef SAVE_ON_FLASH
