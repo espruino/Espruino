@@ -394,7 +394,7 @@ JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *arg) {
   JsVar *endsWith = jsvObjectGetChildIfExists(parent, "endsWith");
   if (endsWith) {
     int idx = (int)jsvGetStringLength(arg) - (int)jsvGetStringLength(endsWith);
-    if ((lastIndex <= idx) && jsvCompareString(arg, endsWith, (size_t)idx,0,true)==0) {
+    if ((lastIndex <= idx) && jsvCompareString(arg, endsWith, (size_t)idx,0,false,false)==0) {
       JsVar *rmatch = jsvNewEmptyArray();
       jsvSetArrayItem(rmatch, 0, endsWith);
       jsvObjectSetIntChild(rmatch, "index", idx);

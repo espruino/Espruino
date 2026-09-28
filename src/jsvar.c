@@ -1679,7 +1679,7 @@ JsVar *jsvAsArrayIndex(JsVar *index) {
     if (jsvIsStringNumericStrict(index)) {
       JsVar *i = jsvNewFromInteger(jsvGetInteger(index));
       JsVar *is = jsvAsString(i);
-      if (jsvCompareString(index,is,0,0,false)==0) {
+      if (jsvCompareString(index,is,0,0,false,false)==0) {
         // two items are identical - use the integer
         jsvUnLock(is);
         return i;
@@ -2718,12 +2718,12 @@ bool jsvIsStringIEqual(JsVar *var, const char *str) {
 
 /** Compare 2 strings, starting from the given character positions. equalAtEndOfString means that
  * if one of the strings ends (even if the other hasn't), we treat them as equal.
- * For a basic strcmp, do: jsvCompareString(a,b,0,0,false)
+ * For a basic strcmp, do: jsvCompareString(a,b,0,0,false,false)
  *  */
-int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString) {
+int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfA, bool equalAtEndOfB) {
   JsvStringIterator ita;
   jsvStringIteratorNewUTF8(&ita, va, starta);
-  int r = jsvCompareStringIt(&ita, vb, startb, equalAtEndOfString);
+  int r = jsvCompareStringIt(&ita, vb, startb, equalAtEndOfA, equalAtEndOfB);
   jsvStringIteratorFree(&ita);
   return r;
 }
@@ -4025,7 +4025,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       return v;
     }
 
-    int cmp = jsvCompareString(da,db,0,0,false);
+    int cmp = jsvCompareString(da,db,0,0,false,false);
     jsvUnLock2(da, db);
     // use strings
     switch (op) {
