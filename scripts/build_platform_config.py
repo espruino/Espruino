@@ -517,6 +517,9 @@ if "VIBRATE" in board.devices:
 if "SPEAKER" in board.devices:
   codeOutDevicePins("SPEAKER", "SPEAKER")
 
+if "MIC" in board.devices:
+  codeOutDevicePins("MIC", "MIC")
+
 if "HEARTRATE" in board.devices:
   codeOutDevicePins("HEARTRATE", "HEARTRATE")
   if "addr" in board.devices["HEARTRATE"]:

@@ -74,6 +74,17 @@ P2.09    LiPo Charge detect
 P2.10    Torch RGB (neopixel)
 ```
 
+### nRF54 Peripherals
+
+* uart20  - SERIAL1 - debug port
+* uart21  - SERIAL2 - WiFi
+* spi00   - SPI flash
+* spi30   - LCD
+* timer00 - Util timer
+* timer22 - Speaker DMA timer(?)
+* pwm20   - PWM outputs
+* adc     - Mic/voltage
+
 ### Power usage debugging
 
 ```JS

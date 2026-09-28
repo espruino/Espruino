@@ -161,6 +161,10 @@ devices = { # 'V' pins are virtual
             'pin' : 'B8',
             'pin_en' : 'V7'
   },
+  'MIC' : {
+            'pin' : 'B12',
+            'pin_en' : 'B11'
+  },
   'ACCEL' : {
             'device' : 'LSM6DSOTR', 'addr' : 106,
             'pin_sda' : 'B5', 'pin_scl' : 'B4' # every other I2C device is on this too
