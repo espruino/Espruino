@@ -1400,7 +1400,7 @@ typedef struct {
 
 void jsiTabComplete_findCommon(void *cbdata, JsVar *key) {
   JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
-  if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, true)==0) {
+  if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, false,true)==0) {
     data->matches++;
     if (data->possible) {
       JsVar *v = jsvGetCommonCharacters(data->possible, key);
@@ -1414,7 +1414,7 @@ void jsiTabComplete_findCommon(void *cbdata, JsVar *key) {
 
 void jsiTabComplete_printCommon(void *cbdata, JsVar *key) {
   JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
-  if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, true)==0) {
+  if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, false,true)==0) {
     // Print, but do as 2 columns
     if (data->lineLength==0) {
       jsiConsolePrintf("%v",key);
@@ -1895,7 +1895,7 @@ static void jsiHandleConsoleChar(char ch) {
     if (ch=='\r' || ch==10) {
       JsVar *pwd = jsvObjectGetChildIfExists(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME);
       // check password
-      if (pwd && jsvCompareString(inputLine, pwd, 0, 0, false)==0)
+      if (pwd && jsvCompareString(inputLine, pwd, 0, 0, false,false)==0)
         jsiStatus &= ~JSIS_PASSWORD_PROTECTED;
       jsvUnLock(pwd);
       jsiClearInputLine(false);

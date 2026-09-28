@@ -114,7 +114,7 @@
 	};
 };
 
-&spi30 {
+&spi30 { /* for LCD */
    	status = "okay";
 	/* cs-gpios = <&gpio0 3 GPIO_ACTIVE_LOW>; */
 	pinctrl-0 = <&spi30_default>;

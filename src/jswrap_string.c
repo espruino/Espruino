@@ -215,7 +215,7 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
     while (jsvStringIteratorHasChar(&it)) {
       JsvStringIterator itclone;
       jsvStringIteratorClone(&itclone, &it);
-      int cmp = jsvCompareStringIt(&itclone, substring, 0, true);
+      int cmp = jsvCompareStringIt(&itclone, substring, 0, false, true);
       jsvStringIteratorFree(&itclone);
       if (cmp==0) {
         r = idx;
@@ -239,7 +239,7 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
   }
 
   for (;idx!=end;idx+=dir) {
-    if (jsvCompareString(parent, substring, (size_t)idx, 0, true)==0) {
+    if (jsvCompareString(parent, substring, (size_t)idx, 0, false, true)==0) {
       r = idx;
       break;
     }
@@ -606,7 +606,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 
   for (idx=0;idx<=l;idx++) {
     if (splitlen==0 && idx==0) continue; // special case for where split string is ""
-    if (idx==l || splitlen==0 || jsvCompareString(parent, split, (size_t)idx, 0, true)==0) {
+    if (idx==l || splitlen==0 || jsvCompareString(parent, split, (size_t)idx, 0, false, true)==0) {
       if (idx==l) {
         idx=l+splitlen; // if the last element, do to the end of the string
         if (splitlen==0) break;
@@ -832,7 +832,7 @@ bool jswrap_string_startsWith(JsVar *parent, JsVar *search, int position) {
   bool match = false;
   if (position >= 0 &&
       (int)jsvGetStringLength(searchStr)+position <= (int)jsvGetStringLength(parent))
-   match = jsvCompareString(parent, searchStr, (size_t)position,0,true)==0;
+   match = jsvCompareString(parent, searchStr, (size_t)position,0,false,true)==0;
   jsvUnLock(searchStr);
   return match;
 }
@@ -858,7 +858,7 @@ bool jswrap_string_endsWith(JsVar *parent, JsVar *search, JsVar *length) {
   bool match = false;
   if (position >= 0 &&
       (int)jsvGetStringLength(searchStr)+position <= (int)jsvGetStringLength(parent))
-    match = jsvCompareString(parent, searchStr, (size_t)position,0,true)==0;
+    match = jsvCompareString(parent, searchStr, (size_t)position,0,false,false)==0;
   jsvUnLock(searchStr);
   return match;
 }

@@ -41,6 +41,10 @@ bool jsvIterateCallback(
     if (jsvIsFunction(callbackVar)) {
       JsVar *result = jspExecuteFunction(callbackVar,0,0,NULL);
       jsvUnLock(callbackVar);
+      if (jspIsInterrupted()) {
+        jsvUnLock(result);
+        return false;
+      }
       if (result) {
         bool r = jsvIterateCallback(result, callback, callbackData);
         jsvUnLock(result);
@@ -940,7 +944,7 @@ void jsvIteratorClone(JsvIterator *dstit, JsvIterator *it) {
 }
 
 /** Compare 2 strings, See jsvCompareString - this version uses an existing iterator for the first string (does not free it, but does advance it) */
-int jsvCompareStringIt(JsvStringIterator *ita, JsVar *vb, size_t startb, bool equalAtEndOfString) {
+int jsvCompareStringIt(JsvStringIterator *ita, JsVar *vb, size_t startb, bool equalAtEndOfA, bool equalAtEndOfB) {
   JsvStringIterator itb;
   jsvStringIteratorNewUTF8(&itb, vb, startb);
   // step to first positions
@@ -949,7 +953,8 @@ int jsvCompareStringIt(JsvStringIterator *ita, JsVar *vb, size_t startb, bool eq
     int cb = jsvStringIteratorGetUTF8CharAndNext(&itb);
     if (ca != cb) {
       jsvStringIteratorFree(&itb);
-      if ((ca<0 || cb<0) && equalAtEndOfString) return 0;
+      if ((ca<0) && equalAtEndOfA) return 0;
+      if ((cb<0) && equalAtEndOfB) return 0;
       return ca - cb;
     }
     if (ca < 0) { // both equal, but end of string

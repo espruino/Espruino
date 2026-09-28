@@ -12,16 +12,30 @@ Badge.showRendering(function(g) { // Colors are: 0=black, 1=white, 2=yellow, 3=r
 });
 */
 (function(){
-global.LED_EN = D4;
-var i2c = new I2C();
-i2c.setup({sda:D5, scl:D6});
-
+const i2c = new I2C();
+const spi = SPI1;
 global.Badge = {
   i2c : i2c,
+  spi : spi,
   led_rgb : new Uint8Array(3*10), // RGB buffer for LEDs
-  epaperBusy : false
+  epaperBusy : false,
+  REV : 1.2 // PCB rev
 };
-require("neopixel").write(D20, Badge.led_rgb); // set all neopixels to off
+
+const LED_ON = (Badge.REV>1.0)?1:0;
+global.LED_EN = (Badge.REV>1.1)?D4:D20;
+global.LED_DATA = (Badge.REV>1.1)?D20:D21;
+
+i2c.setup({sda:D5, scl:D6});
+// ePaper
+spi.setup({ baud : 4000000, sck : D7, mosi: D8 });
+const CS = (Badge.REV>1.1)?D10:D4, DC = (Badge.REV>1.1)?D21:D10, RST = D1, BUSY = D0;
+const Source_BITS  = 800;
+const Gate_BITS   = 680;
+const ALLSCREEN_BYTES =  96000;
+
+
+require("neopixel").write(LED_DATA, Badge.led_rgb); // set all neopixels to off
 
 //i2c.readReg(0x38, 0,1); // AHT20
 //i2c.readReg(0x1E, 0,1); // KX022-1020
@@ -81,32 +95,25 @@ Badge.getAccel = function() {
 Badge.setLEDs = function(r,g,b) {
   var g = Graphics.createArrayBuffer(1,1,24,{color_order:"brg"}); // use 24 bit GFX to convert color types/strings
   var col = g.toColor(r,g,b);
-  if (col==0) return LED_EN.reset(); // LEDs off
-  LED_EN.set(); // LEDs on
+  if (col==0) return LED_EN.write(!LED_ON); // LEDs off
+  LED_EN.write(LED_ON); // LEDs on
   let arr = new Uint24Array(Badge.led_rgb.buffer);
   arr.fill(col);
-  require("neopixel").write(D20, Badge.led_rgb);
+  require("neopixel").write(LED_DATA, Badge.led_rgb);
 };
 
 /// Set LEDs individually. Supply 30-element RGB array, or 'undefined' uses Badge.led_rgb
 Badge.setLEDArray = function(arr) {
   if (arr!==undefined) Badge.led_rgb.set(arr);
-  LED_EN.set(); // LEDs on
-  require("neopixel").write(D20, Badge.led_rgb);
+  LED_EN.write(LED_ON); // LEDs on
+  require("neopixel").write(LED_DATA, Badge.led_rgb);
 };
 
 // ePaper
-const CS = D10, DC = D21, RST = D1, BUSY = D0; // BUSY keeps changing?
-const Source_BITS  = 800;
-const Gate_BITS   = 680;
-const ALLSCREEN_BYTES =  96000;
-
 CS.set();
 DC.set();
 RST.set();
 BUSY.read();
-var spi = SPI1;
-spi.setup({ baud : 4000000, sck : D7, mosi: D8 });
 
 // epaper: write command
 function eC(command) {
@@ -384,11 +391,11 @@ Badge.showImageFileRendering = function(filename, height, gfxCallback) {
 
 // Puts the badge to sleep, waiting to restart on a button press. The button can be read with ESP32.getWakeupPin()
 Badge.sleep = function() {
-  LED_EN.reset(); // LEDs off
+  LED_EN.write(!LED_ON); // LEDs off
   ESP32.deepSleepExt1([BTN1,BTN2],0); // wait for buttons
 };
 
-/// Connect to wifi using details in wifi.json ({"ssid":"--","option":{"password":"---"}}). Returns a promise which only completes on success (on failure an error screen is displayed)
+/// Connect to wifi using details in wifi.json ({"ssid":"--","options":{"password":"---"}},"backup_ssid":..,"backup_options":{}). Returns a promise which only completes on success (on failure an error screen is displayed)
 Badge.connectWiFi = function() {
   global.WIFI_INFO=require("Storage").readJSON("wifi.json",1)||{};
   if (!WIFI_INFO.ssid) {
@@ -400,10 +407,29 @@ Badge.connectWiFi = function() {
     require("Wifi").connect(WIFI_INFO.ssid, WIFI_INFO.options, function(err) {
       if (err) {
         console.log("WiFi error: "+err);
-        Badge.showError("WiFi error: "+err).then(() => {
-          Badge.sleep();
+        if (WIFI_INFO.backup_ssid !== undefined) {
+          console.log("Trying backup WiFi "+E.toJS(WIFI_INFO.backup_ssid));
+          return require("Wifi").connect(WIFI_INFO.backup_ssid, WIFI_INFO.backup_options, function(berr) {
+            if (berr) {
+              console.log("Backup WiFi error: "+berr);
+              return Badge.showError(`WiFi error: ${err}\nBackup WiFi error: ${berr}`).then(() => {
+                Badge.sleep(); // no need to resolve/reject - we're turning off
+              });
+            } // Othewise WiFi is ok
+            console.log("WiFi Connected - Swap default to backup");
+            let t = WIFI_INFO.ssid;
+            WIFI_INFO.ssid = WIFI_INFO.backup_ssid;
+            WIFI_INFO.backup_ssid = t;
+            t = WIFI_INFO.options;
+            WIFI_INFO.options = WIFI_INFO.backup_options;
+            WIFI_INFO.backup_options = t;
+            require("Storage").writeJSON("wifi.json",WIFI_INFO);
+            resolve();
+          });
+        }
+        return Badge.showError(`WiFi error: ${err}\n`).then(() => {
+          Badge.sleep(); // no need to resolve/reject - we're turning off
         });
-        return;
       }
       console.log("WiFi Connected");
       resolve();

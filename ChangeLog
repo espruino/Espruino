@@ -50,6 +50,10 @@
             Graphics: Add variable line widths to g.lineTo
             Remove Serial/I2C/SPI.find (deprecated since 2024). Can use Pin.getInfo().functions instead
             ESP32: Fix crash if WiFi disabled with Telnet included in build (Fix #2663)
+            ESP32: Fix issue calling a bound function with no arguments
+            Allow 'undefined' pins in digitalWrite arrays - `digitalWrite([LED1,undefined,LED2], 5)`
+            Add set_addr/clr_addr/in_addr to getInfo for nRF52/STM32/ESP32, and improve shiftOut speed (fix #1915)
+            Fix "abcd".indexOf("bcde") and related errors
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

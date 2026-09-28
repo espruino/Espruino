@@ -1,0 +1,5 @@
+[
+  {"class":"E","name":"dumpFragmentation"},
+  {"class":"SPI","name":"send4bit"},
+  {"class":"SPI","name":"send8bit"}
+]

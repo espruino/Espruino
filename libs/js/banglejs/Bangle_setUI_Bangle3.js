@@ -138,11 +138,12 @@
     Bangle.uiRedraw = options.redraw;
   if (options.back) {
     if (!Bangle.btnWatches) Bangle.btnWatches=[];
-    Bangle.btnWatches.push(setWatch(function() {
-      Bangle.btnWatches = undefined; // watch doesn't repeat
+    let backWatch = setWatch(function() {
+      Bangle.btnWatches = Bangle.btnWatches.filter(w=>w!=backWatch); // watch doesn't repeat
       Bangle.haptic("btn");
       options.back();
-    }, BTN4, {edge:"rising"}));
+    }, BTN4, {edge:"rising"});
+    Bangle.btnWatches.push(backWatch);
     // if we have widgets loaded *and* visible at the top, add a back widget (see #3788)
     if (global.WIDGETS && Bangle.appRect.y) {
       // add our own touch handler for touching in the top left

@@ -376,6 +376,8 @@ following fields:
 * `revision` - Silicon revision version number
 * `flashSize` - Total physical flash chip capacity in bytes
 * `embeddedFlash` - True if flash memory is embedded within the SoC die
+* `largestBlock` - Maximum block size that can be allocated (due to fragmentation)
+
 */
 JsVar *jswrap_ESP32_getState() {
   // Create a new variable and populate it with the properties of the ESP32 that we
@@ -413,6 +415,7 @@ JsVar *jswrap_ESP32_getState() {
   jsvObjectSetIntChild(esp32State, "revision", chip_info.revision);
   jsvObjectSetIntChild(esp32State, "flashSize", flash_size);
   jsvObjectSetBoolChild(esp32State, "embeddedFlash", is_emb_flash);
+  jsvObjectSetIntChild(esp32State, "largestBlock", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
   return esp32State;
 } // End of jswrap_ESP32_getState
 

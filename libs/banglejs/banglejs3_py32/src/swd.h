@@ -12,9 +12,27 @@
  * ----------------------------------------------------------------------------
  */
 
- // grab SWD control
- void swdInit();
- // issue a reset command
- void swdReset();
- // release SWD
- void swdKill();
+// grab SWD control
+void swdInit();
+// issue a reset command
+void swdReset();
+// release SWD
+void swdKill();
+
+
+/// Read from a specific memory address
+uint32_t swdReadMem(uint32_t addr);
+/// Write to a specific memory address
+void swdWriteMem(uint32_t addr, uint32_t value);
+
+void swdHalt();
+void swdResume();
+/// ARM Core System Reset
+void swdSoftReset();
+
+// Erase entire PY32 flash memory
+void swdPY32FlashErase();
+// Initialise PY32 flash write registers
+void swdPY32FlashWriteInit();
+ // write to flash - len in bytes. Must start at 256b boundary, but no size limit
+void swdPY32FlashWrite(uint32_t addr, uint32_t *buf, int len);
