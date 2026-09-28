@@ -24,6 +24,18 @@
 #include "esp_sleep.h"
 #include "esp_heap_caps.h"
 #include "esp_ota_ops.h"
+#if ESP_IDF_VERSION_MAJOR >= 4
+#include "esp_chip_info.h"
+#include "esp_flash.h"
+#else
+#include "esp_spi_flash.h"
+#endif
+#if ESP_IDF_VERSION_MAJOR >= 5
+#include "esp_private/esp_clk.h"
+#else
+#include "esp_clk.h"
+#endif
+
 
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #include "hal/usb_serial_jtag_ll.h"
@@ -358,18 +370,51 @@ following fields:
 * `BLE` - Status of BLE, enabled if true.
 * `Wifi` - Status of Wifi, enabled if true.
 * `minHeap` - Minimum heap, calculated by heap_caps_get_minimum_free_size
+* `psramSize`- Total PSRAM Size (in Bytes)
+* `model` - The SoC model name (e.g. esp32, esp32s3, esp32c3)
+* `cores` - Number of CPU cores available on the silicon chip
+* `revision` - Silicon revision version number
+* `flashSize` - Total physical flash chip capacity in bytes
+* `embeddedFlash` - True if flash memory is embedded within the SoC die
 * `largestBlock` - Maximum block size that can be allocated (due to fragmentation)
 
 */
 JsVar *jswrap_ESP32_getState() {
   // Create a new variable and populate it with the properties of the ESP32 that we
   // wish to return.
+  esp_chip_info_t chip_info;
+  esp_chip_info(&chip_info);
+
+  uint32_t flash_size = 0;
+
+#if ESP_IDF_VERSION_MAJOR >= 5
+  esp_err_t flash_err = esp_flash_get_size(NULL, &flash_size);
+  if (flash_err != ESP_OK) {
+    flash_size = 0;
+  }
+#else
+  flash_size = spi_flash_get_chip_size();
+#endif
+
+  bool is_emb_flash = (chip_info.features & CHIP_FEATURE_EMB_FLASH) != 0;
+
+  size_t psram_size = 0;
+  multi_heap_info_t psram_info;
+  heap_caps_get_info(&psram_info, MALLOC_CAP_SPIRAM);
+  psram_size = psram_info.total_free_bytes + psram_info.total_allocated_bytes;
+
   JsVar *esp32State = jsvNewObject();
   jsvObjectSetStringChild(esp32State, "sdkVersion", esp_get_idf_version());
   jsvObjectSetIntChild(esp32State, "freeHeap", esp_get_free_heap_size());
   jsvObjectSetBoolChild(esp32State, "BLE", ESP32_Get_NVS_Status(ESP_NETWORK_BLE));
   jsvObjectSetBoolChild(esp32State, "Wifi", ESP32_Get_NVS_Status(ESP_NETWORK_WIFI));
-  jsvObjectSetIntChild(esp32State, "minHeap", heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
+  jsvObjectSetIntChild(esp32State, "minHeap", (JsVarInt)heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
+  jsvObjectSetIntChild(esp32State, "psramSize", (JsVarInt)psram_size);
+  jsvObjectSetStringChild(esp32State, "model", CONFIG_IDF_TARGET);
+  jsvObjectSetIntChild(esp32State, "cores", chip_info.cores);
+  jsvObjectSetIntChild(esp32State, "revision", chip_info.revision);
+  jsvObjectSetIntChild(esp32State, "flashSize", flash_size);
+  jsvObjectSetBoolChild(esp32State, "embeddedFlash", is_emb_flash);
   jsvObjectSetIntChild(esp32State, "largestBlock", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
   return esp32State;
 } // End of jswrap_ESP32_getState
