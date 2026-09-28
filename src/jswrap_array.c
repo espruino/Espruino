@@ -806,7 +806,7 @@ NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *
   } else {
     JsVar *sa = jsvAsString(a);
     JsVar *sb = jsvAsString(b);
-    JsVarInt r = jsvCompareString(sa,sb, 0, 0, false);
+    JsVarInt r = jsvCompareString(sa,sb, 0, 0, false, false);
     jsvUnLock2(sa, sb);
     return r;
   }

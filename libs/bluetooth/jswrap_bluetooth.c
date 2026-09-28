@@ -2150,7 +2150,7 @@ bool jswrap_ble_filter_device(JsVar *filters, JsVar *device) {
       if (!jsvIsString(v) ||
           !jsvIsString(deviceName) ||
           jsvGetStringLength(v)>jsvGetStringLength(deviceName) ||
-          jsvCompareString(v, deviceName,0,0,true)!=0)
+          jsvCompareString(v, deviceName,0,0,false,true)!=0)
         matches = false;
       jsvUnLock2(v, deviceName);
     }
@@ -2368,7 +2368,7 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
       while (!deviceMatchedFilters && jsvObjectIteratorHasValue(&it)) {
         JsVar *obj = jsvObjectIteratorGetValue(&it);
         JsVar *addr = jsvObjectGetChildIfExists(obj, "id");
-        if (jsvCompareString(addr, deviceAddr, 0, 0, true) == 0)
+        if (jsvCompareString(addr, deviceAddr, 0, 0, false,true) == 0) // match start, so we don't have to include 'public/etc' in the filter
           deviceMatchedFilters = true; // we have already matched - so match this one
         jsvUnLock2(addr, obj);
         jsvObjectIteratorNext(&it);
@@ -2549,7 +2549,7 @@ void jswrap_ble_findDevices_found_cb(JsVar *device) {
   while (!found && jsvObjectIteratorHasValue(&it)) {
     JsVar *obj = jsvObjectIteratorGetValue(&it);
     JsVar *addr = jsvObjectGetChildIfExists(obj, "id");
-    if (jsvCompareString(addr, deviceAddr, 0, 0, true) == 0)
+    if (jsvCompareString(addr, deviceAddr, 0, 0, false,false) == 0) // exact match
       found = jsvLockAgain(obj);
     jsvUnLock2(addr, obj);
     jsvObjectIteratorNext(&it);
