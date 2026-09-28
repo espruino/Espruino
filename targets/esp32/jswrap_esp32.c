@@ -413,7 +413,6 @@ JsVar *jswrap_ESP32_getState() {
   jsvObjectSetIntChild(esp32State, "revision", chip_info.revision);
   jsvObjectSetIntChild(esp32State, "flashSize", flash_size);
   jsvObjectSetBoolChild(esp32State, "embeddedFlash", is_emb_flash);
-  jsvObjectSetIntChild(esp32State, "cpuFrequency", (JsVarInt)esp_clk_cpu_freq());
   return esp32State;
 } // End of jswrap_ESP32_getState
 

@@ -80,6 +80,12 @@
 #include "jshardwareI2c.h"
 #include "jshardwareSpi.h"
 
+#if ESP_IDF_VERSION_MAJOR >= 5
+#include "esp_private/esp_clk.h"
+#else
+#include "esp_clk.h"
+#endif
+
 #define FLASH_MAX (4*1024*1024) //4MB
 #define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
 #define FLASH_PAGE ((uint32_t)1<<FLASH_PAGE_SHIFT)  //4KB
@@ -879,6 +885,12 @@ unsigned int jshSetSystemClock(JsVar *options) {
   NOT_USED(options);
   jsError(">> jshSetSystemClock Not implemented");
   return 0;
+}
+
+JsVar *jshGetSystemClock() {
+  JsVar *o = jsvNewObject();
+  jsvObjectSetIntChild(o,"sysclk", (JsVarInt)esp_clk_cpu_freq());
+  return o;
 }
 
 /**
