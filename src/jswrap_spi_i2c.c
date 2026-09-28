@@ -362,6 +362,8 @@ useful for faking one-wire style protocols
 Sending multiple bytes in one call to send is preferable as they can then be
 transmitted end to end. Using multiple calls to send() will result in
 significantly slower transmission speeds.
+
+**Note:** This is deprecated. The main use of this was neopixels on STM32, and for that `require("neopixel").write(B15, leds);` is much cleaner.
  */
 void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
   if (!jsvIsObject(parent)) return;
@@ -435,6 +437,8 @@ useful for faking one-wire style protocols
 Sending multiple bytes in one call to send is preferable as they can then be
 transmitted end to end. Using multiple calls to send() will result in
 significantly slower transmission speeds.
+
+**Note:** This is deprecated. You can get a similar result using `tmp=new Uint8Array(data.length*8);E.mapInPlace(data,tmp,[bit0,bit1],1);spi.write(tmp);`
  */
 void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
   if (!jsvIsObject(parent)) return;

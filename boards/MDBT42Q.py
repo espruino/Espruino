@@ -53,7 +53,8 @@ info = {
      'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
      'DEFINES+=-DESPR_NO_REGEX_OPTIMISE', # save some storage space
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91'
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
+     'BLACKLIST=boards/MDBT42Q.blocklist', # force some stuff to be removed to save space
    ]
  }
 };
