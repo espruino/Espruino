@@ -3199,7 +3199,7 @@ truncated : bool // the 'value' was too big to be sent completely
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "ancsIsActive",
-    "ifdef" : "NRF52_SERIES",
+    "ifdef" : "ESPR_BLUETOOTH_ANCS",
     "generate" : "jswrap_ble_ancsIsActive",
     "params" : [ ],
     "return" : ["bool", "True if Apple Notification Center Service (ANCS) has been initialised and is active" ]
@@ -3219,7 +3219,7 @@ bool jswrap_ble_ancsIsActive() {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "ancsAction",
-    "ifdef" : "NRF52_SERIES",
+    "ifdef" : "ESPR_BLUETOOTH_ANCS",
     "generate" : "jswrap_ble_ancsAction",
     "params" : [
       ["uid","int","The UID of the notification to respond to"],
@@ -3243,7 +3243,7 @@ void jswrap_ble_ancsAction(int uid, bool isPositive) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "ancsGetNotificationInfo",
-    "ifdef" : "NRF52_SERIES",
+    "ifdef" : "ESPR_BLUETOOTH_ANCS",
     "generate" : "jswrap_ble_ancsGetNotificationInfo",
     "params" : [
       ["uid","int","The UID of the notification to get information for"]
@@ -3296,7 +3296,7 @@ JsVar *jswrap_ble_ancsGetNotificationInfo(JsVarInt uid) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "ancsGetAppInfo",
-    "ifdef" : "NRF52_SERIES",
+    "ifdef" : "ESPR_BLUETOOTH_ANCS",
     "generate" : "jswrap_ble_ancsGetAppInfo",
     "params" : [
       ["id","JsVar","The app ID to get information for"]
@@ -3345,7 +3345,7 @@ JsVar *jswrap_ble_ancsGetAppInfo(JsVar *appId) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "amsIsActive",
-    "ifdef" : "NRF52_SERIES",
+    "ifdef" : "ESPR_BLUETOOTH_ANCS",
     "generate" : "jswrap_ble_amsIsActive",
     "params" : [ ],
     "return" : ["bool", "True if Apple Media Service (AMS) has been initialised and is active" ]
@@ -3364,7 +3364,7 @@ bool jswrap_ble_amsIsActive() {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "amsGetPlayerInfo",
-    "ifdef" : "NRF52_SERIES",
+    "ifdef" : "ESPR_BLUETOOTH_ANCS",
     "generate" : "jswrap_ble_amsGetPlayerInfo",
     "params" : [
       ["id","JsVar","Either 'name', 'playbackinfo' or 'volume'"]
@@ -3415,7 +3415,7 @@ JsVar *jswrap_ble_amsGetPlayerInfo(JsVar *id) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "amsGetTrackInfo",
-    "ifdef" : "NRF52_SERIES",
+    "ifdef" : "ESPR_BLUETOOTH_ANCS",
     "generate" : "jswrap_ble_amsGetTrackInfo",
     "params" : [
       ["id","JsVar","Either 'artist', 'album', 'title' or 'duration'"]
@@ -3454,7 +3454,7 @@ JsVar *jswrap_ble_amsGetTrackInfo(JsVar *id) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "amsCommand",
-    "ifdef" : "NRF52_SERIES",
+    "ifdef" : "ESPR_BLUETOOTH_ANCS",
     "generate" : "jswrap_ble_amsCommand",
     "params" : [
       ["id","JsVar","For example, 'play', 'pause', 'volup' or 'voldown'"]
