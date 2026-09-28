@@ -55,6 +55,7 @@
 #if ESP_IDF_VERSION_MAJOR>=4
 #include "soc/uart_reg.h"
 #include "esp_mac.h"
+#include "hal/gpio_ll.h"
 #endif
 #include "esp_attr.h"
 #include "esp_wifi.h"
@@ -66,7 +67,6 @@
 #include "rom/uart.h"
 #include "driver/gpio.h"
 #include "soc/gpio_sig_map.h"
-#include "hal/gpio_ll.h"
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #include "driver/usb_serial_jtag.h"
 #endif
