@@ -1890,7 +1890,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf){
   if (!I2Cx) return;
 
   LL_I2C_Disable(I2Cx);
-  
+
   // Ensure HSI is running, it's used for i2c clocking
   LL_RCC_HSI_Enable();
   while (!LL_RCC_HSI_IsReady());
@@ -2324,15 +2324,6 @@ void jshDoSysTick(){
 
 }
 #endif // ARM
-
-#ifdef STM32
-
-
-// Get the address to read/write to in order to change the state of this pin. Or 0.
-volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags){
-        return 0;
-}
-#endif
 
 /// the temperature from the internal temperature sensor, in degrees C
 JsVarFloat jshReadTemperature(){

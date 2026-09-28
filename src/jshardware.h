@@ -347,6 +347,15 @@ void jshUtilTimerDisable();
 
 // ---------------------------------------------- LOW LEVEL
 
+typedef struct {
+  volatile uint32_t *in_addr; // address to read to
+  volatile uint32_t *set_addr; // address to write to set
+  volatile uint32_t *clr_addr; // address to write to clear
+  uint32_t mask; // value to write
+} JshGetPinAddressResult;
+// Get the addresses to read/write to in order to change the state of this pin. Return true if ALL addressed set, false if not
+bool jshGetPinAddress(Pin pin, JshGetPinAddressResult *result);
+
 #ifdef ARM
 // On SYSTick interrupt, call this
 void jshDoSysTick();
@@ -355,13 +364,6 @@ void jshDoSysTick();
 #if defined(STM32) || defined(STM32_LL)
 // push a byte into SPI buffers (called from IRQ)
 void jshSPIPush(IOEventFlags device, uint16_t data);
-
-typedef enum {
-  JSGPAF_INPUT,
-  JSGPAF_OUTPUT,
-} JshGetPinAddressFlags;
-// Get the address to read/write to in order to change the state of this pin. Or 0.
-volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags);
 
 /// Set the prescaler used for the RTC - can be used for course RTC adjustment
 void jshSetupRTCPrescalerValue(unsigned int prescale);
