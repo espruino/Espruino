@@ -14,7 +14,10 @@
  * ----------------------------------------------------------------------------
  */
 
-#include <jswrap_bangle.h>
+#include "jswrap_bangle.h"
+#ifdef BANGLEJS3
+#include "jswrap_bangle3.h"
+#endif
 #include "jsinteractive.h"
 #include "jsdevices.h"
 #include "jsnative.h"
@@ -841,6 +844,7 @@ NMEAFixInfo gpsFix;
 #ifdef ESPR_BATTERY_FULL_VOLTAGE
 float batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
 #endif // ESPR_BATTERY_FULL_VOLTAGE
+uint8_t batteryLastValue = 0;
 
 #ifdef NRF52_SERIES
 /// Nordic app timer to handle call of peripheralPollHandler
@@ -1006,48 +1010,7 @@ unsigned short beepFreq;
 unsigned char buzzAmt;
 int hapticTime = 25; // in ms - time to run vibration motor for a haptic event
 
-typedef enum {
-  JSBF_NONE,
-  JSBF_WAKEON_FACEUP = 1<<0,
-  JSBF_WAKEON_BTN1   = 1<<1,
-  JSBF_WAKEON_BTN2   = 1<<2,
-  JSBF_WAKEON_BTN3   = 1<<3,
-  JSBF_WAKEON_TOUCH  = 1<<4,
-  JSBF_WAKEON_DBLTAP = 1<<5,
-  JSBF_WAKEON_TWIST  = 1<<6,
-  JSBF_BEEP_VIBRATE  = 1<<7, // use vibration motor for beep
-  JSBF_ENABLE_BEEP   = 1<<8,
-  JSBF_ENABLE_BUZZ   = 1<<9,
-  JSBF_ACCEL_LISTENER = 1<<10, ///< we have a listener for accelerometer data
-  JSBF_POWER_SAVE    = 1<<11, ///< if no movement detected for a while, lower the accelerometer poll interval
-  JSBF_HRM_ON        = 1<<12,
-  JSBF_GPS_ON        = 1<<13,
-  JSBF_COMPASS_ON    = 1<<14,
-  JSBF_BAROMETER_ON  = 1<<15,
-  JSBF_LCD_ON        = 1<<16,
-  JSBF_LCD_BL_ON     = 1<<17,
-  JSBF_LOCKED        = 1<<18,
-  JSBF_HRM_INSTANT_LISTENER = 1<<19,
-  JSBF_LCD_DBL_REFRESH = 1<<20, ///< On Bangle.js 2, toggle extcomin twice for each poll interval (avoids screen 'flashing' behaviour off axis)
-  JSBF_MANUAL_WATCHDOG = 1<<21, ///< If set, we don't kick the WDT from the interrupt, so users can call it from their JS to ensure JS always stays running
-#ifdef BANGLEJS_Q3
-  /** On some Bangle.js 2, BTN1 (which is used for reloading apps) gets a low resistance across it
-  (possibly due to water damage) and the internal resistor can no longer overcome that resistance
-  so the button appears stuck on. With this fix we force the button pin low just before reading to try
-  and overcome that resistance, and we also disable the button watch interrupt. */
-  JSBF_BTN_LOW_RESISTANCE_FIX = 1<<22,
-#endif
-#ifdef BANGLEJS3
-   JSBF_WIFI_ON = 1<<22,
-#endif
-
-  JSBF_DEFAULT = ///< default at power-on
-      JSBF_WAKEON_TWIST|
-      JSBF_WAKEON_BTN1|JSBF_WAKEON_BTN2|JSBF_WAKEON_BTN3
-} JsBangleFlags;
 volatile JsBangleFlags bangleFlags = JSBF_NONE;
-
-
 typedef enum {
   JSBT_NONE,
   JSBT_RESET = 1<<0, ///< reset the watch and reload code from flash
@@ -1202,7 +1165,7 @@ bool wakeUpBangle(const char *reason) {
 
 /** This is called to set whether an app requests a device to be on or off.
  * The value returned is whether the device should be on.
- * Devices: GPS/Compass/HRM/Barom
+ * Devices: GPS/Compass/HRM/Barom/Mic
  */
 #define SETDEVICEPOWER_FORCE (execInfo.root)
 bool setDeviceRequested(const char *deviceName, JsVar *appID, bool powerOn) {
@@ -3161,6 +3124,12 @@ int jswrap_banglejs_isCharging() {
 
 /// get battery percentage
 JsVarInt jswrap_banglejs_getBattery() {
+#ifdef MIC_PIN
+  if (bangleFlags & JSBF_MIC_ON) {
+    // can't use getBattery while mic on because we only have one ADC
+    return batteryLastValue;
+  }
+#endif
 #if defined(BAT_PIN_VOLTAGE) && !defined(EMULATED)
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
 
@@ -3194,6 +3163,7 @@ JsVarInt jswrap_banglejs_getBattery() {
 #endif  // !ESPR_BATTERY_FULL_VOLTAGE
   if (pc>100) pc=100;
   if (pc<0) pc=0;
+  batteryLastValue = pc;
   return pc;
 #else //!BAT_PIN_VOLTAGE || EMULATED
   return 50;
@@ -3909,6 +3879,11 @@ void jswrap_banglejs_postInit() {
   //jsiConsolePrintf("GPS %d %d\n",bangleFlags & JSBF_GPS_ON, getDeviceRequested("GPS"));
   if ((bangleFlags & JSBF_GPS_ON) && !getDeviceRequested("GPS")) {
     jswrap_banglejs_setGPSPower(false, SETDEVICEPOWER_FORCE);
+  }
+#endif
+#ifdef MIC_PIN
+  if ((bangleFlags & JSBF_MIC_ON) && !getDeviceRequested("Mic")) {
+    jswrap_banglejs3_setMicPower(false, SETDEVICEPOWER_FORCE);
   }
 #endif
 }
@@ -6906,6 +6881,21 @@ void jsbangle_exec_pending(uint8_t *data, int dataLen) {
       jsvUnLock(bangle);
       break;
     }
+#ifdef MIC_PIN
+    case JSBE_MIC_BUFFER: {
+      JsVar *bangle = jsvObjectGetChildIfExists(execInfo.root, "Bangle");
+      if (bangle) {
+        JsVar *a = jsvNewNativeString(jswrap_banglejs3_getMicBuffer(value), MIC_BUFFER_SIZE*sizeof(uint16_t));
+        JsVar *ab = jsvNewArrayBufferFromString(a,0);
+        JsVar *v = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT16, ab, 0, 0);
+        jsvUnLock2(ab, a);
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"mic", &v, 1);
+        jsvUnLock(v);
+      }
+      jsvUnLock(bangle);
+      break;
+    }
+#endif
   }
 }
 
