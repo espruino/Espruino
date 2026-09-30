@@ -1400,7 +1400,7 @@ typedef struct {
 
 void jsiTabComplete_findCommon(void *cbdata, JsVar *key) {
   JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
-  if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, false,true)==0) {
+  if (jsvCompareString(data->partial, key, 0, 0, true,false)==0) {
     data->matches++;
     if (data->possible) {
       JsVar *v = jsvGetCommonCharacters(data->possible, key);
@@ -1414,7 +1414,7 @@ void jsiTabComplete_findCommon(void *cbdata, JsVar *key) {
 
 void jsiTabComplete_printCommon(void *cbdata, JsVar *key) {
   JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
-  if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, false,true)==0) {
+  if (jsvCompareString(data->partial, key, 0, 0, true,false)==0) {
     // Print, but do as 2 columns
     if (data->lineLength==0) {
       jsiConsolePrintf("%v",key);
@@ -1451,7 +1451,7 @@ void jsiTabComplete() {
       object = v;
       if (!object) object = jsvNewObject(); // if not found, just use an empty object to suggest stuff an object might have
       data.partial = 0;
-    } else if (lex.tk==LEX_ID) {
+    } else if (lex.tk==LEX_ID || LEX_IS_RESERVED_WORD(lex.tk)) {
       jsvUnLock(data.partial);
       data.partial = jslGetTokenValueAsVar();
       partialStart = lex.tokenStart+1;
