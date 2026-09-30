@@ -290,16 +290,21 @@ Badge.showError = function(error) {
   require("Storage").write("showing", "error");
   let stack = ((error instanceof Object) && error.stack) ? error.stack : undefined;
   let msg = (error instanceof Object) ? error.message : error.toString();
+  let qrcode = atob("QEABAAAAAAAAAAAAAAAAAAAAAD//hgf/+f/8P/+GB//5//wwAZnmAfmADDABmeYB+YAMM/mGeH+Bn8wz+YZ4f4GfzDP5nmBmGZ/MM/meYGYZn8wz+Zhnh4GfzDP5mGeHgZ/MM/mYZ4eBn8wwAZ4AAZmADDABngABmYAMP/+ZmZmZ//w//5mZmZn//AAAAZnhgAAAAAABmeGAAAAM+fnmf/5/MAz5+eZ//n8wDAYeBmeHgDAMBh4GZ4eAMAD//4YAB5/wAP//hgAHn/AzBgYeYBgAzDMGBh5gGADMM8GAGBgGHPwzwYAYGAYc/DA4eeHnn4A8MDh54eefgDwwwZgBgB5/wDDBmAGAHn/AMwZ+BmGf4DAzBn4GYZ/gMDDBgB/+GB/AMMGAH/4YH8Aw/gBn/5n/ADD+AGf/mf8APweZ4GYHnMA/B5ngZgecwDD4GBmHmfwMMPgYGYeZ/AwPB+Zhnh/8zA8H5mGeH/zMAAAZmeB4HPwAABmZ4Hgc/D//mZ/geZwwP/+Zn+B5nDAwAYfhmHgfzDABh+GYeB/MM/meZn4f/Pwz+Z5mfh/8/DP5nmZ+H/z8M/mZ+f4eYAAz+Zn5/h5gADP5hgZmf4AwM/mGBmZ/gDAwAZ4YABnjwDABnhgAGePAP/+AZ5ngAPA//4BnmeAA8AAAAAAAAAAAAAAAAAAAAAA=");
   return Badge.showRendering(function(g) {
     g.setBgColor(3).clearRect(0,0,799,479);
     g.setBgColor(1).clearRect(20,20,779,459);
-    g.setColor(3).setFontVector(80).setFontAlign(0,0).drawString("ERROR",400,120);
+    let x=250,y=120;
+    g.setColor(3).fillCircle(x,y,50).setColor(2).fillPoly([x,y-40, x-42,y+24, x+42,y+24]).setColor(0).setFontVector(60).setFontAlign(0,0).drawString("!",x+4,y);
+    g.setColor(3).setFontVector(80).setFontAlign(0,0).drawString("ERROR",470,120);
     g.setColor(0).setFont("6x8:3").setFontAlign(0,-1).drawString(msg,400,196);
     if (stack) g.setFont("6x8:2").setFontAlign(-1,-1).drawString(stack, 30, 240);
     var env = process.env, mem=process.memory();
-    g.setFont("6x8:2").setFontAlign(-1,-1).drawString(`Espruino ${env.VERSION} (${env.GIT_COMMIT})  ${env.BOARD}
+    g.setFont("6x8:2").setFontAlign(-1,-1).drawString(`Espruino ${env.VERSION} (${env.GIT_COMMIT}) ${env.BOARD}  ${(new Date()).toString().substr(4,17)}
 https://espruino.com/Badge  ${mem.free} / ${mem.total} vars free
 `,30,30);
+    g.setFontAlign(-1,1).drawString("See https://espruino.com/Badge for more info",30,450);
+    g.drawImage(qrcode, 770-128,450-128,{scale:2});
   });
 };
 
