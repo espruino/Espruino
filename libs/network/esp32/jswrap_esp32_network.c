@@ -760,6 +760,7 @@ void jswrap_wifi_connect(
 
   // Create SSID string
   char ssid[33];
+  memset(ssid, 0, sizeof(ssid));
   jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
 
   // Make sure jsOptions is NULL or an object
@@ -786,6 +787,7 @@ void jswrap_wifi_connect(
 
   // Get the optional password
   char password[65];
+  bool allChannels = false;
   memset(password, 0, sizeof(password));
   if (jsOptions != NULL) {
     JsVar *jsPassword = jsvObjectGetChildIfExists(jsOptions, "password");
@@ -800,6 +802,7 @@ void jswrap_wifi_connect(
       password[0] = '\0';
     }
     jsvUnLock(jsPassword);
+    allChannels = jsvObjectGetBoolChild(jsOptions, "allChannels");
   }
   jsDebug(DBG_INFO, "jswrap_wifi_connect: SSID '%s', password '%s', Callback done\n", ssid, password);
 
@@ -846,6 +849,9 @@ void jswrap_wifi_connect(
   memcpy(staConfig.sta.ssid, ssid, sizeof(staConfig.sta.ssid));
   memcpy(staConfig.sta.password, password, sizeof(staConfig.sta.password));
   staConfig.sta.bssid_set = false;
+  staConfig.sta.scan_method = allChannels ? WIFI_ALL_CHANNEL_SCAN : WIFI_FAST_SCAN; // force a full scan
+  staConfig.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL; // default
+  // .threshold.rssi/.threshold.authmode set as 0 - these are then ignored
 #if !(ESP_IDF_VERSION_MAJOR>=4)
   esp_wifi_set_auto_connect(true);
   jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_autoconnect done\n");

@@ -245,6 +245,7 @@ does not need to be changed.
 The options properties may contain:
 
 * `password` - Password string to be used to access the network.
+* `allChannels` - [2v30+ ESP32] if true, scans all Wifi channels for the AP (the default is a 'fast scan')
 * `dnsServers` (array of String) - An array of up to two DNS servers in dotted
   decimal format string.
 * `channel` - Wifi channel of the access point (integer, typ 0..14, 0 means any
