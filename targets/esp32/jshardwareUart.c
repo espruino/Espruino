@@ -63,7 +63,7 @@ void initUart(int uart_num, uart_config_t uart_config, int txpin, int rxpin){
   ESP_ERROR_CHECK(err);
   err = uart_set_pin(uart_num, txpin, rxpin, -1, -1);
   ESP_ERROR_CHECK(err);
-  err = uart_driver_install(uart_num, 1024, 1024, 0, NULL, 0);
+  err = uart_driver_install(uart_num, 512, 128, 0, NULL, 0);
   ESP_ERROR_CHECK(err);
 }
 
@@ -147,7 +147,7 @@ void initConsole() {
   /* Configure USB-CDC driver */
   usb_serial_jtag_driver_config_t usb_serial_config = {
     .tx_buffer_size = 256,
-    .rx_buffer_size = 128
+    .rx_buffer_size = 512
   };
 #if ESP_IDF_VERSION_MAJOR>=5
   if (!usb_serial_jtag_is_driver_installed()) {
@@ -242,7 +242,7 @@ void pollSerialDevices() {
     uartTaskPaused = false;
     return;
   }
-  uint8_t buf[64];
+  uint8_t buf[IOEVENT_MAX_LEN];
   bool busy = false;
   static uint16_t idleCount = 0;
 #ifdef ESPR_USE_USB_SERIAL_JTAG
