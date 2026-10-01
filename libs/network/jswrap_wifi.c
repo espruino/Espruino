@@ -271,7 +271,8 @@ Notes:
   "name"     : "scan",
   "generate" : "jswrap_wifi_scan",
   "params"   : [
-    ["callback", "JsVar", "A `callback(err, ap_list)` function to be called back on completion. `err==null` and `ap_list` is an array on success, or `err` is an error string and `ap_list` is undefined on failure."]
+    ["callback", "JsVar", "A `callback(err, ap_list)` function to be called back on completion. `err==null` and `ap_list` is an array on success, or `err` is an error string and `ap_list` is undefined on failure."],
+    ["options", "JsVar", "[2v30+ ESP32] Optional options for scanning `{ passive: bool }`"]
   ]
 }
 Perform a scan for access points. This will enable the station mode if it is not

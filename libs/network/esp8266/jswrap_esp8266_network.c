@@ -479,7 +479,7 @@ void jswrap_wifi_connect(
 }
 
 
-void jswrap_wifi_scan(JsVar *jsCallback) {
+void jswrap_wifi_scan(JsVar *jsCallback, JsVar *jsOptions) {
   DBGV("> Wifi.scan\n");
 
   // If we have a saved scan callback function we must be scanning already

@@ -18,7 +18,7 @@ void   jswrap_wifi_connect(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback);
 void   jswrap_wifi_disconnect(JsVar *jsCallback);
 void   jswrap_wifi_startAP(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback);
 void   jswrap_wifi_stopAP(JsVar *jsCallback);
-void   jswrap_wifi_scan(JsVar *jsCallback);
+void   jswrap_wifi_scan(JsVar *jsCallback, JsVar *jsOptions);
 void   jswrap_wifi_save(JsVar *what);
 void   jswrap_wifi_restore(void);
 JsVar *jswrap_wifi_getStatus(JsVar *jsCallback);

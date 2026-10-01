@@ -162,6 +162,8 @@ static char *authModeToString(wifi_auth_mode_t authMode) {
     case WIFI_AUTH_WPA_PSK: return "wpa";
     case WIFI_AUTH_WPA2_PSK: return "wpa2";
     case WIFI_AUTH_WPA_WPA2_PSK: return "wpa_wpa2";
+    case WIFI_AUTH_WPA3_PSK: return "wpa3";
+    case WIFI_AUTH_WPA2_WPA3_PSK: return "wpa2_wpa3";
     default:  return "unknown";
   }
 }
@@ -889,7 +891,7 @@ void jswrap_wifi_connect(
   // A stopped station connects from STA_START; an already started station connects above.
 }
 
-void jswrap_wifi_scan(JsVar *jsCallback) {
+void jswrap_wifi_scan(JsVar *jsCallback, JsVar *jsOptions) {
   // If we have a saved scan callback function we must be scanning already
   if (g_jsScanCallback != NULL) {
     jsExceptionHere(JSET_ERROR, "A scan is already in progress");
@@ -900,6 +902,12 @@ void jswrap_wifi_scan(JsVar *jsCallback) {
   if (!jsvIsFunction(jsCallback)) {
     EXPECT_CB_EXCEPTION(jsCallback);
     return;
+  }
+
+  bool isActive = true; // default
+  if (jsvIsObject(jsOptions)) {
+    if (jsvObjectGetBoolChild(jsOptions, "passive"))
+      isActive = false;
   }
 
   // We need to be in some kind of a station mode in order to perform a scan
@@ -951,7 +959,8 @@ void jswrap_wifi_scan(JsVar *jsCallback) {
   wifi_scan_config_t scanConf = {
      .ssid = NULL,
      .bssid = NULL,
-     .channel = 0,
+     .channel = 0, // all channels
+     .scan_type = isActive ? WIFI_SCAN_TYPE_ACTIVE : WIFI_SCAN_TYPE_PASSIVE, // WIFI_SCAN_TYPE_ACTIVE is the default
      .show_hidden = true
   };
   err = esp_wifi_scan_start(&scanConf, false); // Don't block for scan.
@@ -1008,7 +1017,6 @@ void jswrap_wifi_startAP(
   apConfig.authmode        = WIFI_AUTH_OPEN;
   apConfig.max_connection  = 4;
   apConfig.ssid_len        = (uint8_t)jsvGetString(jsSsid, (char *)apConfig.ssid, sizeof(apConfig.ssid));
-  apConfig.authmode        = WIFI_AUTH_OPEN;
   strcpy(apConfig.password, "");
 
   if (jsvIsObject(jsOptions)) {
@@ -1615,9 +1623,9 @@ static void emit_espruino_ping_event(esp_ping_handle_t hdl, uint32_t elapsed_tim
     esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &bytes_received, sizeof(bytes_received));
 
     JsVar *jsPingResponse = jsvNewObject();
-    
+
     jsvObjectSetIntChild(jsPingResponse, "totalCount", transmitted);
-    jsvObjectSetIntChild(jsPingResponse, "totalBytes", received * bytes_received); 
+    jsvObjectSetIntChild(jsPingResponse, "totalBytes", received * bytes_received);
     jsvObjectSetIntChild(jsPingResponse, "totalTime", total_time_ms);
     jsvObjectSetIntChild(jsPingResponse, "respTime", elapsed_time);
     jsvObjectSetIntChild(jsPingResponse, "seqNo", ++g_seq_no);
@@ -1641,7 +1649,7 @@ static void esp5_ping_on_success(esp_ping_handle_t hdl, void *args) {
 
 // IDF v5 Callback: Executed if a packet drops or times out
 static void esp5_ping_on_timeout(esp_ping_handle_t hdl, void *args) {
-    emit_espruino_ping_event(hdl, 0); 
+    emit_espruino_ping_event(hdl, 0);
 }
 
 // IDF v5 Callback: Executed when 'ping_count' runs out or session stops
@@ -1727,7 +1735,7 @@ void jswrap_wifi_ping(
   ping_init();
 #else
   esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
-  
+
   // Create a clean LwIP container and map the parsed IPv4 address to it safely
   ip_addr_t ping_target;
   memset(&ping_target, 0, sizeof(ip_addr_t));
@@ -1736,7 +1744,7 @@ void jswrap_wifi_ping(
   ip_addr_set_ip4val(&ping_target, &lwip_ip);
 #else
   // Native macro/struct copy assignment abstraction fallback
-  ping_target.addr = ip.addr; 
+  ping_target.addr = ip.addr;
 #endif
   // Assign the target container cleanly to the session configuration
   ping_config.target_addr = ping_target;
