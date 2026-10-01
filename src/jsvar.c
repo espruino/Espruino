@@ -465,6 +465,16 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount) {
 
 /// Scan memory to find any JsVar that references a specific memory range, and if so update what it points to to point to the new address. If newAddr==0 we just convert in to 'null'
 void jsvUpdateMemoryAddress(size_t oldAddr, size_t length, size_t newAddr) {
+  size_t a;
+  /* On ESP32, the address is shifted to a memory-mapped address area, so we
+  need to be sure we're checking JsVars against the correct memory area */
+  a = jshFlashGetMemMapAddress((size_t)oldAddr);
+  if (a) oldAddr = a;
+  if (newAddr) {
+    a = jshFlashGetMemMapAddress((size_t)newAddr);
+    if (a) newAddr = a;
+  }
+  //jsiConsolePrintf("jsvUpdateMemoryAddress 0x%08x -> 0x%08x (%d)\n", oldAddr, newAddr, length);
   for (unsigned int i=1;i<=jsVarsSize;i++) {
     JsVar *v = jsvGetAddressOf((JsVarRef)i);
     if (jsvIsNativeString(v) || jsvIsFlashString(v)) {
