@@ -394,6 +394,21 @@ Badge.showImageFileRendering = function(filename, height, gfxCallback) {
   });
 };
 
+/* Show raw image data on the ePaper. rawCallback(data,done) is called.
+`data` should be called with 800*480*2bpp = 96000bytes (over multiple calls)
+and finally `done` is called at the end. */
+Badge.showRaw = function(rawCallback) {
+  if (Badge.epaperBusy) throw new Error("ePaper is busy");
+  Badge.epaperBusy = true;
+  return epdInit().then(() => new Promise(resolve => {
+    eC(0x10);
+    rawCallback(eD, resolve);
+  })).then(() => epdUpdate()
+  ).then(epdSleep).then(() => {
+    Badge.epaperBusy = false;
+  });
+};
+
 // Puts the badge to sleep, waiting to restart on a button press. The button can be read with ESP32.getWakeupPin()
 Badge.sleep = function() {
   LED_EN.write(!LED_ON); // LEDs off
