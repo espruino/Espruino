@@ -162,8 +162,10 @@ static char *authModeToString(wifi_auth_mode_t authMode) {
     case WIFI_AUTH_WPA_PSK: return "wpa";
     case WIFI_AUTH_WPA2_PSK: return "wpa2";
     case WIFI_AUTH_WPA_WPA2_PSK: return "wpa_wpa2";
+#if ESP_IDF_VERSION_MAJOR>=4
     case WIFI_AUTH_WPA3_PSK: return "wpa3";
     case WIFI_AUTH_WPA2_WPA3_PSK: return "wpa2_wpa3";
+#endif
     default:  return "unknown";
   }
 }
