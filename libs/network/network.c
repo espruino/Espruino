@@ -53,9 +53,9 @@ JsNetworkState networkState =
 
 JsNetwork *networkCurrentStruct = 0;
 
-uint32_t networkParseIPAddress(const char *ip) {
+uint32_t networkParseIPv4Address(const char *ip) {
   if (!strcmp(ip,"localhost"))
-    return 0x0100007F; // 127.0.0.1
+    return networkParseIPv4Address("127.0.0.1");
 
   int n = 0;
   uint32_t addr = 0;
@@ -178,7 +178,7 @@ void networkGetHostByName(
   *out_ip_addr = 0;
 
   // first try and simply parse the IP address as a string
-  *out_ip_addr = networkParseIPAddress(hostName);
+  *out_ip_addr = networkParseIPv4Address(hostName);
 
   // If we did not get an IP address from the string, then try and resolve it by
   // calling the network gethostbyname.

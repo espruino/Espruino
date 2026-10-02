@@ -63,7 +63,7 @@ typedef struct {
 typedef struct JsNetwork {
   JsVar *networkVar; // this won't be locked again - we just know that it is already locked by something else
   JsNetworkData data;
-  unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero  
+  unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero
 
   int chunkSize; ///< Amount of memory to allocate for chunks of data when using send/recv
 
@@ -107,7 +107,7 @@ JsNetwork *networkGetCurrent(); ///< Get the currently active network structure.
 
 /// Use this for getting the hostname, as it parses the name to see if it is an IP address first
 void networkGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
-uint32_t networkParseIPAddress(const char *ip);
+uint32_t networkParseIPv4Address(const char *ip);
 /* given 6 pairs of 8 bit hex numbers separated by ':', parse them into a
  * 6 byte array. returns false on failure */
 bool networkParseMACAddress(unsigned char *addr, const char *ip);

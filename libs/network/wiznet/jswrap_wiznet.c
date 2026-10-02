@@ -228,7 +228,7 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
   if (info) {
     char buf[64];
     jsvGetString(info, buf, sizeof(buf));
-    *(unsigned long*)ptr = networkParseIPAddress(buf);
+    *(unsigned long*)ptr = networkParseIPv4Address(buf);
     jsvUnLock(info);
   }
 }
