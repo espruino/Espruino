@@ -287,6 +287,7 @@ V7.set();w.startOutput(B8,4000);
 * Speaker via analogWrite
 * Recovery menu in py32
 * nRF54 can reflash py32 over SWD
+* Microphone
 
 ## TODO
 
@@ -299,7 +300,6 @@ V7.set();w.startOutput(B8,4000);
 * Gyro event
 * Pressure sensor
 * BME690 gas sensing
-* Microphone (analogRead in ISR, plus ranging)
 * Wrap Waveform handling to allow sounds to be played more easily
 * LCD update speed (12fps currently)
 * WiFi (Use `AT+CIPRECVMODE=1` for flow control)
