@@ -60,7 +60,6 @@
 #define UNUSED(x) (void)(x)
 
 #if ESP_IDF_VERSION_MAJOR>=5
-esp_netif_t *sta_netif = NULL;
 static esp_event_handler_instance_t instance_wifi = NULL;
 static esp_event_handler_instance_t instance_ip = NULL;
 #endif
@@ -304,13 +303,14 @@ static char *wifiEventToString(uint32_t event){
 
 // Convert an IP address to a string. Returns 0 on failure
 JsVar *ipToString(const ip_addr_t *ipAddr) {
-  if (ipAddr && IP_IS_V4(ipAddr)) {
+  if (!ipAddr) return jsvNewNull();
+  if (IP_IS_V4(ipAddr)) {
     const ip4_addr_t *ip4 = ip_2_ip4(ipAddr);
     return networkGetAddressAsString((uint8_t *)&ip4->addr, 4, 10, '.');
-  } else if (ipAddr && IP_IS_V6(ipAddr)) {
+  } else if (IP_IS_V6(ipAddr)) {
     return jsvVarPrintf(IPV6STR,IPV62STR(ipAddr->u_addr.ip6));
   }
-  return 0;
+  return jsvVarPrintf("[UNKNOWN %d]", ipAddr->type);
 }
 #if ESP_IDF_VERSION_MAJOR >= 4
 JsVar *espipToString(const esp_ip_addr_t *ipAddr) {
@@ -522,7 +522,8 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     sendWifiEvent("#onassociated", jsDetails);
 
 #if ESP_IDF_VERSION_MAJOR>=5
-    esp_netif_create_ip6_linklocal(sta_netif); // IPv6 startup
+    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    esp_netif_create_ip6_linklocal(netif); // IPv6 startup
 #endif
   } else
 #if ESP_IDF_VERSION_MAJOR>=5
@@ -565,7 +566,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
       ip_addr_t dns_v6;
       dns_v6.type = IPADDR_TYPE_V6;
       // 2001:4860:4860::8888 (Google IPv6 DNS)
-      IP6_ADDR(&dns_v6.u_addr.ip6, 0x20014860, 0x48600000, 0x00000000, 0x00008888);
+      IP6_ADDR(&dns_v6.u_addr.ip6, 0x20014860, 0x48600000, 0x00000000, 0x00008888); //FIXME: is this the correct encoding, or is byte order wrong?
       dns_setserver(0, &dns_v6);
     } else
 #endif
@@ -583,7 +584,8 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     // start mDNS
     const char * hostname = NULL;
 #if ESP_IDF_VERSION_MAJOR>=5
-    esp_err_t err = esp_netif_get_hostname(sta_netif, &hostname);
+    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    esp_err_t err = esp_netif_get_hostname(netif, &hostname);
 #else
     esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
 #endif
@@ -668,7 +670,7 @@ void esp32_wifi_init() {
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   esp_netif_create_default_wifi_ap();
-  sta_netif = esp_netif_create_default_wifi_sta();
+  esp_netif_create_default_wifi_sta();
 #else
   tcpip_adapter_init();
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
@@ -1866,7 +1868,7 @@ static void dnsFoundCallback(
     void *arg                //!< Parameter passed in from espconn_gethostbyname.
   ) {
 
-  jsDebug(DBG_INFO, "Wifi.getHostByName CB - %s %x\n", hostname, ipAddr );
+  jsDebug(DBG_INFO, "Wifi.getHostByName CB - %s 0x%08x\n", hostname, ipAddr );
   queueWifiCallbackAndUnLock(&g_jsHostByNameCallback, ipToString(ipAddr), NULL);
 }
 
@@ -1896,7 +1898,7 @@ void jswrap_wifi_getHostByName(
   jsvGetString(jsHostname, hostname, sizeof(hostname));
 
 #if ESP_IDF_VERSION_MAJOR >= 4
-  // IDF 4/5: show current DNS server via ESP‑NETIF
+  // IDF 4/5: show current DNS server via ESP‑NETIF (FIXME: Only do if debug enabled?)
     esp_netif_t *sta = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     esp_netif_dns_info_t dns_info;
     esp_err_t ret = esp_netif_get_dns_info(sta, ESP_NETIF_DNS_MAIN, &dns_info);
