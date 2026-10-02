@@ -34,7 +34,6 @@
 #include "esp_mac.h"
 #include "nvs_flash.h"
 #elif ESP_IDF_VERSION_MAJOR>=4
-
 #include "tcpip_adapter.h"
 #include "mdns.h"
 #include "ping/ping.h"
@@ -1747,9 +1746,12 @@ void jswrap_wifi_ping(
   // Create a clean LwIP container and map the parsed IPv4 address to it safely
   ip_addr_t ping_target;
   memset(&ping_target, 0, sizeof(ip_addr_t));
-#if defined(ip_addr_set_ip4val)
+#if defined(ip_addr_set_ip4val) // FIXME: does this exist?
   ip4_addr_t lwip_ip = { .addr = ip.addr };
   ip_addr_set_ip4val(&ping_target, &lwip_ip);
+#elif CONFIG_LWIP_IPV6==1
+  ping_target.u_addr.ip4.addr = ip.addr;
+  ping_target.type = IPADDR_TYPE_V4;
 #else
   // Native macro/struct copy assignment abstraction fallback
   ping_target.addr = ip.addr;
