@@ -70,9 +70,10 @@ static esp_event_handler_instance_t instance_ip = NULL;
 #define TCPIP_ADAPTER_IF_AP  1
 #endif
 
-static void sendWifiCompletionCB(
-  JsVar **g_jsCallback,  //!< Pointer to the global callback variable
-  const char  *reason          //!< NULL if successful, error string otherwise
+static void queueWifiCallbackAndUnLock(
+  JsVar **g_jsCallback,  //!< Pointer to the global callback variable (will be set to NULL after call)
+  JsVar *argument1,      //!< JsVar to pass as argument (will be freed)
+  JsVar *argument2       //!< JsVar to pass as argument (will be freed)
 );
 
 // A callback function to be invoked on a disconnect response.
@@ -458,7 +459,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
       if (g_jsGotIpCallback) {
         /* If we were connecting, g_jsGotIpCallback is set. If we fail (eg this event is fired) then we
         should call the callback with the first argument as the error */
-        sendWifiCompletionCB(&g_jsGotIpCallback, wifiReasonToString(disconnected->reason));
+        queueWifiCallbackAndUnLock(&g_jsGotIpCallback, jsvNewFromString(wifiReasonToString(disconnected->reason)), NULL);
       }
       stopWifiIfIdle();
     }
@@ -512,7 +513,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
   if (event->event_id == SYSTEM_EVENT_STA_GOT_IP) {
     system_event_sta_got_ip_t *ipevent = &event->event_info.got_ip;
 #endif
-    sendWifiCompletionCB(&g_jsGotIpCallback, NULL);
     JsVar *jsDetails = jsvNewObject();
     char temp[16]; // max: "xxx.xxx.xxx.xxx\0"
     sprintf(temp, IPSTR, IP2STR(&ipevent->ip_info.ip));
@@ -523,6 +523,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     jsvObjectSetStringChild(jsDetails, "gw", temp);
     jsDebug(DBG_INFO, "Wifi: About to emit connect!\n");
     sendWifiEvent("#onconnected", jsDetails);
+    queueWifiCallbackAndUnLock(&g_jsGotIpCallback, jsvNewNull(), jsDetails);
     // start mDNS
     const char * hostname;
 #if ESP_IDF_VERSION_MAJOR>=5
@@ -546,6 +547,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     sprintf(temp, MACSTR, MAC2STR(sta_connected->mac));
     jsvObjectSetStringChild(jsDetails, "mac", temp);
     sendWifiEvent("#onsta_joined", jsDetails);
+    jsvUnLock(jsDetails);
   } else
 #if ESP_IDF_VERSION_MAJOR>=5
   if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED) {
@@ -559,6 +561,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     sprintf(temp, MACSTR, MAC2STR(sta_disconnected->mac));
     jsvObjectSetStringChild(jsDetails, "mac", temp);
     sendWifiEvent("#onsta_left", jsDetails);
+    jsvUnLock(jsDetails);
   } else
 #if ESP_IDF_VERSION_MAJOR>=5
   if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE) {
@@ -578,7 +581,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
 #endif
     // Called when we have started being an access point.
     g_isAPStarted = true;
-    sendWifiCompletionCB(&g_jsAPStartedCallback, NULL);
+    queueWifiCallbackAndUnLock(&g_jsAPStartedCallback, jsvNewNull(), NULL);
   } else
 #if ESP_IDF_VERSION_MAJOR>=5
   if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STOP) {
@@ -590,7 +593,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     stopWifiIfIdle();
   } else
 #if ESP_IDF_VERSION_MAJOR>=5
-    jsDebug(DBG_INFO, "Wifi: event_handler -> NOT HANDLED EVENT: %d\n", event_id );
+    jsDebug(DBG_INFO, "Wifi: event_handler -> NOT HANDLED EVENT: %d:%d\n", event_base, event_id );
 #else
     jsDebug(DBG_INFO, "Wifi: event_handler -> NOT HANDLED EVENT: %d\n", event->event_id );
 #endif
@@ -636,22 +639,20 @@ void esp32_wifi_init() {
  * no error.  Since this occurrence happens a number of times, this helper function takes as input
  * a pointer to a callback function and a parameter.
  */
-static void sendWifiCompletionCB(
-    JsVar **g_jsCallback, //!< Pointer to the global callback variable
-    const char *reason          //!< NULL if successful, error string otherwise
+static void queueWifiCallbackAndUnLock(
+  JsVar **g_jsCallback,  //!< Pointer to the global callback variable (will be set to NULL after call)
+  JsVar *argument1,      //!< JsVar to pass as argument (will be freed)
+  JsVar *argument2       //!< JsVar to pass as argument (will be freed)
 ) {
-  jsDebug(DBG_INFO, "sendWifiCompletionCB\n");
+  jsDebug(DBG_INFO, "queueWifiCallbackAndUnLock\n");
   // Check that we have a callback function.
   if (!jsvIsFunction(*g_jsCallback)) {
+    jsvUnLock2(argument1, argument2);
     return; // we have not got a function pointer: nothing to do
   }
-
-  JsVar *params[1];
-  params[0] = reason ? jsvNewFromString(reason) : jsvNewNull();
-  jsiQueueEvents(NULL, *g_jsCallback, params, 1);
-  jsvUnLock(params[0]);
-  // unlock and delete the global callback
-  jsvUnLock(*g_jsCallback);
+  JsVar *params[2] = {argument1,argument2};
+  jsiQueueEvents(NULL, *g_jsCallback, params, argument2?2:1);
+  jsvUnLock3(argument1, argument2, *g_jsCallback); // unlock and delete the global callback
   *g_jsCallback = NULL;
 }
 
