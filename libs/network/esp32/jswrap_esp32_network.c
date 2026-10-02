@@ -547,20 +547,36 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     g_isStaStarted = false;
   } else
 #if ESP_IDF_VERSION_MAJOR>=5
-  if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+  if (event_base == IP_EVENT && (event_id == IP_EVENT_STA_GOT_IP || event_id==IP_EVENT_GOT_IP6)) {
     ip_event_got_ip_t* ipevent = (ip_event_got_ip_t*)event_data;
 #else
   if (event->event_id == SYSTEM_EVENT_STA_GOT_IP) {
     system_event_sta_got_ip_t *ipevent = &event->event_info.got_ip;
 #endif
     JsVar *jsDetails = jsvNewObject();
-    char temp[16]; // max: "xxx.xxx.xxx.xxx\0"
-    sprintf(temp, IPSTR, IP2STR(&ipevent->ip_info.ip));
-    jsvObjectSetStringChild(jsDetails, "ip", temp);
-    sprintf(temp, IPSTR, IP2STR(&ipevent->ip_info.netmask));
-    jsvObjectSetStringChild(jsDetails, "netmask", temp);
-    sprintf(temp, IPSTR, IP2STR(&ipevent->ip_info.gw));
-    jsvObjectSetStringChild(jsDetails, "gw", temp);
+    char temp[40]; // max: "xxx.xxx.xxx.xxx\0"
+#if ESP_IDF_VERSION_MAJOR >= 5
+    if (event_id == IP_EVENT_GOT_IP6) {
+      ip_event_got_ip6_t* ip6event = (ip_event_got_ip6_t*)event_data;
+      esp_ip6_addr_t ip = ip6event->ip6_info.ip;
+      jsvObjectSetChildAndUnLock(jsDetails, "ip", jsvVarPrintf(IPV6STR,IPV62STR(ip)));
+      jsvObjectSetBoolChild(jsDetails, "ipv6", true);
+      // DNS may not be set on some routers - default to Google IPv6
+      ip_addr_t dns_v6;
+      dns_v6.type = IPADDR_TYPE_V6;
+      // 2001:4860:4860::8888 (Google IPv6 DNS)
+      IP6_ADDR(&dns_v6.u_addr.ip6, 0x20014860, 0x48600000, 0x00000000, 0x00008888);
+      dns_setserver(0, &dns_v6);
+    } else
+#endif
+    {
+      sprintf(temp, IPSTR, IP2STR(&ipevent->ip_info.ip));
+      jsvObjectSetStringChild(jsDetails, "ip", temp);
+      sprintf(temp, IPSTR, IP2STR(&ipevent->ip_info.netmask));
+      jsvObjectSetStringChild(jsDetails, "netmask", temp);
+      sprintf(temp, IPSTR, IP2STR(&ipevent->ip_info.gw));
+      jsvObjectSetStringChild(jsDetails, "gw", temp);
+    }
     jsDebug(DBG_INFO, "Wifi: About to emit connect!\n");
     sendWifiEvent("#onconnected", jsDetails);
     queueWifiCallbackAndUnLock(&g_jsGotIpCallback, jsvNewNull(), jsDetails);
@@ -664,6 +680,7 @@ void esp32_wifi_init() {
 #if ESP_IDF_VERSION_MAJOR>=5
   ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, &instance_wifi));
   ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, &instance_ip));
+  ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_GOT_IP6, &wifi_event_handler, NULL, &instance_ip));
   //ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_LOST_IP, &wifi_event_handler, NULL, &instance_lost_ip));
   //ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, &wifi_event_handler, NULL, &instance_ap_ip));
 #else
@@ -1562,11 +1579,11 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
   );
   esp_netif_ip_info_t ipInfo;
   esp_err_t err = (netif) ? esp_netif_get_ip_info(netif, &ipInfo) : ESP_FAIL;
+  // FIXME use esp_netif_get_all_ip6 here and return ipv6 address if we have it?
 #else
   tcpip_adapter_ip_info_t ipInfo;
   esp_err_t err = tcpip_adapter_get_ip_info(interface, &ipInfo);
 #endif
-
   if (err == ESP_OK) {
     jsvObjectSetChildAndUnLock(jsIpInfo, "ip",
       networkGetAddressAsString((uint8_t*)&ipInfo.ip, 4, 10, '.'));
@@ -1575,18 +1592,6 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
     jsvObjectSetChildAndUnLock(jsIpInfo, "gw",
       networkGetAddressAsString((uint8_t*)&ipInfo.gw, 4, 10, '.'));
   }
-
-  /*
-#if ESP_IDF_VERSION_MAJOR >= 5
-  esp_ip6_addr_t ip6_addrs[LWIP_IPV6_NUM_ADDRESSES];
-  int ip6_count = esp_netif_get_all_ip6(netif, ip6_addrs);
-  jsiConsolePrintf("Found %d IPv6 address(es):", ip6_count);
-  if (ip6_count) {
-    //esp_ip6_addr_type_t type = esp_netif_ip6_get_addr_type(&ip6_addrs[i]);
-    jsvObjectSetChildAndUnLock(jsIpInfo, "ipv6", jsvVarPrintf(IPV6STR,IPV62STR(ip6_addrs[0])));
-  }
-#endif
-  */
 
   // MAC always succeeds
   uint8_t mac[6];
