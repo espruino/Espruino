@@ -60,7 +60,7 @@
 #define UNUSED(x) (void)(x)
 
 #if ESP_IDF_VERSION_MAJOR>=5
-esp_netif_t *sta_netif;
+esp_netif_t *sta_netif = NULL;
 static esp_event_handler_instance_t instance_wifi = NULL;
 static esp_event_handler_instance_t instance_ip = NULL;
 #endif
@@ -261,7 +261,7 @@ const char *wifiEventToString(int e) {
     case WIFI_EVENT_AP_START: return "AP_START";
     case WIFI_EVENT_AP_STOP: return "AP_STOP";
     case WIFI_EVENT_MAX: return "MAX";
-    case WIFI_REASON_IE_IN_4WAY_DIFFERS: return "IEs in 4-way handshake differ";
+    case WIFI_EVENT_HOME_CHANNEL_CHANGE: return "HOME_CHANNEL_CHANGE";
     default: return "unknown";
   }
 }
@@ -520,6 +520,10 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     sprintf(temp, "%d", connected->channel);
     jsvObjectSetStringChild(jsDetails, "channel", temp);
     sendWifiEvent("#onassociated", jsDetails);
+
+#if ESP_IDF_VERSION_MAJOR>=5
+    esp_netif_create_ip6_linklocal(sta_netif); // IPv6 startup
+#endif
   } else
 #if ESP_IDF_VERSION_MAJOR>=5
   if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -648,7 +652,7 @@ void esp32_wifi_init() {
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   esp_netif_create_default_wifi_ap();
-  esp_netif_create_default_wifi_sta();
+  sta_netif = esp_netif_create_default_wifi_sta();
 #else
   tcpip_adapter_init();
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
