@@ -302,6 +302,42 @@ static char *wifiEventToString(uint32_t event){
 }
 #endif
 
+// Convert an IP address to a string. Returns 0 on failure
+JsVar *ipToString(const ip_addr_t *ipAddr) {
+  if (ipAddr && IP_IS_V4(ipAddr)) {
+    const ip4_addr_t *ip4 = ip_2_ip4(ipAddr);
+    return networkGetAddressAsString((uint8_t *)&ip4->addr, 4, 10, '.');
+  } else if (ipAddr && IP_IS_V6(ipAddr)) {
+    return jsvVarPrintf(IPV6STR,IPV62STR(ipAddr->u_addr.ip6));
+  }
+  return 0;
+}
+#if ESP_IDF_VERSION_MAJOR >= 4
+JsVar *espipToString(const esp_ip_addr_t *ipAddr) {
+  assert(sizeof(ip_addr_t) == sizeof(esp_ip_addr_t)); // these are actually the same
+  return ipToString((const ip_addr_t*)ipAddr);
+}
+#endif
+
+// Convert a string to an IP address. Returns false on failure
+bool stringToIP(ip_addr_t *ipAddr, const char *str) {
+  if (!str) return false;
+  const char *s = str;
+  while (*s && *s!=':' && *s!='.') s++;
+  char separator = *s;
+  if (separator=='.') {
+    ipAddr->type = IPADDR_TYPE_V4;
+    ipAddr->u_addr.ip4.addr = networkParseIPv4Address(str);
+    return true;
+  } else if (separator==':') {
+    ipAddr->type = IPADDR_TYPE_V6;
+    // FIXME
+    assert(0);
+    return false;
+  }
+  return false;
+}
+
 /// convert WiFi error to a string value.
 static char *wifiErrorToString(esp_err_t err){
   jsDebug(DBG_INFO, "wifiErrorToString %d: %s \n", err,esp_err_to_name(err));
@@ -1536,6 +1572,18 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
       networkGetAddressAsString((uint8_t*)&ipInfo.gw, 4, 10, '.'));
   }
 
+  /*
+#if ESP_IDF_VERSION_MAJOR >= 5
+  esp_ip6_addr_t ip6_addrs[LWIP_IPV6_NUM_ADDRESSES];
+  int ip6_count = esp_netif_get_all_ip6(netif, ip6_addrs);
+  jsiConsolePrintf("Found %d IPv6 address(es):", ip6_count);
+  if (ip6_count) {
+    //esp_ip6_addr_type_t type = esp_netif_ip6_get_addr_type(&ip6_addrs[i]);
+    jsvObjectSetChildAndUnLock(jsIpInfo, "ipv6", jsvVarPrintf(IPV6STR,IPV62STR(ip6_addrs[0])));
+  }
+#endif
+  */
+
   // MAC always succeeds
   uint8_t mac[6];
   wifi_interface_t wifif = interface == TCPIP_ADAPTER_IF_STA ? WIFI_IF_STA : WIFI_IF_AP;
@@ -1619,51 +1667,51 @@ static uint8_t g_seq_no;
 #if ESP_IDF_VERSION_MAJOR >= 5
 // Helper function to build the Espruino JS object from IDF5 profiles
 static void emit_espruino_ping_event(esp_ping_handle_t hdl, uint32_t elapsed_time) {
-    if (g_jsPingCallback == NULL) return;
+  jsDebug(DBG_INFO, "espruino_ping_event\n");
+  if (g_jsPingCallback == NULL) return;
 
-    uint32_t transmitted = 0;
-    uint32_t received = 0;
-    uint32_t total_time_ms = 0;
-    uint32_t bytes_received = 0;
+  uint32_t transmitted = 0;
+  uint32_t received = 0;
+  uint32_t total_time_ms = 0;
+  uint32_t bytes_received = 0;
 
-    esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &bytes_received, sizeof(bytes_received));
+  esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
+  esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
+  esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
+  esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &bytes_received, sizeof(bytes_received));
 
-    JsVar *jsPingResponse = jsvNewObject();
+  JsVar *jsPingResponse = jsvNewObject();
 
-    jsvObjectSetIntChild(jsPingResponse, "totalCount", transmitted);
-    jsvObjectSetIntChild(jsPingResponse, "totalBytes", received * bytes_received);
-    jsvObjectSetIntChild(jsPingResponse, "totalTime", total_time_ms);
-    jsvObjectSetIntChild(jsPingResponse, "respTime", elapsed_time);
-    jsvObjectSetIntChild(jsPingResponse, "seqNo", ++g_seq_no);
-    jsvObjectSetIntChild(jsPingResponse, "timeoutCount", (transmitted > received) ? (transmitted - received) : 0);
-    jsvObjectSetIntChild(jsPingResponse, "bytes", bytes_received);
-    jsvObjectSetIntChild(jsPingResponse, "error", (transmitted > received) ? (transmitted - received) : 0);
+  jsvObjectSetIntChild(jsPingResponse, "totalCount", transmitted);
+  jsvObjectSetIntChild(jsPingResponse, "totalBytes", received * bytes_received);
+  jsvObjectSetIntChild(jsPingResponse, "totalTime", total_time_ms);
+  jsvObjectSetIntChild(jsPingResponse, "respTime", elapsed_time);
+  jsvObjectSetIntChild(jsPingResponse, "seqNo", ++g_seq_no);
+  jsvObjectSetIntChild(jsPingResponse, "timeoutCount", (transmitted > received) ? (transmitted - received) : 0);
+  jsvObjectSetIntChild(jsPingResponse, "bytes", bytes_received);
+  jsvObjectSetIntChild(jsPingResponse, "error", (transmitted > received) ? (transmitted - received) : 0);
 
-    JsVar *params[1];
-    params[0] = jsPingResponse;
-    jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
-
-    jsvUnLock(jsPingResponse);
+  JsVar *params[1];
+  params[0] = jsPingResponse;
+  jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
+  jsvUnLock(jsPingResponse);
 }
 
 // IDF v5 Callback: Executed on successful ICMP Echo Reply
 static void esp5_ping_on_success(esp_ping_handle_t hdl, void *args) {
-    uint32_t elapsed_time = 0;
-    esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
-    emit_espruino_ping_event(hdl, elapsed_time);
+  uint32_t elapsed_time = 0;
+  esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
+  emit_espruino_ping_event(hdl, elapsed_time);
 }
 
 // IDF v5 Callback: Executed if a packet drops or times out
 static void esp5_ping_on_timeout(esp_ping_handle_t hdl, void *args) {
-    emit_espruino_ping_event(hdl, 0);
+  emit_espruino_ping_event(hdl, 0);
 }
 
 // IDF v5 Callback: Executed when 'ping_count' runs out or session stops
 static void esp5_ping_on_end(esp_ping_handle_t hdl, void *args) {
-    esp_ping_delete_session(hdl);
+  esp_ping_delete_session(hdl);
 }
 #else
 esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
@@ -1695,21 +1743,22 @@ void jswrap_wifi_ping(
     JsVar *pingCallback //!< Optional callback function.
 ) {
   // If the parameter is a string, get the IP address from the string representation.
-  ip4_addr_t ip;
+  ip_addr_t ip;
   if (jsvIsString(ipAddr)) {
-    char ipString[20];
+    char ipString[40];
     jsvGetString(ipAddr, ipString, sizeof(ipString)-1);
-    ip.addr = networkParseIPv4Address(ipString);
-    if (ip.addr == 0) {
-      jsExceptionHere(JSET_ERROR, "Not a valid IP address");
+    if (!stringToIP(&ip, ipString)) {
+      jsExceptionHere(JSET_ERROR, "%q not a valid IP address", ipAddr);
       return;
     }
   } else if (jsvIsInt(ipAddr)) { // If the parameter is an integer, treat it as an IP address.
-    ip.addr = jsvGetInteger(ipAddr);
+    ip.u_addr.ip4.addr = jsvGetInteger(ipAddr);
+    ip.type = IPADDR_TYPE_V4;
   } else { // Invalid parameter type
     jsExceptionHere(JSET_ERROR, "IP address must be string or integer");
     return;
   }
+  jsDebug(DBG_INFO, "jswrap_wifi_ping(%q)\n", ipToString(&ip));
 
   // Validate and handle the callback binding
   if (jsvIsUndefined(pingCallback) || jsvIsNull(pingCallback)) {
@@ -1738,28 +1787,14 @@ void jswrap_wifi_ping(
   esp_ping_set_target(PING_TARGET_IP_ADDRESS_COUNT, &ping_count, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_RCV_TIMEO, &ping_timeout, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_DELAY_TIME, &ping_delay, sizeof(uint32_t));
-  esp_ping_set_target(PING_TARGET_IP_ADDRESS, &ip.addr, sizeof(uint32_t));
+  esp_ping_set_target(PING_TARGET_IP_ADDRESS, &ip.u_addr.ip4, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_RES_FN, &pingResults, sizeof(pingResults));
   g_seq_no = 0;
   ping_init();
 #else
   esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
-
-  // Create a clean LwIP container and map the parsed IPv4 address to it safely
-  ip_addr_t ping_target;
-  memset(&ping_target, 0, sizeof(ip_addr_t));
-#if defined(ip_addr_set_ip4val) // FIXME: does this exist?
-  ip4_addr_t lwip_ip = { .addr = ip.addr };
-  ip_addr_set_ip4val(&ping_target, &lwip_ip);
-#elif CONFIG_LWIP_IPV6==1
-  ping_target.u_addr.ip4.addr = ip.addr;
-  ping_target.type = IPADDR_TYPE_V4;
-#else
-  // Native macro/struct copy assignment abstraction fallback
-  ping_target.addr = ip.addr;
-#endif
   // Assign the target container cleanly to the session configuration
-  ping_config.target_addr = ping_target;
+  ping_config.target_addr = ip;
   ping_config.count = ping_count;
   ping_config.timeout_ms = ping_timeout;
   ping_config.interval_ms = ping_delay;
@@ -1816,7 +1851,6 @@ void jswrap_wifi_setSNTP(JsVar *jsServer, JsVar *jsZone) {
  * Invoke the callback function to inform the caller that a hostname has been converted to
  * an IP address.  The callback function should take a parameter that is the IP address.
  */
-
 static void dnsFoundCallback(
     const char *hostname,    //!< The hostname that was converted to an IP address.
     const ip_addr_t *ipAddr, //!< The ip address retrieved.  This may be 0.
@@ -1824,19 +1858,7 @@ static void dnsFoundCallback(
   ) {
 
   jsDebug(DBG_INFO, "Wifi.getHostByName CB - %s %x\n", hostname, ipAddr );
-  if (g_jsHostByNameCallback != NULL) {
-    JsVar *params[1];
-    if (ipAddr && IP_IS_V4(ipAddr)) {
-      ip4_addr_t *ip4 = ip_2_ip4(ipAddr);
-      params[0] = networkGetAddressAsString((uint8_t *)&ip4->addr, 4, 10, '.');
-    } else {
-      params[0] = jsvNewNull();
-    }
-    jsiQueueEvents(NULL, g_jsHostByNameCallback, params, 1);
-    jsvUnLock(params[0]);
-    jsvUnLock(g_jsHostByNameCallback);
-    g_jsHostByNameCallback = NULL;
-  }
+  queueWifiCallbackAndUnLock(&g_jsHostByNameCallback, ipToString(ipAddr), NULL);
 }
 
 void jswrap_wifi_getHostByName(
@@ -1870,15 +1892,10 @@ void jswrap_wifi_getHostByName(
     esp_netif_dns_info_t dns_info;
     esp_err_t ret = esp_netif_get_dns_info(sta, ESP_NETIF_DNS_MAIN, &dns_info);
     if (ret == ESP_OK) {
-      if (dns_info.ip.type == IPADDR_TYPE_V4) {
-        uint32_t addr = dns_info.ip.u_addr.ip4.addr;
-        jsDebug(DBG_INFO,"DNS server: %d.%d.%d.%d\n",
-          (addr>>0)&0xff, (addr>>8)&0xff,
-          (addr>>16)&0xff, (addr>>24)&0xff);
-      }
+      jsDebug(DBG_INFO,"DNS server: %v\n", espipToString(&dns_info.ip));
     } else {
-    jsDebug(DBG_INFO, "esp_netif_get_dns_info: %d\n", ret);
-  }
+      jsDebug(DBG_INFO, "esp_netif_get_dns_info: %d\n", ret);
+    }
 #endif
 
   jsDebug(DBG_INFO, "Wifi.getHostByName: %s\n", hostname);
