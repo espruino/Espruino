@@ -112,7 +112,7 @@ uint32_t networkParseIPv4Address(const char *ip);
  * 6 byte array. returns false on failure */
 bool networkParseMACAddress(unsigned char *addr, const char *ip);
 /// if nBytes<0, addresses are printed out backwards
-JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int base, char separator);
+JsVar *networkGetAddressAsString(const unsigned char *ip, int nBytes, unsigned int base, char separator);
 /// Given an address (pointed to by ip) put it in a string named 'name', in the given object. if nBytes<0, addresses are printed out backwards
 void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator);
 /** Some devices (CC3000) store the IP address with the first element last, so we must flip it */

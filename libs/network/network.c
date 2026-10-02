@@ -107,7 +107,7 @@ bool networkParseMACAddress(unsigned char *addr, const char *ip) {
  * To create a Mac address, one might use:
  * networkGetAddressAsString(mac, 6, 16, ':')
  */
-JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int base, char separator) {
+JsVar *networkGetAddressAsString(const unsigned char *ip, int nBytes, unsigned int base, char separator) {
   char data[64] = "";
   int i = 0, dir = 1, l = 0;
   if (nBytes<0) {
