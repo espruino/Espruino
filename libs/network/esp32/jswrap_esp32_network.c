@@ -525,12 +525,13 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     sendWifiEvent("#onconnected", jsDetails);
     queueWifiCallbackAndUnLock(&g_jsGotIpCallback, jsvNewNull(), jsDetails);
     // start mDNS
-    const char * hostname;
+    const char * hostname = NULL;
 #if ESP_IDF_VERSION_MAJOR>=5
     esp_err_t err = esp_netif_get_hostname(sta_netif, &hostname);
 #else
     esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
 #endif
+    if (err) hostname = NULL;
     if (hostname && hostname[0] != 0) {
       startMDNS(hostname);
     }
