@@ -2116,7 +2116,6 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
 #endif
 #ifdef TOUCH_I2C
 void jswrap_banglejs_touchHandler(bool state, IOEventFlags flags) {
-  if (state) jsiConsolePrintf("Toff"); // only interested in when low
   if (state) return; // only interested in when low
   // Ok, now get touch info
   unsigned char buf[6];
