@@ -21,6 +21,7 @@ import pinutils;
 info = {
  'name'                     : "Espruino ePaper Badge",
  'espruino_page_link'       : 'Badge',
+ 'link' :  [ "https://espruino.com/Badge" ],
  'default_console'          : "EV_USBSERIAL", # USB only no serial, see ESPR_USE_USB_SERIAL_JTAG
  'default_console_baudrate' : "115200",
  'variables'                : 4095,
