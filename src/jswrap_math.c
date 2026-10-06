@@ -384,11 +384,13 @@ If `val==undefined` or `val<=0` a **32 bit** random number will be returned as a
 }*/
 JsVar *jswrap_math_round(double x) {
   if (!isfinite(x) || isNegativeZero(x)) return jsvNewFromFloat(x);
-  x += (x<0) ? -0.5 : 0.5;
-  long long i = (long long)x;
-  if (i==0 && (x<0))
+  double r = floor(x);
+  if (x-r >= 0.5) r += 1; // halves round towards +Infinity
+  if (r==0 && (x<0))
     return jsvNewFromFloat(-0.0); // pass -0 through
-  return jsvNewFromLongInteger(i);
+  if (r<-2147483648.0 || r>2147483647.0)
+    return jsvNewFromFloat(r);
+  return jsvNewFromInteger((JsVarInt)r);
 }
 
 /*JSON{
