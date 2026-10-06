@@ -307,10 +307,16 @@ JsVar *ipToString(const ip_addr_t *ipAddr) {
   if (IP_IS_V4(ipAddr)) {
     const ip4_addr_t *ip4 = ip_2_ip4(ipAddr);
     return networkGetAddressAsString((uint8_t *)&ip4->addr, 4, 10, '.');
+#if CONFIG_LWIP_IPV6
   } else if (IP_IS_V6(ipAddr)) {
     return jsvVarPrintf(IPV6STR,IPV62STR(ipAddr->u_addr.ip6));
   }
   return jsvVarPrintf("[UNKNOWN %d]", ipAddr->type);
+#else
+  }
+  return jsvVarPrintf("[UNKNOWN]");
+#endif
+
 }
 #if ESP_IDF_VERSION_MAJOR >= 4
 JsVar *espipToString(const esp_ip_addr_t *ipAddr) {
@@ -322,6 +328,7 @@ JsVar *espipToString(const esp_ip_addr_t *ipAddr) {
 // Convert a string to an IP address. Returns false on failure
 bool stringToIP(ip_addr_t *ipAddr, const char *str) {
   if (!str) return false;
+#if CONFIG_LWIP_IPV6
   const char *s = str;
   while (*s && *s!=':' && *s!='.') s++;
   char separator = *s;
@@ -335,6 +342,9 @@ bool stringToIP(ip_addr_t *ipAddr, const char *str) {
     assert(0);
     return false;
   }
+#else
+  ipAddr->addr = networkParseIPv4Address(str);
+#endif
   return false;
 }
 
@@ -521,7 +531,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
     jsvObjectSetStringChild(jsDetails, "channel", temp);
     sendWifiEvent("#onassociated", jsDetails);
 
-#if ESP_IDF_VERSION_MAJOR>=5
+#if ESP_IDF_VERSION_MAJOR>=5 && CONFIG_LWIP_IPV6
     esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     esp_netif_create_ip6_linklocal(netif); // IPv6 startup
 #endif
@@ -556,7 +566,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event) {
 #endif
     JsVar *jsDetails = jsvNewObject();
     char temp[40]; // max: "xxx.xxx.xxx.xxx\0"
-#if ESP_IDF_VERSION_MAJOR >= 5
+#if ESP_IDF_VERSION_MAJOR>=5 && CONFIG_LWIP_IPV6
     if (event_id == IP_EVENT_GOT_IP6) {
       ip_event_got_ip6_t* ip6event = (ip_event_got_ip6_t*)event_data;
       esp_ip6_addr_t ip = ip6event->ip6_info.ip;
@@ -1750,7 +1760,7 @@ esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
 #endif
 
 void jswrap_wifi_ping(
-    JsVar *ipAddr,      //!< A string or integer representation of an IP address.
+    JsVar *ipAddr,      //!< A string representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
 ) {
   // If the parameter is a string, get the IP address from the string representation.
@@ -1762,11 +1772,8 @@ void jswrap_wifi_ping(
       jsExceptionHere(JSET_ERROR, "%q not a valid IP address", ipAddr);
       return;
     }
-  } else if (jsvIsInt(ipAddr)) { // If the parameter is an integer, treat it as an IP address.
-    ip.u_addr.ip4.addr = jsvGetInteger(ipAddr);
-    ip.type = IPADDR_TYPE_V4;
   } else { // Invalid parameter type
-    jsExceptionHere(JSET_ERROR, "IP address must be string or integer");
+    jsExceptionHere(JSET_ERROR, "IP address must be string");
     return;
   }
   jsDebug(DBG_INFO, "jswrap_wifi_ping(%q)\n", ipToString(&ip));

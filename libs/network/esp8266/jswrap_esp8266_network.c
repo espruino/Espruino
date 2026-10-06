@@ -1297,16 +1297,8 @@ void jswrap_wifi_ping(
         jsExceptionHere(JSET_ERROR, "Not a valid IP address");
       return;
     }
-  } else
-  // If the parameter is an integer, treat it as an IP address.
-  if (jsvIsInt(ipAddr)) {
-    pingOpt.ip = jsvGetInteger(ipAddr);
-  } else
-  // The parameter was neither a string nor an IP address and hence we don't
-  // know how to get the IP address of the partner to ping so throw an
-  // exception.
-  {
-      jsExceptionHere(JSET_ERROR, "IP address must be string or integer");
+  } else {
+      jsExceptionHere(JSET_ERROR, "IP address must be string");
     return;
   }
 
