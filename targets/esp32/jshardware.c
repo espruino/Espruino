@@ -74,6 +74,7 @@
 #if ESP_IDF_VERSION_MAJOR>=5
 #include "esp_flash.h"
 #include "soc/gpio_reg.h"
+#include "driver/temperature_sensor.h"
 #else
 #include "esp_spi_flash.h"
 #endif
@@ -780,12 +781,27 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 
 // the esp32 temperature sensor - undocumented library function call. Unsure of values returned.
 JsVarFloat jshReadTemperature() {
+#if ESP_IDF_VERSION_MAJOR>=5
+  static temperature_sensor_handle_t temp_sensor = NULL;
+  if (!temp_sensor) {
+    temperature_sensor_config_t temp_config = {
+      .range_min = -10,
+      .range_max = 80,
+    };
+    temperature_sensor_install(&temp_config, &temp_sensor);
+    temperature_sensor_enable(temp_sensor);
+  }
+  float temp;
+  temperature_sensor_get_celsius(temp_sensor, &temp);
+  return temp;
+#else
 #if CONFIG_IDF_TARGET_ESP32
   extern uint8_t temprature_sens_read();
   return temprature_sens_read();
 #else
   jsError(">> jshReadTemperature Not implemented");
   return NAN;
+#endif
 #endif
 }
 
