@@ -1482,7 +1482,10 @@ void jswrap_wifi_restore(void) {
   jsDebug(DBG_INFO, "jswrap_wifi_restore\n");
 
 #if CONFIG_IDF_TARGET_ESP32C3
-  esp_wifi_set_max_tx_power(34); // 8.5dBm
+  /* This was done to stop cheap supermini devices blowing themselves up,
+  but I believe all the superminis being produced now are fine, and the broken
+  ones seem to fail eventually regardless.  */
+  esp_wifi_set_max_tx_power(66); // 16.5dBm (default is 20 - the max)
 #endif
 
   JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
