@@ -954,7 +954,7 @@ JsVar *jswrap_string_padX(JsVar *str, int targetLength, JsVar *padString, bool p
 
   padString = padString ? jsvAsString(padString) : jsvNewFromString(" ");
   int padLength = (int)jsvGetStringLength(padString);
-  while (padChars > 0) {
+  while (padChars > 0 && padLength > 0) {
     jsvAppendStringVar(result, padString, 0, (size_t)((padLength > padChars) ? padChars : padLength));
     padChars -= padLength;
   }
