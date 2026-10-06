@@ -343,7 +343,7 @@ bool stringToIP(ip_addr_t *ipAddr, const char *str) {
     return false;
   }
 #else
-  ipAddr->addr = networkParseIPv4Address(str);
+  ((ip4_addr_t*)ipAddr)->addr = networkParseIPv4Address(str);
 #endif
   return false;
 }
