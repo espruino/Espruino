@@ -805,10 +805,9 @@ JsVarFloat jshReadTemperature() {
 #endif
 }
 
-// the esp8266 can read the VRef but then there's no analog input, so we don't support this
+// the ESP32 cannot read VCC without an external potential divider - but it always runs off 3.3v so just hard-code it
 JsVarFloat jshReadVRef() {
-  jsError(">> jshReadVRef Not implemented");
-  return NAN;
+  return 3.3;
 }
 
 unsigned int jshGetRandomNumber() {
