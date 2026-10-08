@@ -415,7 +415,7 @@ Badge.sleep = function() {
   ESP32.deepSleepExt1([BTN1,BTN2],0); // wait for buttons
 };
 
-/// Connect to wifi using details in wifi.json ({"ssid":"--","options":{"password":"---"}},"backup_ssid":..,"backup_options":{}). Returns a promise which only completes on success (on failure an error screen is displayed)
+/// Connect to wifi using details in wifi.json ({"ssid":"--","options":{"password":"---"}},"backup_ssid":..,"backup_options":{}). Returns a promise which completes on success or rejects on failure
 Badge.connectWiFi = function() {
   global.WIFI_INFO=require("Storage").readJSON("wifi.json",1)||{};
   if (!WIFI_INFO.ssid) {
@@ -423,7 +423,7 @@ Badge.connectWiFi = function() {
     Badge.showError("No WiFi Details\n\nConnect via Bluetooth/USB\nand write wifi.json");
     return new Promise(resolve => {}); // return a promise that never resolves
   }
-  return new Promise(resolve => {
+  return new Promise((resolve,reject) => {
     require("Wifi").connect(WIFI_INFO.ssid, WIFI_INFO.options, function(err) {
       if (err) {
         console.log("WiFi error: "+err);
@@ -432,10 +432,8 @@ Badge.connectWiFi = function() {
           return require("Wifi").connect(WIFI_INFO.backup_ssid, WIFI_INFO.backup_options, function(berr) {
             if (berr) {
               console.log("Backup WiFi error: "+berr);
-              return Badge.showError(`WiFi error: ${err}\nBackup WiFi error: ${berr}`).then(() => {
-                Badge.sleep(); // no need to resolve/reject - we're turning off
-              });
-            } // Othewise WiFi is ok
+              return reject(`WiFi error: ${err}\nBackup WiFi error: ${berr}`);
+            } // Otherwise WiFi is ok
             console.log("WiFi Connected - Swap default to backup");
             let t = WIFI_INFO.ssid;
             WIFI_INFO.ssid = WIFI_INFO.backup_ssid;
@@ -447,9 +445,7 @@ Badge.connectWiFi = function() {
             resolve();
           });
         }
-        return Badge.showError(`WiFi error: ${err}\n`).then(() => {
-          Badge.sleep(); // no need to resolve/reject - we're turning off
-        });
+        return reject(`WiFi error: ${err}\n`);
       }
       console.log("WiFi Connected");
       resolve();
