@@ -40,7 +40,7 @@ info = {
      'BLUETOOTH',
      'TERMINAL',
      'GRAPHICS',
-     'AES_CCM',
+     'AES','AES_CCM',
      'LCD_MEMLCD'
    ],
    'makefile' : [
