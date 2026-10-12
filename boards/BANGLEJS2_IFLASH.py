@@ -45,7 +45,7 @@ info = {
      'TERMINAL',
      'GRAPHICS',
      'CRYPTO','SHA256','SHA512',
-     'AES','AES_CCM',
+     'AES', # 'AES_CCM', # no room for this
      'LCD_MEMLCD',
      'SWDCON', # RTT console over SWD
      'JIT' # JIT compiler enabled
