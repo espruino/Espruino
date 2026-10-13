@@ -1690,53 +1690,125 @@ void jswrap_wifi_setHostname(JsVar *jsHostname, JsVar *jsCallback) {
 
 static uint8_t g_seq_no;
 #if ESP_IDF_VERSION_MAJOR >= 5
-// Helper function to build the Espruino JS object from IDF5 profiles
-static void emit_espruino_ping_event(esp_ping_handle_t hdl, uint32_t elapsed_time) {
-  jsDebug(DBG_INFO, "espruino_ping_event\n");
+static esp_ping_handle_t g_pingHandle;
+static uint32_t g_pingAttemptCount;
+static uint32_t g_pingTimeoutCount;
+static uint32_t g_pingTotalBytes;
+static uint32_t g_pingTotalTime;
+static uint32_t g_pingLastBytes;
+static uint32_t g_pingLastTime;
+
+typedef struct {
+  uint32_t attempts;
+  uint32_t timeouts;
+  uint32_t totalBytes;
+  uint32_t totalTime;
+  uint32_t responseTime;
+  uint32_t bytes;
+} Esp32PingResponse;
+
+#define ESP32_PING_RESPONSE_QUEUE_SIZE 5
+static Esp32PingResponse g_pingResponseQueue[ESP32_PING_RESPONSE_QUEUE_SIZE];
+static uint8_t g_pingResponseHead;
+static uint8_t g_pingResponseTail;
+static uint8_t g_pingResponseCount;
+static volatile bool g_pingEnded;
+static portMUX_TYPE g_pingMux = portMUX_INITIALIZER_UNLOCKED;
+
+static void savePingResponse(void) {
+  Esp32PingResponse response = {
+    .attempts = g_pingAttemptCount,
+    .timeouts = g_pingTimeoutCount,
+    .totalBytes = g_pingTotalBytes,
+    .totalTime = g_pingTotalTime,
+    .responseTime = g_pingLastTime,
+    .bytes = g_pingLastBytes
+  };
+  portENTER_CRITICAL(&g_pingMux);
+  if (g_pingResponseCount < ESP32_PING_RESPONSE_QUEUE_SIZE) {
+    g_pingResponseQueue[g_pingResponseHead] = response;
+    g_pingResponseHead = (g_pingResponseHead + 1) % ESP32_PING_RESPONSE_QUEUE_SIZE;
+    g_pingResponseCount++;
+  }
+  portEXIT_CRITICAL(&g_pingMux);
+}
+
+static void queuePingResponse(const Esp32PingResponse *response) {
   if (g_jsPingCallback == NULL) return;
-
-  uint32_t transmitted = 0;
-  uint32_t received = 0;
-  uint32_t total_time_ms = 0;
-  uint32_t bytes_received = 0;
-
-  esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &bytes_received, sizeof(bytes_received));
-
   JsVar *jsPingResponse = jsvNewObject();
-
-  jsvObjectSetIntChild(jsPingResponse, "totalCount", transmitted);
-  jsvObjectSetIntChild(jsPingResponse, "totalBytes", received * bytes_received);
-  jsvObjectSetIntChild(jsPingResponse, "totalTime", total_time_ms);
-  jsvObjectSetIntChild(jsPingResponse, "respTime", elapsed_time);
+  jsvObjectSetIntChild(jsPingResponse, "totalCount", response->attempts);
+  jsvObjectSetIntChild(jsPingResponse, "totalBytes", response->totalBytes);
+  jsvObjectSetIntChild(jsPingResponse, "totalTime", response->totalTime);
+  jsvObjectSetIntChild(jsPingResponse, "respTime", response->responseTime);
   jsvObjectSetIntChild(jsPingResponse, "seqNo", ++g_seq_no);
-  jsvObjectSetIntChild(jsPingResponse, "timeoutCount", (transmitted > received) ? (transmitted - received) : 0);
-  jsvObjectSetIntChild(jsPingResponse, "bytes", bytes_received);
-  jsvObjectSetIntChild(jsPingResponse, "error", (transmitted > received) ? (transmitted - received) : 0);
-
-  JsVar *params[1];
-  params[0] = jsPingResponse;
+  jsvObjectSetIntChild(jsPingResponse, "timeoutCount", response->timeouts);
+  jsvObjectSetIntChild(jsPingResponse, "bytes", response->bytes);
+  jsvObjectSetIntChild(jsPingResponse, "error", 0);
+  JsVar *params[1] = {jsPingResponse};
   jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
   jsvUnLock(jsPingResponse);
 }
 
-// IDF v5 Callback: Executed on successful ICMP Echo Reply
-static void esp5_ping_on_success(esp_ping_handle_t hdl, void *args) {
-  uint32_t elapsed_time = 0;
-  esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
-  emit_espruino_ping_event(hdl, elapsed_time);
+static void esp5PingSuccess(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  g_pingAttemptCount++;
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_SIZE, &g_pingLastBytes, sizeof(g_pingLastBytes));
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_TIMEGAP, &g_pingLastTime, sizeof(g_pingLastTime));
+  g_pingTotalBytes += g_pingLastBytes;
+  g_pingTotalTime += g_pingLastTime;
+  savePingResponse();
 }
 
-// IDF v5 Callback: Executed if a packet drops or times out
-static void esp5_ping_on_timeout(esp_ping_handle_t hdl, void *args) {
-  emit_espruino_ping_event(hdl, 0);
+static void esp5PingTimeout(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  g_pingAttemptCount++;
+  g_pingTimeoutCount++;
+  g_pingLastBytes = 0;
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_TIMEGAP, &g_pingLastTime, sizeof(g_pingLastTime));
+  savePingResponse();
 }
 
-// IDF v5 Callback: Executed when 'ping_count' runs out or session stops
-static void esp5_ping_on_end(esp_ping_handle_t hdl, void *args) {
-  esp_ping_delete_session(hdl);
+static void esp5PingEnd(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  portENTER_CRITICAL(&g_pingMux);
+  g_pingEnded = true;
+  portEXIT_CRITICAL(&g_pingMux);
+  esp_ping_delete_session(pingHandle);
+}
+
+/*JSON{
+  "type" : "idle",
+  "generate" : "jswrap_wifi_ping_idle",
+  "ifdef" : "ESP32_IDF5"
+}*/
+bool jswrap_wifi_ping_idle() {
+  Esp32PingResponse response = {0};
+  bool responsePending = false;
+  bool pingEnded;
+  portENTER_CRITICAL(&g_pingMux);
+  /* Keep the final response queued until IDF reports on_ping_end. This makes
+   * the final JavaScript callback a reliable indication that a new ping
+   * session may be started. */
+  if (g_pingResponseCount > 0 && (g_pingEnded || g_pingResponseCount > 1)) {
+    response = g_pingResponseQueue[g_pingResponseTail];
+    g_pingResponseTail = (g_pingResponseTail + 1) % ESP32_PING_RESPONSE_QUEUE_SIZE;
+    g_pingResponseCount--;
+    responsePending = true;
+  }
+  pingEnded = g_pingEnded && g_pingResponseCount == 0;
+  if (pingEnded) g_pingEnded = false;
+  portEXIT_CRITICAL(&g_pingMux);
+
+  if (responsePending) queuePingResponse(&response);
+  if (pingEnded && g_jsPingCallback != NULL) {
+    jsvUnLock(g_jsPingCallback);
+    g_jsPingCallback = NULL;
+  }
+  if (pingEnded) g_pingHandle = NULL;
+  return responsePending || pingEnded;
 }
 #else
 esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
@@ -1782,6 +1854,13 @@ void jswrap_wifi_ping(
   }
   jsDebug(DBG_INFO, "jswrap_wifi_ping(%q)\n", ipToString(&ip));
 
+#if ESP_IDF_VERSION_MAJOR >= 5
+  if (g_pingHandle != NULL) {
+    jsExceptionHere(JSET_ERROR, "A ping is already in progress");
+    return;
+  }
+#endif
+
   // Validate and handle the callback binding
   if (jsvIsUndefined(pingCallback) || jsvIsNull(pingCallback)) {
     if (g_jsPingCallback != NULL) {
@@ -1815,22 +1894,50 @@ void jswrap_wifi_ping(
   ping_init();
 #else
   esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
-  // Assign the target container cleanly to the session configuration
   ping_config.target_addr = ip;
   ping_config.count = ping_count;
   ping_config.timeout_ms = ping_timeout;
   ping_config.interval_ms = ping_delay;
   esp_ping_callbacks_t cbs = {
-    .on_ping_success = esp5_ping_on_success,
-    .on_ping_timeout = esp5_ping_on_timeout,
-    .on_ping_end = esp5_ping_on_end,
+    .on_ping_success = esp5PingSuccess,
+    .on_ping_timeout = esp5PingTimeout,
+    .on_ping_end = esp5PingEnd,
     .cb_args = NULL
   };
-  esp_ping_handle_t ping_handle;
-  if (esp_ping_new_session(&ping_config, &cbs, &ping_handle) == ESP_OK) {
-    esp_ping_start(ping_handle);
-  } else {
-    jsExceptionHere(JSET_ERROR, "Failed to initialize ping session");
+
+  g_seq_no = 0;
+  g_pingAttemptCount = 0;
+  g_pingTimeoutCount = 0;
+  g_pingTotalBytes = 0;
+  g_pingTotalTime = 0;
+  g_pingLastBytes = 0;
+  g_pingLastTime = 0;
+  portENTER_CRITICAL(&g_pingMux);
+  g_pingResponseHead = 0;
+  g_pingResponseTail = 0;
+  g_pingResponseCount = 0;
+  g_pingEnded = false;
+  portEXIT_CRITICAL(&g_pingMux);
+
+  esp_err_t err = esp_ping_new_session(&ping_config, &cbs, &g_pingHandle);
+  if (err != ESP_OK) {
+    g_pingHandle = NULL;
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
+      g_jsPingCallback = NULL;
+    }
+    jsExceptionHere(JSET_ERROR, "Unable to create ping session: %s", esp_err_to_name(err));
+    return;
+  }
+  err = esp_ping_start(g_pingHandle);
+  if (err != ESP_OK) {
+    esp_ping_delete_session(g_pingHandle);
+    g_pingHandle = NULL;
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
+      g_jsPingCallback = NULL;
+    }
+    jsExceptionHere(JSET_ERROR, "Unable to start ping session: %s", esp_err_to_name(err));
   }
 #endif
 }
