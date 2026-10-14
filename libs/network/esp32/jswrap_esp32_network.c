@@ -1782,7 +1782,7 @@ static void esp5PingEnd(esp_ping_handle_t pingHandle, void *args) {
 /*JSON{
   "type" : "idle",
   "generate" : "jswrap_wifi_ping_idle",
-  "ifdef" : "ESP32_IDF5"
+  "ifdef" : "USE_ESP32"
 }*/
 bool jswrap_wifi_ping_idle() {
   Esp32PingResponse response = {0};
@@ -1811,6 +1811,10 @@ bool jswrap_wifi_ping_idle() {
   return responsePending || pingEnded;
 }
 #else
+bool jswrap_wifi_ping_idle() {
+  return false;
+}
+
 esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
 	//printf("AvgTime:%.1fmS Sent:%d Rec:%d Err:%d min(mS):%d max(mS):%d ",
   //(float)pf->total_time/pf->recv_count, pf->send_count, pf->recv_count, pf->err_count, pf->min_time, pf->max_time );
@@ -1898,6 +1902,10 @@ void jswrap_wifi_ping(
   ping_config.count = ping_count;
   ping_config.timeout_ms = ping_timeout;
   ping_config.interval_ms = ping_delay;
+  /* The Espruino interpreter runs at priority 5. On a single-core target with
+   * an active USB console it may not sleep, so ESP-IDF's default ping task
+   * priority of 2 can be starved indefinitely. */
+  ping_config.task_prio = 6;
   esp_ping_callbacks_t cbs = {
     .on_ping_success = esp5PingSuccess,
     .on_ping_timeout = esp5PingTimeout,
