@@ -63,7 +63,9 @@ void initUart(int uart_num, uart_config_t uart_config, int txpin, int rxpin){
   ESP_ERROR_CHECK(err);
   err = uart_set_pin(uart_num, txpin, rxpin, -1, -1);
   ESP_ERROR_CHECK(err);
-  err = uart_driver_install(uart_num, 512, 128, 0, NULL, 0);
+  // ESP-IDF requires a nonzero TX buffer to be larger than the 128-byte
+  // hardware FIFO. Keep this reduced from the former 1024 bytes, but valid.
+  err = uart_driver_install(uart_num, 512, 256, 0, NULL, 0);
   ESP_ERROR_CHECK(err);
 }
 
