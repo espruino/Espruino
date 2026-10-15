@@ -284,9 +284,9 @@ JsVar *jswrap_pin_getInfo(
   JsVar *obj = jsvNewObject();
   if (!obj) return 0;
 
-  char buf[2];
-  buf[0] = (char)('A'+(inf->port-JSH_PORTA));
-  buf[1] = 0;
+  char buf[10];
+  jshGetPinString(buf, pin);
+  buf[1] = 0; // ensure we only use the first char
   jsvObjectSetStringChild(obj, "port", buf);
   jsvObjectSetIntChild(obj, "num", inf->pin-JSH_PIN0);
   if (inf->port&JSH_PIN_NEGATED)
