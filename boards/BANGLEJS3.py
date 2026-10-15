@@ -53,6 +53,8 @@ info = {
      'BLUETOOTH',
      'NET',
      'GRAPHICS',
+#     'CRYPTO','SHA256','SHA512',
+#     'AES','AES_CCM',
      'LCD_MEMLCD',
      'JIT' # JIT compiler enabled
    ],

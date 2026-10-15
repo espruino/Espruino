@@ -303,6 +303,7 @@ V7.set();w.startOutput(B8,4000);
 * Wrap Waveform handling to allow sounds to be played more easily
 * LCD update speed (12fps currently)
 * WiFi (Use `AT+CIPRECVMODE=1` for flow control)
+* Need to enable crypto/AES/etc in `BANGLEJS3.py` (possible mbedtls version mismatches)
 * ... much more
 
 ## Nice to have
