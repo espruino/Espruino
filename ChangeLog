@@ -55,6 +55,8 @@
             Add set_addr/clr_addr/in_addr to getInfo for nRF52/STM32/ESP32, and improve shiftOut speed (fix #1915)
             Fix "abcd".indexOf("bcde") and related errors
             ESP32: Ensure we adjust addresses of memory-mapped flash strings in memory when we compact
+            ESP32: Fix IDF5 SSL errors on some sites (packets too big)
+            SSL: Avoid socket error -30848 on successful transaction (this is just the lib telling us the peer wants to close the socket)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

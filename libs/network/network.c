@@ -14,6 +14,7 @@
 #include "network.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "socketerrors.h"
 #ifdef USE_FILESYSTEM
   #include "jswrap_functions.h"
   #include "jswrap_fs.h"
@@ -36,6 +37,7 @@
 #endif
 #if defined(USE_TLS)
   #include "mbedtls/ssl.h"
+  #include "mbedtls/debug.h"
   #include "mbedtls/ctr_drbg.h"
   #include "jswrap_crypto.h"
 #endif
@@ -312,7 +314,7 @@ static void ssl_debug( void *ctx, int level,
 {
     ((void) ctx);
     ((void) level);
-    // jsiConsolePrintf( "%s:%d: %s", file, line, str );
+    // jsiConsolePrintf( "%s:%d: %s", file, line, str ); // str already contains newline
 }
 
 int ssl_send(void *ctx, const unsigned char *buf, size_t len) {
@@ -624,6 +626,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   mbedtls_ssl_conf_ca_chain( &sd->conf, &sd->cacert, NULL );
   mbedtls_ssl_conf_rng( &sd->conf, mbedtls_ctr_drbg_random, &sd->ctr_drbg );
   mbedtls_ssl_conf_dbg( &sd->conf, ssl_debug, 0 );
+  //mbedtls_debug_set_threshold(3); // needs CONFIG_MBEDTLS_DEBUG in sdkconfig
 
   if (( ret = mbedtls_ssl_setup( &sd->ssl, &sd->conf )) != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
@@ -742,8 +745,8 @@ int netRecv(JsNetwork *net, SocketType socketType, int sckt, void *buf, size_t l
     if (sd->connecting) return 0; // busy
 
     int ret = mbedtls_ssl_read( &sd->ssl, buf, len );
-    if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
-      return 0;
+    if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) return 0;
+    if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) return SOCKET_ERR_CLOSED; // peer wants socket closed
     return ret;
   } else
 #endif
