@@ -57,6 +57,7 @@
             ESP32: Ensure we adjust addresses of memory-mapped flash strings in memory when we compact
             ESP32: Fix IDF5 SSL errors on some sites (packets too big)
             SSL: Avoid socket error -30848 on successful transaction (this is just the lib telling us the peer wants to close the socket)
+            ESP32: Allow ESP32.deepSleep to sleep until timeout *or* ext0 *or* ext1. Also fix 35 min max sleep time.
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

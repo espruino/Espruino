@@ -121,40 +121,9 @@ static uint64_t esp32DeepSleepGpioMask(Pin pin) {
   return 1ULL << pinToESP32Pin(pin);
 }
 
-
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP32",
-  "ifdef" : "ESP32",
-  "name"     : "deepSleep",
-  "generate" : "jswrap_ESP32_deepSleep",
-  "params"   : [ ["us", "int", "Sleeptime in us"] ]
-}
-Put device in deepsleep state for "us" microseconds.
-*/
-void jswrap_ESP32_deepSleep(int us) {
-  esp_sleep_enable_timer_wakeup((uint64_t)(us));
-  esp_deep_sleep_start(); // This function does not return.
-} // End of jswrap_ESP32_deepSleep
-
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP32",
-  "ifdef" : "ESP32",
-  "name"     : "deepSleepExt0",
-  "generate" : "jswrap_ESP32_deepSleep_ext0",
-  "params"   : [
-    ["pin", "pin", "Pin to trigger wakeup"],
-    ["level", "int", "Logic level to trigger"]
-  ]
-}
-Put device in deepsleep state until interrupted by pin "pin".
-On ESP32-C3, valid wakeup pins are GPIO 0–5 (e.g. `D3` for the power button).
-On other ESP32 variants, pins must be [RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
-*/
-void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
+void _jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
   if (!esp32IsValidDeepSleepWakeupPin(pin)) {
-    jsExceptionHere(JSET_ERROR, "Invalid pin");
+    jsExceptionHere(JSET_ERROR, "EXT0: Invalid pin");
     return;
   }
 #ifdef CONFIG_IDF_TARGET_ESP32C3
@@ -162,31 +131,9 @@ void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
 #else
   esp_sleep_enable_ext0_wakeup(pinToESP32Pin(pin), level);
 #endif
-  esp_deep_sleep_start(); // This function does not return.
-} // End of jswrap_ESP32_deepSleep_ext0
-
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP32",
-  "ifdef" : "ESP32",
-  "name"     : "deepSleepExt1",
-  "generate" : "jswrap_ESP32_deepSleep_ext1",
-  "params"   : [
-    ["pinVar", "JsVar", "Array of Pins to trigger wakeup"],
-    ["mode", "int", "Trigger mode"]
-  ]
 }
-Put device in deepsleep state until interrupted by pins in the "pinVar" array.
-The trigger "mode" determines the pin state which will wake up the device.
-Valid modes are:
 
-* `0: ESP_EXT1_WAKEUP_ALL_LOW` - all nominated pins must be set LOW to trigger wakeup
-* `1: ESP_EXT1_WAKEUP_ANY_HIGH` - any of nominated pins set HIGH will trigger wakeup
-
-On ESP32-C3, valid wakeup pins are GPIO 0–5.
-On other ESP32 variants, pins must be [RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
-*/
-void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
+void _jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
   uint64_t pinSum = 0;
   if (jsvIsArray(pinVar)) {
     JsvIterator it;
@@ -195,7 +142,7 @@ void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
       Pin pin = jshGetPinFromVarAndUnLock(jsvIteratorGetValue(&it));
       if (!esp32IsValidDeepSleepWakeupPin(pin)) {
         jsvIteratorFree(&it);
-        jsExceptionHere(JSET_ERROR, "Invalid pin");
+        jsExceptionHere(JSET_ERROR, "EXT1: Invalid pin");
         return;
       }
       pinSum |= esp32DeepSleepGpioMask(pin);
@@ -224,6 +171,104 @@ void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
 #else
   esp_sleep_enable_ext1_wakeup(pinSum, mode);
 #endif
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef" : "ESP32",
+  "name"     : "deepSleep",
+  "generate" : "jswrap_ESP32_deepSleep",
+  "params"   : [ ["us", "JsVar", "Sleeptime in us, or an object (see below)"] ]
+}
+Put device in deepsleep state for "us" microseconds. This is the lowest
+power sleep state. When it wakes, it reboots as if powered on again -
+the contents of RAM is lost.
+
+In 2v30 and later `us` can also be an object with the following fields:
+
+```
+{
+  timeout : int,    // timeout to wake IN MILLISECONDS
+  ext0 : pin,       // pin to wake on ext0
+  ext0Level : bool, // pin level to wake on - default=true (high)
+  ext1 : pin | [pin,pin,pin,...],  // pin(s) to wake on ext1
+  ext1Level : bool, // pin level to wake on - default=true
+                    // true = at least one pin high to wake
+                    // false = all pins must be low to wake
+}
+```
+
+On ESP32-C3, valid wakeup pins are GPIO 0–5 (e.g. `D3` for the power button).
+On other ESP32 variants, pins must be [RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
+
+On 2v29 and earlier firmwares `us` was 32 bits, so delays of much over 35 minutes would roll over and not wake the device. This is now fixed.
+*/
+void jswrap_ESP32_deepSleep(JsVar *us) {
+  if (jsvIsObject(us)) {
+    JsVar *v;
+    v = jsvObjectGetChildIfExists(us, "timeout");
+    if (v) esp_sleep_enable_timer_wakeup((uint64_t)(jsvGetLongInteger(v)*1000));
+    jsvUnLock(v);
+    v = jsvObjectGetChildIfExists(us, "ext0");
+    if (jsvIsPin(v)) {
+      _jswrap_ESP32_deepSleep_ext0(jshGetPinFromVar(v), jsvObjectGetIntegerChildOr(us, "ext0Level", 1)!=0);
+    } else if (v) jsExceptionHere(JSET_ERROR, "Expecting pin, got %j", v);
+    jsvUnLock(v);
+    v = jsvObjectGetChildIfExists(us, "ext1");
+    if (jsvIsPin(v) || jsvIsArray(v)) {
+      _jswrap_ESP32_deepSleep_ext1(v, jsvObjectGetIntegerChildOr(us, "ext1Level", 1));
+    } else if (v) jsExceptionHere(JSET_ERROR, "Expecting pin or array, got %j", v);
+    jsvUnLock(v);
+  } else {
+    esp_sleep_enable_timer_wakeup((uint64_t)jsvGetLongInteger(us));
+  }
+  esp_deep_sleep_start(); // This function does not return.
+} // End of jswrap_ESP32_deepSleep
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef" : "ESP32",
+  "name"     : "deepSleepExt0",
+  "generate" : "jswrap_ESP32_deepSleep_ext0",
+  "params"   : [
+    ["pin", "pin", "Pin to trigger wakeup"],
+    ["level", "int", "Logic level to trigger"]
+  ]
+}
+Put device in deepsleep state until interrupted by pin "pin".
+On ESP32-C3, valid wakeup pins are GPIO 0–5 (e.g. `D3` for the power button).
+On other ESP32 variants, pins must be [RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
+*/
+void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
+  _jswrap_ESP32_deepSleep_ext0(pin, level);
+  esp_deep_sleep_start(); // This function does not return.
+} // End of jswrap_ESP32_deepSleep_ext0
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef" : "ESP32",
+  "name"     : "deepSleepExt1",
+  "generate" : "jswrap_ESP32_deepSleep_ext1",
+  "params"   : [
+    ["pinVar", "JsVar", "Array of Pins to trigger wakeup"],
+    ["mode", "int", "Trigger mode"]
+  ]
+}
+Put device in deepsleep state until interrupted by pins in the "pinVar" array.
+The trigger "mode" determines the pin state which will wake up the device.
+Valid modes are:
+
+* `0: ESP_EXT1_WAKEUP_ALL_LOW` - all nominated pins must be set LOW to trigger wakeup
+* `1: ESP_EXT1_WAKEUP_ANY_HIGH` - any of nominated pins set HIGH will trigger wakeup
+
+On ESP32-C3, valid wakeup pins are GPIO 0–5.
+On other ESP32 variants, pins must be [RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
+*/
+void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
+  _jswrap_ESP32_deepSleep_ext1(pinVar, mode);
   esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepSleep_ext1
 
