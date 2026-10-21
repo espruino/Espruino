@@ -64,7 +64,7 @@ void Fatal_Error(const char *msg) {
   APP_ErrorHandler();
 }
 
-uint32_t read_button_adc(void) {
+uint32_t read_adc(void) {
   uint32_t raw_value = 0;
   // Start the ADC peripheral conversion
   HAL_ADC_Start(&hadc);
@@ -119,7 +119,7 @@ void check_buttons(int timePassed) {
   static uint32_t lastVal = 0;
   static uint16_t valStable = 0;
 
-  uint32_t val = read_button_adc();
+  uint32_t val = read_adc();
   int diff = val-lastVal;
   if (diff<0) diff = -diff;
   lastVal = val;
@@ -336,6 +336,59 @@ void flip_from_spi() {
   }
 }
 
+/** Receive IR data using the IR transmitter as a photodiode, and output the raw
+ * waveform received on the next SPI packet.
+ *
+ * Note: this is not usable yet - read_adc is too slow. We'll need to
+ * ensure we keep the ADC active for the whole period rather than turning
+ * it on/off repeatedly.
+ */
+void ir_receive() {
+  /* IR as input */
+  GPIO_InitTypeDef  GPIO_InitStruct = {0};
+  GPIO_InitStruct.Pin = GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  // set ADC to IR read mode
+  HAL_ADC_ConfigChannel(&hadc, &adcConfigIR);
+
+  // read ADC
+  uint32_t val;
+  //bool wasOn = false, isOn = false;
+  //int counter = 0, max = 0;
+  //int hyst[100] = {0}; // debug
+  for (int i=0;i<1024;i++) {
+    val = read_adc();
+    spiBuffer[i] = val>>2; // roughly 0..900, scale to byte
+    //hyst[val/10]++;
+    /*if (val>=800) isOn = true; // hysteresis
+    if (val<700) isOn = false;
+    if (wasOn == isOn) {
+      if (val>max) max=val;
+      counter++;
+    } else {
+      rtt_printf("%d %d (%d)\n", wasOn, counter, max);
+      counter = 0;
+      max = val;
+      wasOn = isOn;
+    }*/
+  }
+  /*for (int i=0;i<100;i++) {
+    rtt_printf("h[%d0] %d\n", i, hyst[i]);
+    HAL_Delay(10);
+  }*/
+
+  // flip ADC back to button
+  HAL_ADC_ConfigChannel(&hadc, &adcConfigBtn);
+
+  spiCmdRxBuffer[0] = PY32_CMD_NONE; // so when SPI1_HandlePacket handles the next transaction it sees CMD_NONE
+  HAL_SPI_DMAStop(&hspi1); // ensure HAL_SPI_TransmitReceive_DMA can succeed
+  HAL_SPI_TransmitReceive_DMA(&hspi1, spiBuffer, spiBuffer, SPI_BUFFER_LEN);
+
+}
+
 void Write_IRQ(bool asserted) {
   if (!state.displayInProgress)
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, !asserted);
@@ -404,7 +457,13 @@ void SPI1_HandlePacket(int bytes_received) {
       memcpy(spiBuffer, &spiCmdRxBuffer[1], sizeof(spiCmdRxBuffer));
       state.irTxInProgress = true;
       break;
+    case PY32_CMD_IR_RX:
+      state.irRxInProgress = true;
+      break;
+    default:
+      rtt_printf("UNKNOWN CMD %d\n", cmd);
   }
+
 }
 
 /// Called when SPI NSS state has changed
@@ -500,6 +559,8 @@ void HAL_SPI_AbortCpltCallback(SPI_HandleTypeDef *hspi)
   lcd_println("SPI ABORT");
 }
 
+
+
 int main(void) {
   rtt_printf("LCD "LCD_VERSION"\n");
   HAL_Init();
@@ -558,6 +619,9 @@ int main(void) {
         }
       }
       state.irTxInProgress = false;
+    } else if (state.irRxInProgress) {
+      ir_receive();
+      state.irRxInProgress = false;
     } else if (!state.spiInProgress && !state.buttonPressed && !state.irqAsserted) {
       // don't suspend if IRQ is asserted since we'll be woken up very soon anyway
       HAL_SuspendTick();

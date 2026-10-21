@@ -288,11 +288,11 @@ V7.set();w.startOutput(B8,4000);
 * Recovery menu in py32
 * nRF54 can reflash py32 over SWD
 * Microphone
-* IR transmission
+* IR transmission (and raw IR receive)
 
 ## TODO
 
-* Implement IR receive
+* Fully Implement IR receive so it can detect IR from remote controls
 * Check Vibration motor
 * Check PY32 version number at boot and update firmware if it doesn't match (current code doesn't work)
 * Customise ESP-AT partitions to add `ota_1`, and also a Bangle.js factory firmware partition (`esp-at.bin`=1.3MB, but ota_0 is 3.8MB)

@@ -18,6 +18,7 @@
 #include "jsinteractive.h"
 #include "jswrap_bangle3.h"
 #include "lcd_memlcd.h"
+#include "jswrap_arraybuffer.h"
 
 #include <zephyr/kernel.h>
 #include <zephyr/pm/device.h>
@@ -72,6 +73,18 @@ void jshPY32Transfer(uint8_t *buf, int count) {
     buf[i] = rxdata;
   }
   jshPinSetValue(LCD_SPI_CS, 1);
+}
+
+void jshPY32WaitIdle() {
+  // Check we're not being called while LCD is updating - if we are, wait
+  if (lcdMemLCD_isBusy()) {
+    //jsiConsolePrintf("jshPY32WaitIdle busy\n");
+    int timeout = 10000000;
+    while (lcdMemLCD_isBusy() && --timeout);
+    if (timeout==0)
+      return jsiConsolePrintf("jshPY32WaitIdle timeout\n");
+    jshDelayMicroseconds(100); // give PY32 time to finish
+  }
 }
 
 // Send state to PY32. Return 4th buffer byte (version if cmd=PY32_INITIALISE, 0 otherwise)
@@ -131,15 +144,7 @@ void jshVirtualPinInitialise() {
 }
 
 void jshVirtualPinSetValue(Pin pin, bool state) {
-  // Check we're not being called while LCD is updating - if we are, wait
-  if (lcdMemLCD_isBusy()) {
-    //jsiConsolePrintf("jshVirtualPinSetValue busy\n");
-    int timeout = 10000000;
-    while (lcdMemLCD_isBusy() && --timeout);
-    if (timeout==0)
-      return jsiConsolePrintf("jshVirtualPinSetValue(%d,%d) timeout\n",pin,state);
-    jshDelayMicroseconds(100); // give PY32 time to finish
-  }
+  jshPY32WaitIdle();
   int p = pinInfo[pin].pin;
   unsigned short oldsxValues = sxValues;
   if (!IS_PIN_A_BUTTON(pin)) { // buttons read only
@@ -349,11 +354,43 @@ void jswrap_banglejs3_IR(JsVar *data) {
   }
   jsvIteratorFree(&it);
   buf[1] = idx-2;
-  int timeout = 10000000;
-  while (lcdMemLCD_isBusy() && --timeout);
-  if (timeout==0)
-    return jsiConsolePrintf("Bangle.IR timeout\n");
+  jshPY32WaitIdle();
   jshPY32Transfer(buf, idx);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "receiveIR",
+    "generate" : "jswrap_banglejs3_receiveIR",
+    "return" : ["JsVar","An array of IR signal lengths"],
+    "ifdef" : "BANGLEJS3"
+}
+Receive infrared signals that the watch has received.
+
+Waits at most 1s for signals
+*/
+JsVar *jswrap_banglejs3_receiveIR() {
+  /* FIXME: This is just for debugging at the moment. Evantually
+  we will want to analyse the raw signal and return just the pulse periods
+  such that they can be passed into Bangle.IR(...). It might even make sense to
+  do that analysis on the PY32. */
+  uint8_t buf[1024] = {0};
+  // Issue RX command
+  buf[0] = PY32_CMD_IR_RX;
+  jshPY32WaitIdle();
+  jshPY32Transfer(buf, 4);
+  // wait for completion
+  jshDelayMicroseconds(1000000);
+  // FIXME: wait is not a good solution - maybe wait for IRQ line to signal it's done?
+  // Get result
+  buf[0] = PY32_CMD_NONE;
+  jshPY32Transfer(buf, sizeof(buf));
+  // Construct array
+  JsVar *ab = jsvNewArrayBufferWithData(sizeof(buf), buf);
+  JsVar *d = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, ab,0,0);
+  jsvUnLock(ab);
+  return d;
 }
 
 // ---------------------------------------------------------------------------- Error handler

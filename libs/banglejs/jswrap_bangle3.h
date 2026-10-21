@@ -30,6 +30,7 @@ bool jswrap_banglejs3_setMicPower(bool isOn, JsVar *appId);
 int16_t *jswrap_banglejs3_getMicBuffer(int n);
 
 void jswrap_banglejs3_IR(JsVar *data);
+JsVar *jswrap_banglejs3_receiveIR();
 
 void jshPY32Transfer(uint8_t *buf, int count);
 int jshPY32Update(PY32Command cmd, int data);

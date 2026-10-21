@@ -19,6 +19,8 @@ extern EXTI_HandleTypeDef hexti_pa0;
 extern EXTI_HandleTypeDef hexti_pa11;
 extern EXTI_HandleTypeDef hexti_pa15;
 extern ADC_HandleTypeDef hadc;
+extern ADC_ChannelConfTypeDef adcConfigBtn;
+extern ADC_ChannelConfTypeDef adcConfigIR;
 extern SPI_HandleTypeDef hspi1;
 extern DMA_HandleTypeDef hdma_spi1_rx;
 extern DMA_HandleTypeDef hdma_spi1_tx;
