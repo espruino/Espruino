@@ -225,7 +225,7 @@ Use `Bangle.setMicPower(true, "myapp")` to enable the microphone.
       ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
     ],
     "return" : ["bool","Is the microphone on?"],
-    "ifdef" : "BANGLEJS",
+    "ifdef" : "BANGLEJS3",
     "typescript" : "setMicPower(isOn: ShortBoolean, appID: string): boolean;"
 }
 Set the power to the microphone
@@ -242,12 +242,10 @@ Bangle.on('mic', buf => {
 *When on, the microphone draws roughly FIXME mA*
 */
 bool jswrap_banglejs3_setMicPower(bool isOn, JsVar *appId) {
-  int err;
+  int err = 0;
 
   bool wasOn = bangleFlags & JSBF_MIC_ON;
   isOn = setDeviceRequested("Mic", appId, isOn);
-
-  const struct device *adc_dev = DEVICE_DT_GET(DT_NODELABEL(adc));
 
   if (isOn != wasOn) {
     if (isOn) {
@@ -323,6 +321,40 @@ bool jswrap_banglejs3_setMicPower(bool isOn, JsVar *appId) {
   return isOn;
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "IR",
+    "generate" : "jswrap_banglejs3_IR",
+    "params" : [
+      ["data","JsVar","An array of pulse lengths, in milliseconds `[on,off,on,off,...]`"]
+    ],
+    "ifdef" : "BANGLEJS3"
+}
+Transmit infrared signals from the watch. The maximum length a pulse can be is 25.5ms.
+*/
+void jswrap_banglejs3_IR(JsVar *data) {
+  uint8_t buf[128];
+  buf[0] = PY32_CMD_IR_TX;
+  int idx = 2;
+  JsvIterator it;
+  jsvIteratorNew(&it, data, JSIF_EVERY_ARRAY_ELEMENT);
+  while (jsvIteratorHasElement(&it)) {
+    JsVarFloat pulse = jsvIteratorGetFloatValue(&it)*10;
+    if (pulse<0) pulse=0;
+    if (pulse>255) pulse=255;
+    if (idx < sizeof(buf)) buf[idx] = (int)pulse;
+    idx++;
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+  buf[1] = idx-2;
+  int timeout = 10000000;
+  while (lcdMemLCD_isBusy() && --timeout);
+  if (timeout==0)
+    return jsiConsolePrintf("Bangle.IR timeout\n");
+  jshPY32Transfer(buf, idx);
+}
 
 // ---------------------------------------------------------------------------- Error handler
 

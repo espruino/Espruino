@@ -82,6 +82,7 @@ void APP_GPIO_Config(void) {
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Pin = GPIO_PIN_2|  // AUX IOSwap (0=SWD, 1=GPIO)
                         GPIO_PIN_6|  // LCD Backlight
+                        GPIO_PIN_7| // IR transmit
                         GPIO_PIN_8| // torch
                         GPIO_PIN_9| // aux power
                         GPIO_PIN_10| // touch RST
@@ -89,6 +90,7 @@ void APP_GPIO_Config(void) {
                         GPIO_PIN_13| // RGB en
                         GPIO_PIN_14| // speaker en
                         GPIO_PIN_15; // wifi boot mode
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1); // ensure IR is off
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0); // reset touchscreen
   HAL_Delay(1);
   Update_Outputs(); // set all to default (including touchscreen reset off)

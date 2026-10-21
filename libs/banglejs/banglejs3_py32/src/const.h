@@ -22,6 +22,7 @@ typedef enum {
   PY32_CMD_NONE,
   PY32_CMD_SET_OUTPUT,
   PY32_CMD_DISPLAY,
+  PY32_CMD_IR_TX, // transmit infrared
   PY32_CMD_INITIALISE = 0xFF // this isn't sent but is replaced by PY32_CMD_NONE jshPY32Update. We use this to do a bigger SPI read that normal and get version info
 } PY32Command;
 /*
@@ -36,6 +37,11 @@ PY32_CMD_SET_OUTPUT:
 PY32_CMD_DISPLAY:
   [2, first_row_idx]
   [....pixel data...]
+
+PY32_CMD_IR_TX:
+  Send IR command. times are in 0.1ms intervals
+  [count, hi_time, lo_time, hi_time, .... ]
+
 */
 
 typedef enum {

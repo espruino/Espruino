@@ -21,6 +21,7 @@ typedef struct {
   volatile bool initialised;
   volatile bool spiInProgress;
   volatile bool displayInProgress; // true if we're currently writing to the display
+  volatile bool irTxInProgress; // true if we're outputting an IR command
   bool showMenu; // should we be showing the recovery menu?
   uint8_t menuItem; // menu item that is selected
   volatile uint8_t displayY; // the y coordinate of the first row to send

@@ -32,8 +32,8 @@ Disable RTT (or make it switchable?)
 #define LCD_ROW_STRIDE LCD_ROW_BYTES // 240 * 6 bit (in bytes)
 #define SPI_BUFFER_LEN (LCD_ROW_STRIDE*(LCD_ROWS_BUFFERED*2)) // enough for display - 2x sets of lines (with first byte as command byte)
 uint8_t spiBuffer[SPI_BUFFER_LEN]; // SPI buffer for display
-uint8_t spiCmdRxBuffer[16]; // SPI buffer for commands
-uint8_t spiCmdTxBuffer[16]; // SPI buffer for commands
+uint8_t spiCmdRxBuffer[128]; // SPI buffer for commands (needs to be a bit bigger for IR)
+uint8_t spiCmdTxBuffer[128]; // SPI buffer for commands
 uint8_t spiWriteIdx; //< index we're currently writing to
 volatile uint16_t spiBufferBytes[2]; // is first or second part of the SPI buffer ready?
 
@@ -42,6 +42,10 @@ PY32State state;
 // ----------------------------------------
 void Write_IRQ(bool asserted);
 // ----------------------------------------
+
+static void D() { /*for (volatile int i=0;i<0;i++);*/ }
+static void DX() { for (volatile int i=0;i<100;i++); }
+static void HAL_DelayMicroseconds(int us) { for (volatile int i=us;i>0;i--); } // Note: Only very rough!
 
 void APP_ErrorHandler(void)
 {
@@ -73,9 +77,6 @@ uint32_t read_button_adc(void) {
   HAL_ADC_Stop(&hadc);
   return raw_value;
 }
-
-static void D() { /*for (volatile int i=0;i<0;i++);*/ }
-static void DX() { for (volatile int i=0;i<100;i++); }
 
 /// Reset the buffer contents for next SPI transaction
 void SPI1_Reset_Buffer(int reason) {
@@ -398,6 +399,11 @@ void SPI1_HandlePacket(int bytes_received) {
       state.displayInProgress = true;
       state.displayY = buf[1];
       break;
+    case PY32_CMD_IR_TX:
+      // put data in spiBuffer so we can receive a new command while we're transmitting (maybe separate IR buffer???)
+      memcpy(spiBuffer, &spiCmdRxBuffer[1], sizeof(spiCmdRxBuffer));
+      state.irTxInProgress = true;
+      break;
   }
 }
 
@@ -526,6 +532,7 @@ int main(void) {
   state.initialised = true;
 
 
+
   while (1) {
     //HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
     if (state.buttonPressed)
@@ -534,6 +541,23 @@ int main(void) {
       // don't sleep, ignore commands from main CPU
     } else if (state.displayInProgress) {
       flip_from_spi();
+    } else if (state.irTxInProgress) {
+      int c = spiBuffer[0];
+      rtt_printf("IR tx %d\n", c);
+      for (int i=0;i<c;i++) {
+        int pulses = spiBuffer[1+i]*33/100; // 38kHz, but we're in 0.1ms intervals (and some inaccuracy in HAL_DelayMicroseconds)
+        if (i&1) { // OFF
+          HAL_DelayMicroseconds(pulses*26);
+        } else { // ON
+          while (pulses--) {
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0); // ON
+            HAL_DelayMicroseconds(1);
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1); // OFF
+            HAL_DelayMicroseconds(25);
+          }
+        }
+      }
+      state.irTxInProgress = false;
     } else if (!state.spiInProgress && !state.buttonPressed && !state.irqAsserted) {
       // don't suspend if IRQ is asserted since we'll be woken up very soon anyway
       HAL_SuspendTick();
