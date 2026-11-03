@@ -37,6 +37,7 @@
 #include "tcpip_adapter.h"
 #include "mdns.h"
 #include "ping/ping.h"
+#include "ping/ping_sock.h"
 #include "esp_ping.h"
 #include "sntp/sntp.h"
 #else
@@ -1907,6 +1908,38 @@ esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
   }
   return ESP_OK;
 }
+
+#if ESP_IDF_VERSION_MAJOR == 4
+static void esp4PingSuccess(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  uint32_t elapsedTime = 0;
+  uint32_t receivedLength = 0;
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_SIZE, &receivedLength, sizeof(receivedLength));
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_TIMEGAP, &elapsedTime, sizeof(elapsedTime));
+  esp_ping_result(PING_RES_OK, receivedLength, elapsedTime);
+}
+
+static void esp4PingTimeout(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  uint32_t elapsedTime = 0;
+  uint32_t receivedLength = 0;
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_SIZE, &receivedLength, sizeof(receivedLength));
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_TIMEGAP, &elapsedTime, sizeof(elapsedTime));
+  esp_ping_result(PING_RES_TIMEOUT, receivedLength, elapsedTime);
+}
+
+static void esp4PingEnd(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  /* Preserve the legacy terminal result before releasing the native session.
+   * IDF4's compatibility backend has always exposed this as a sixth callback. */
+  esp_ping_result(PING_RES_FINISH, 0, 0);
+  esp_ping_delete_session(pingHandle);
+}
+#endif
 #endif
 
 /*JSON{
@@ -1994,7 +2027,7 @@ void jswrap_wifi_ping(
   uint32_t ping_timeout = 1000; //mS till we consider it timed out
   uint32_t ping_delay = 500; //mS between pings
 
-#if ESP_IDF_VERSION_MAJOR < 5
+#if ESP_IDF_VERSION_MAJOR < 4
   esp_ping_set_target(PING_TARGET_IP_ADDRESS_COUNT, &ping_count, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_RCV_TIMEO, &ping_timeout, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_DELAY_TIME, &ping_delay, sizeof(uint32_t));
@@ -2002,6 +2035,40 @@ void jswrap_wifi_ping(
   esp_ping_set_target(PING_TARGET_RES_FN, &pingResults, sizeof(pingResults));
   g_seq_no = 0;
   ping_init();
+#elif ESP_IDF_VERSION_MAJOR == 4
+  esp_ping_set_target(PING_TARGET_RES_FN, &pingResults, sizeof(pingResults));
+  esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
+  ping_config.target_addr = ip;
+  ping_config.count = ping_count;
+  ping_config.timeout_ms = ping_timeout;
+  ping_config.interval_ms = ping_delay;
+  esp_ping_callbacks_t cbs = {
+    .on_ping_success = esp4PingSuccess,
+    .on_ping_timeout = esp4PingTimeout,
+    .on_ping_end = esp4PingEnd,
+    .cb_args = NULL
+  };
+  esp_ping_handle_t pingHandle = NULL;
+  g_seq_no = 0;
+  esp_err_t err = esp_ping_new_session(&ping_config, &cbs, &pingHandle);
+  if (err != ESP_OK) {
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
+      g_jsPingCallback = NULL;
+    }
+    jsExceptionHere(JSET_ERROR, "Unable to create ping session: %s", esp_err_to_name(err));
+    return;
+  }
+  err = esp_ping_start(pingHandle);
+  if (err != ESP_OK) {
+    esp_ping_delete_session(pingHandle);
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
+      g_jsPingCallback = NULL;
+    }
+    jsExceptionHere(JSET_ERROR, "Unable to start ping session: %s", esp_err_to_name(err));
+    return;
+  }
 #else
   esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
   ping_config.target_addr = ip;
