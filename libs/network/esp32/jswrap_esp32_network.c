@@ -2042,6 +2042,9 @@ void jswrap_wifi_ping(
   ping_config.count = ping_count;
   ping_config.timeout_ms = ping_timeout;
   ping_config.interval_ms = ping_delay;
+  /* The single-core C3 interpreter runs at priority 5 and may remain ready
+   * while its USB console is active, so IDF4's priority-2 ping task can starve. */
+  ping_config.task_prio = 6;
   esp_ping_callbacks_t cbs = {
     .on_ping_success = esp4PingSuccess,
     .on_ping_timeout = esp4PingTimeout,
