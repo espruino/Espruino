@@ -1709,12 +1709,20 @@ typedef struct {
   uint32_t bytes;
 } Esp32PingResponse;
 
+typedef enum {
+  ESP32_PING_IDLE,
+  ESP32_PING_RUNNING,
+  ESP32_PING_ENDING,
+  ESP32_PING_DRAINING,
+  ESP32_PING_CANCELLING
+} Esp32PingState;
+
 static Esp32PingResponse g_pingResponseQueue[ESP32_PING_REQUEST_COUNT];
 static uint8_t g_pingResponseHead;
 static uint8_t g_pingResponseTail;
 static uint8_t g_pingResponseCount;
 static bool g_pingResponseOverflow;
-static volatile bool g_pingEnded;
+static Esp32PingState g_pingState;
 static portMUX_TYPE g_pingMux = portMUX_INITIALIZER_UNLOCKED;
 
 static void savePingResponse(void) {
@@ -1726,18 +1734,22 @@ static void savePingResponse(void) {
     .responseTime = g_pingLastTime,
     .bytes = g_pingLastBytes
   };
+  bool wakeInterpreter = false;
   portENTER_CRITICAL(&g_pingMux);
-  if (g_pingResponseCount < ESP32_PING_REQUEST_COUNT) {
+  if (g_pingState == ESP32_PING_RUNNING &&
+      g_pingResponseCount < ESP32_PING_REQUEST_COUNT) {
     g_pingResponseQueue[g_pingResponseHead] = response;
     g_pingResponseHead = (g_pingResponseHead + 1) % ESP32_PING_REQUEST_COUNT;
     g_pingResponseCount++;
-  } else {
+    wakeInterpreter = true;
+  } else if (g_pingState == ESP32_PING_RUNNING) {
     /* The queue is sized for every configured request. Record any violation
      * here because the native ping task must not manipulate JavaScript state. */
     g_pingResponseOverflow = true;
+    wakeInterpreter = true;
   }
   portEXIT_CRITICAL(&g_pingMux);
-  jshHadEvent();
+  if (wakeInterpreter) jshHadEvent();
 }
 
 static void queuePingResponse(const Esp32PingResponse *response) {
@@ -1780,11 +1792,21 @@ static void esp5PingTimeout(esp_ping_handle_t pingHandle, void *args) {
 
 static void esp5PingEnd(esp_ping_handle_t pingHandle, void *args) {
   UNUSED(args);
+  portENTER_CRITICAL(&g_pingMux);
+  if (g_pingState == ESP32_PING_RUNNING)
+    g_pingState = ESP32_PING_ENDING;
+  portEXIT_CRITICAL(&g_pingMux);
+
   /* Start native deletion before publishing completion. On a dual-core target
    * the interpreter must not make the operation reusable first. */
   esp_ping_delete_session(pingHandle);
   portENTER_CRITICAL(&g_pingMux);
-  g_pingEnded = true;
+  if (g_pingState == ESP32_PING_CANCELLING) {
+    g_pingHandle = NULL;
+    g_pingState = ESP32_PING_IDLE;
+  } else if (g_pingState == ESP32_PING_ENDING) {
+    g_pingState = ESP32_PING_DRAINING;
+  }
   portEXIT_CRITICAL(&g_pingMux);
   jshHadEvent();
 }
@@ -1803,7 +1825,8 @@ bool jswrap_wifi_ping_idle() {
   /* Keep the final response queued until IDF reports on_ping_end. This makes
    * the final JavaScript callback a reliable indication that a new ping
    * session may be started. */
-  if (g_pingResponseCount > 0 && (g_pingEnded || g_pingResponseCount > 1)) {
+  if (g_pingResponseCount > 0 &&
+      (g_pingState == ESP32_PING_DRAINING || g_pingResponseCount > 1)) {
     response = g_pingResponseQueue[g_pingResponseTail];
     g_pingResponseTail = (g_pingResponseTail + 1) % ESP32_PING_REQUEST_COUNT;
     g_pingResponseCount--;
@@ -1811,8 +1834,11 @@ bool jswrap_wifi_ping_idle() {
   }
   responseOverflow = g_pingResponseOverflow;
   g_pingResponseOverflow = false;
-  pingEnded = g_pingEnded && g_pingResponseCount == 0;
-  if (pingEnded) g_pingEnded = false;
+  pingEnded = g_pingState == ESP32_PING_DRAINING && g_pingResponseCount == 0;
+  if (pingEnded) {
+    g_pingHandle = NULL;
+    g_pingState = ESP32_PING_IDLE;
+  }
   portEXIT_CRITICAL(&g_pingMux);
 
   if (responsePending) queuePingResponse(&response);
@@ -1822,7 +1848,6 @@ bool jswrap_wifi_ping_idle() {
     jsvUnLock(g_jsPingCallback);
     g_jsPingCallback = NULL;
   }
-  if (pingEnded) g_pingHandle = NULL;
   return responsePending || responseOverflow || pingEnded;
 }
 #else
@@ -1854,6 +1879,38 @@ esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
 }
 #endif
 
+/*JSON{
+  "type" : "kill",
+  "generate" : "jswrap_esp32_network_kill",
+  "ifdef" : "USE_ESP32"
+}*/
+void jswrap_esp32_network_kill() {
+#if ESP_IDF_VERSION_MAJOR >= 5
+  portENTER_CRITICAL(&g_pingMux);
+  g_pingResponseHead = 0;
+  g_pingResponseTail = 0;
+  g_pingResponseCount = 0;
+  g_pingResponseOverflow = false;
+  if (g_pingState == ESP32_PING_RUNNING) {
+    /* on_ping_end takes the same lock before deleting the native session, so
+     * the handle remains owned while stop is issued. Native completion then
+     * performs the one delete handoff and returns the operation to IDLE. */
+    esp_ping_stop(g_pingHandle);
+    g_pingState = ESP32_PING_CANCELLING;
+  } else if (g_pingState == ESP32_PING_ENDING) {
+    g_pingState = ESP32_PING_CANCELLING;
+  } else if (g_pingState == ESP32_PING_DRAINING) {
+    g_pingHandle = NULL;
+    g_pingState = ESP32_PING_IDLE;
+  }
+  portEXIT_CRITICAL(&g_pingMux);
+  if (g_jsPingCallback != NULL) {
+    jsvUnLock(g_jsPingCallback);
+    g_jsPingCallback = NULL;
+  }
+#endif
+}
+
 void jswrap_wifi_ping(
     JsVar *ipAddr,      //!< A string representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
@@ -1874,7 +1931,11 @@ void jswrap_wifi_ping(
   jsDebug(DBG_INFO, "jswrap_wifi_ping(%q)\n", ipToString(&ip));
 
 #if ESP_IDF_VERSION_MAJOR >= 5
-  if (g_pingHandle != NULL) {
+  bool pingActive;
+  portENTER_CRITICAL(&g_pingMux);
+  pingActive = g_pingState != ESP32_PING_IDLE;
+  portEXIT_CRITICAL(&g_pingMux);
+  if (pingActive) {
     jsExceptionHere(JSET_ERROR, "A ping is already in progress");
     return;
   }
@@ -1940,12 +2001,11 @@ void jswrap_wifi_ping(
   g_pingResponseTail = 0;
   g_pingResponseCount = 0;
   g_pingResponseOverflow = false;
-  g_pingEnded = false;
   portEXIT_CRITICAL(&g_pingMux);
 
-  esp_err_t err = esp_ping_new_session(&ping_config, &cbs, &g_pingHandle);
+  esp_ping_handle_t pingHandle = NULL;
+  esp_err_t err = esp_ping_new_session(&ping_config, &cbs, &pingHandle);
   if (err != ESP_OK) {
-    g_pingHandle = NULL;
     if (g_jsPingCallback != NULL) {
       jsvUnLock(g_jsPingCallback);
       g_jsPingCallback = NULL;
@@ -1953,10 +2013,17 @@ void jswrap_wifi_ping(
     jsExceptionHere(JSET_ERROR, "Unable to create ping session: %s", esp_err_to_name(err));
     return;
   }
-  err = esp_ping_start(g_pingHandle);
+  portENTER_CRITICAL(&g_pingMux);
+  g_pingHandle = pingHandle;
+  g_pingState = ESP32_PING_RUNNING;
+  portEXIT_CRITICAL(&g_pingMux);
+  err = esp_ping_start(pingHandle);
   if (err != ESP_OK) {
-    esp_ping_delete_session(g_pingHandle);
+    esp_ping_delete_session(pingHandle);
+    portENTER_CRITICAL(&g_pingMux);
     g_pingHandle = NULL;
+    g_pingState = ESP32_PING_IDLE;
+    portEXIT_CRITICAL(&g_pingMux);
     if (g_jsPingCallback != NULL) {
       jsvUnLock(g_jsPingCallback);
       g_jsPingCallback = NULL;
