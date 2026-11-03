@@ -1723,7 +1723,21 @@ static uint8_t g_pingResponseTail;
 static uint8_t g_pingResponseCount;
 static bool g_pingResponseOverflow;
 static Esp32PingState g_pingState;
+static TickType_t g_pingTaskReapUntil;
+static bool g_pingTaskReapPending;
 static portMUX_TYPE g_pingMux = portMUX_INITIALIZER_UNLOCKED;
+
+#define ESP32_PING_TASK_REAP_GRACE_MS 1500
+
+static void schedulePingTaskReap(void) {
+  TickType_t reapUntil =
+      xTaskGetTickCount() + pdMS_TO_TICKS(ESP32_PING_TASK_REAP_GRACE_MS);
+  portENTER_CRITICAL(&g_pingMux);
+  g_pingTaskReapUntil = reapUntil;
+  g_pingTaskReapPending = true;
+  portEXIT_CRITICAL(&g_pingMux);
+  jshHadEvent();
+}
 
 static void savePingResponse(void) {
   Esp32PingResponse response = {
@@ -1800,6 +1814,7 @@ static void esp5PingEnd(esp_ping_handle_t pingHandle, void *args) {
   /* Start native deletion before publishing completion. On a dual-core target
    * the interpreter must not make the operation reusable first. */
   esp_ping_delete_session(pingHandle);
+  schedulePingTaskReap();
   portENTER_CRITICAL(&g_pingMux);
   if (g_pingState == ESP32_PING_CANCELLING) {
     g_pingHandle = NULL;
@@ -1821,6 +1836,8 @@ bool jswrap_wifi_ping_idle() {
   bool responsePending = false;
   bool responseOverflow;
   bool pingEnded;
+  bool pingTaskReapPending;
+  TickType_t now = xTaskGetTickCount();
   portENTER_CRITICAL(&g_pingMux);
   /* Keep the final response queued until IDF reports on_ping_end. This makes
    * the final JavaScript callback a reliable indication that a new ping
@@ -1839,6 +1856,11 @@ bool jswrap_wifi_ping_idle() {
     g_pingHandle = NULL;
     g_pingState = ESP32_PING_IDLE;
   }
+  pingTaskReapPending = g_pingTaskReapPending;
+  if (pingTaskReapPending &&
+      (int32_t)(now - g_pingTaskReapUntil) >= 0) {
+    g_pingTaskReapPending = false;
+  }
   portEXIT_CRITICAL(&g_pingMux);
 
   if (responsePending) queuePingResponse(&response);
@@ -1848,7 +1870,15 @@ bool jswrap_wifi_ping_idle() {
     jsvUnLock(g_jsPingCallback);
     g_jsPingCallback = NULL;
   }
-  return responsePending || responseOverflow || pingEnded;
+  if (pingTaskReapPending) {
+    /* IDF deletion is asynchronous: its ping task frees resources and then
+     * self-deletes after a timed wake. On a single-core target the always-ready
+     * interpreter can otherwise starve the FreeRTOS idle task that reclaims
+     * the deleted task's stack and TCB. */
+    vTaskDelay(1);
+  }
+  return responsePending || responseOverflow || pingEnded ||
+         pingTaskReapPending;
 }
 #else
 bool jswrap_wifi_ping_idle() {
@@ -2006,6 +2036,7 @@ void jswrap_wifi_ping(
   esp_ping_handle_t pingHandle = NULL;
   esp_err_t err = esp_ping_new_session(&ping_config, &cbs, &pingHandle);
   if (err != ESP_OK) {
+    schedulePingTaskReap();
     if (g_jsPingCallback != NULL) {
       jsvUnLock(g_jsPingCallback);
       g_jsPingCallback = NULL;
@@ -2020,6 +2051,7 @@ void jswrap_wifi_ping(
   err = esp_ping_start(pingHandle);
   if (err != ESP_OK) {
     esp_ping_delete_session(pingHandle);
+    schedulePingTaskReap();
     portENTER_CRITICAL(&g_pingMux);
     g_pingHandle = NULL;
     g_pingState = ESP32_PING_IDLE;
