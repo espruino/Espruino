@@ -49,6 +49,7 @@
 #endif
 
 #include "lwip/dns.h"
+#include "jshardware.h"
 #include "jsinteractive.h"
 #include "network.h"
 #include "jswrap_modules.h"
@@ -1689,6 +1690,7 @@ void jswrap_wifi_setHostname(JsVar *jsHostname, JsVar *jsCallback) {
 }
 
 static uint8_t g_seq_no;
+#define ESP32_PING_REQUEST_COUNT 5
 #if ESP_IDF_VERSION_MAJOR >= 5
 static esp_ping_handle_t g_pingHandle;
 static uint32_t g_pingAttemptCount;
@@ -1707,11 +1709,11 @@ typedef struct {
   uint32_t bytes;
 } Esp32PingResponse;
 
-#define ESP32_PING_RESPONSE_QUEUE_SIZE 5
-static Esp32PingResponse g_pingResponseQueue[ESP32_PING_RESPONSE_QUEUE_SIZE];
+static Esp32PingResponse g_pingResponseQueue[ESP32_PING_REQUEST_COUNT];
 static uint8_t g_pingResponseHead;
 static uint8_t g_pingResponseTail;
 static uint8_t g_pingResponseCount;
+static bool g_pingResponseOverflow;
 static volatile bool g_pingEnded;
 static portMUX_TYPE g_pingMux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -1725,12 +1727,17 @@ static void savePingResponse(void) {
     .bytes = g_pingLastBytes
   };
   portENTER_CRITICAL(&g_pingMux);
-  if (g_pingResponseCount < ESP32_PING_RESPONSE_QUEUE_SIZE) {
+  if (g_pingResponseCount < ESP32_PING_REQUEST_COUNT) {
     g_pingResponseQueue[g_pingResponseHead] = response;
-    g_pingResponseHead = (g_pingResponseHead + 1) % ESP32_PING_RESPONSE_QUEUE_SIZE;
+    g_pingResponseHead = (g_pingResponseHead + 1) % ESP32_PING_REQUEST_COUNT;
     g_pingResponseCount++;
+  } else {
+    /* The queue is sized for every configured request. Record any violation
+     * here because the native ping task must not manipulate JavaScript state. */
+    g_pingResponseOverflow = true;
   }
   portEXIT_CRITICAL(&g_pingMux);
+  jshHadEvent();
 }
 
 static void queuePingResponse(const Esp32PingResponse *response) {
@@ -1773,10 +1780,13 @@ static void esp5PingTimeout(esp_ping_handle_t pingHandle, void *args) {
 
 static void esp5PingEnd(esp_ping_handle_t pingHandle, void *args) {
   UNUSED(args);
+  /* Start native deletion before publishing completion. On a dual-core target
+   * the interpreter must not make the operation reusable first. */
+  esp_ping_delete_session(pingHandle);
   portENTER_CRITICAL(&g_pingMux);
   g_pingEnded = true;
   portEXIT_CRITICAL(&g_pingMux);
-  esp_ping_delete_session(pingHandle);
+  jshHadEvent();
 }
 
 /*JSON{
@@ -1787,6 +1797,7 @@ static void esp5PingEnd(esp_ping_handle_t pingHandle, void *args) {
 bool jswrap_wifi_ping_idle() {
   Esp32PingResponse response = {0};
   bool responsePending = false;
+  bool responseOverflow;
   bool pingEnded;
   portENTER_CRITICAL(&g_pingMux);
   /* Keep the final response queued until IDF reports on_ping_end. This makes
@@ -1794,21 +1805,25 @@ bool jswrap_wifi_ping_idle() {
    * session may be started. */
   if (g_pingResponseCount > 0 && (g_pingEnded || g_pingResponseCount > 1)) {
     response = g_pingResponseQueue[g_pingResponseTail];
-    g_pingResponseTail = (g_pingResponseTail + 1) % ESP32_PING_RESPONSE_QUEUE_SIZE;
+    g_pingResponseTail = (g_pingResponseTail + 1) % ESP32_PING_REQUEST_COUNT;
     g_pingResponseCount--;
     responsePending = true;
   }
+  responseOverflow = g_pingResponseOverflow;
+  g_pingResponseOverflow = false;
   pingEnded = g_pingEnded && g_pingResponseCount == 0;
   if (pingEnded) g_pingEnded = false;
   portEXIT_CRITICAL(&g_pingMux);
 
   if (responsePending) queuePingResponse(&response);
+  if (responseOverflow)
+    jsError("Wifi.ping response queue overflow");
   if (pingEnded && g_jsPingCallback != NULL) {
     jsvUnLock(g_jsPingCallback);
     g_jsPingCallback = NULL;
   }
   if (pingEnded) g_pingHandle = NULL;
-  return responsePending || pingEnded;
+  return responsePending || responseOverflow || pingEnded;
 }
 #else
 bool jswrap_wifi_ping_idle() {
@@ -1884,7 +1899,7 @@ void jswrap_wifi_ping(
 
   // We now have an IP address to ping ... so ping.
 
-  uint32_t ping_count = 5;  //how many pings per report
+  uint32_t ping_count = ESP32_PING_REQUEST_COUNT;  //how many pings per report
   uint32_t ping_timeout = 1000; //mS till we consider it timed out
   uint32_t ping_delay = 500; //mS between pings
 
@@ -1924,6 +1939,7 @@ void jswrap_wifi_ping(
   g_pingResponseHead = 0;
   g_pingResponseTail = 0;
   g_pingResponseCount = 0;
+  g_pingResponseOverflow = false;
   g_pingEnded = false;
   portEXIT_CRITICAL(&g_pingMux);
 
