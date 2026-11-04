@@ -1049,7 +1049,7 @@ JsVar *jsfReadFile(JsfFileName name, int offset, int length) {
   int fileLen = (int)jsfGetFileSize(&header);
   if (length<=0) length=fileLen;
   if (offset>fileLen) offset=fileLen;
-  if (offset+length>fileLen) length=fileLen-offset;
+  if (length > fileLen-offset) length=fileLen-offset;
   if (length<=0) return jsvNewFromEmptyString();
   // now increment address by offset
   addr += (uint32_t)offset;
