@@ -213,9 +213,13 @@ static JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) 
       return nomatchfound(regexp+1, info); // not the end, it's a fail
   }
   if (regexp[0] == '(') {
+    if (info.groups>=MAX_GROUPS) {
+      jsExceptionHere(JSET_ERROR, "Too many groups");
+      return 0;
+    }
     info.groupStart[info.groups] = jsvStringIteratorGetIndex(txtIt);
     info.groupEnd[info.groups] = info.groupStart[info.groups];
-    if (info.groups<MAX_GROUPS) info.groups++;
+    info.groups++;
     if (!jspCheckStackPosition()) return 0;
     return matchhere(regexp+1, txtIt, info);
   }
