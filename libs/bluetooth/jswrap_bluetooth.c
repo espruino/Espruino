@@ -271,9 +271,12 @@ void jswrap_ble_reconfigure_softdevice() {
   jsble_set_services(v);
   jsvUnLock(v);
   // If we had scan response data set, update it
+#ifndef NRF5X
+  // for NRF5X already done as part of jswrap_ble_setAdvertising(v, o); above
   JsVar *scanData = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA);
   if (scanData) jswrap_ble_setScanResponse(scanData);
   jsvUnLock(scanData);
+#endif
   // Set up security related stuff
   jsble_update_security();
 }
@@ -1589,8 +1592,7 @@ void jswrap_ble_setScanResponse(JsVar *data) {
     if (!respPtr) return; // already errored
     // only set data if we managed to decode it ok
     jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, data);
-
-  err_code=jsble_advertising_update_scanresponse((char *)respPtr, respLen);
+    err_code = jsble_advertising_update_scanresponse((char *)respPtr, respLen);
     jsble_check_error(err_code);
   } else {
     jsExceptionHere(JSET_TYPEERROR, "Expecting array-like object or undefined, got %t", data);
@@ -1603,7 +1605,7 @@ size_t _jswrap_ble_getScanResponse(uint8_t *advdata) {
   // check for pre-set scan response
   JsVar *v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA);
   if (v) {
-    len = jsvGetString(v, (char*)advdata, ESPR_MAX_ADVERTISEMENT_DATA);
+    len = jsvIterateCallbackToBytes(v, advdata, ESPR_MAX_ADVERTISEMENT_DATA);
     jsvUnLock(v);
     return len;
   }
