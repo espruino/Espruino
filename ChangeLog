@@ -60,6 +60,7 @@
             ESP32: Allow ESP32.deepSleep to sleep until timeout *or* ext0 *or* ext1. Also fix 35 min max sleep time.
             nRF52840: Fix ERR 0x10 (INVALID ADDR) in NRF.setAdvertising with scannable:false (fix #2772)
             Fix NRF.setScanResponse causing problems at next start of advertising (fix #2773)
+            BLE: Fix setAdvertising regression when given a hard-coded array of bytes to advertise
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes

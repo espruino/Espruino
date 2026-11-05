@@ -1134,7 +1134,7 @@ size_t _jswrap_ble_getAdvertisingDataRaw(uint8_t *advdata, JsVar *data, JsVar *o
 
   // Add actual services
   if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
-    return jsvGetString(data, advdata, ESPR_MAX_ADVERTISEMENT_DATA);
+    return jsvIterateCallbackToBytes(data, advdata, ESPR_MAX_ADVERTISEMENT_DATA);
   } else if (jsvIsObject(data)) {
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, data);
@@ -3925,7 +3925,7 @@ NRF.setSecurity({
               // This stores info from pairing in flash and allows reconnecting without having to pair each time
   mitm : bool // default false, Man In The Middle protection
   lesc : bool // default false, LE Secure Connections
-  passkey : // default "", or a 6 digit passkey to use (display must be true for this)
+  passkey : // default "", or a 6 digit passkey String to use like "123456" (display must be true for this)
   oob : [0..15] // if specified, Out Of Band pairing is enabled and
                 // the 16 byte pairing code supplied here is used
   encryptUart : bool // default false (unless oob or passkey specified)
