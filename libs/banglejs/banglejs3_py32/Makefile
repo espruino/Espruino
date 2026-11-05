@@ -199,6 +199,9 @@ c: $(BDIR)/$(PROJECT).bin
 reset:
 	sudo $(PYOCD_EXE) reset -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml
 
+erase:
+	sudo $(PYOCD_EXE) erase --chip -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml
+
 gdb:
 	sudo $(PYOCD_EXE) gdbserver -t $(PYOCD_DEVICE) --config $(TOP)/misc/pyocd.yaml & SERVER_PID=$$!; arm-none-eabi-gdb -x $(TOP)/misc/gdbinit;kill $$SERVER_PID
 

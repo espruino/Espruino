@@ -24,7 +24,7 @@ void menu_draw() {
   lcd_print((state.menuItem==0) ? " +" : "  ");
   lcd_print(" RESTART\r\n");
   lcd_print((state.menuItem==1) ? " +" : "  ");
-  lcd_print(" ENTER BOOTLOADER\r\n");
+  lcd_print(state.forceSWD ? " DISABLE SWD\r\n" : " ENABLE SWD\r\n");
   lcd_print((state.menuItem==2) ? " +" : "  ");
   lcd_print(" TURN OFF\r\n");
   lcd_print((state.menuItem==3) ? " +" : "  ");
@@ -44,7 +44,10 @@ void menu_update() {
     state.showMenu = false;
     switch (state.menuItem) {
       case 0: rtt_printf("-> Reboot\n"); nrf_reboot(); break;
-      case 1: rtt_printf("-> Bootloader\n");break; // FIXME: enter bootloader
+      case 1: rtt_printf("-> Enable SWD\n");
+              state.forceSWD = !state.forceSWD;
+              Update_Outputs();
+              break;
       case 2: rtt_printf("-> Off\n");break; // FIXME: turn off
       case 3: rtt_printf("-> Exit\n");
               state.input |= PY32_REDRAW_REQUEST;

@@ -24,6 +24,7 @@ typedef struct {
   volatile bool irTxInProgress; // true if we're outputting an IR command
   volatile bool irRxInProgress; // true if we're receiving an IR command
   bool showMenu; // should we be showing the recovery menu?
+  bool forceSWD; // forces Bangle output pins to SWD mode
   uint8_t menuItem; // menu item that is selected
   volatile uint8_t displayY; // the y coordinate of the first row to send
   volatile bool buttonPressed;

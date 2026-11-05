@@ -406,9 +406,11 @@ void Update_Outputs() {
   /*lcd_print("O ");
   lcd_print_hex(o);
   lcd_println("");*/
+  bool auxSwap = 1;//(o&PY32_OUT_AUX_SWAP)?1:0;
+  if (state.forceSWD) auxSwap = 0;
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, (o&PY32_OUT_LCD_BL)?1:0);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, (o&PY32_OUT_TORCH_ON)?1:0);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, 1/*(o&PY32_OUT_AUX_SWAP)?1:0*/);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, auxSwap);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, (o&PY32_OUT_AUX_POWER)?0:1); // inverted. PY32_OUT_AUX_POWER set will enable the output
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, (o&PY32_OUT_RGB_ON)?1:0);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, (o&PY32_OUT_SPEAKER_ON)?1:0);
