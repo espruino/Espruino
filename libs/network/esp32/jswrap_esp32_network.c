@@ -1710,6 +1710,9 @@ typedef struct {
   uint32_t bytes;
 } Esp32PingResponse;
 
+/* ENDING covers native session deletion; DRAINING retains ownership until the
+ * final queued result is delivered; CANCELLING waits for native completion
+ * after reset has discarded the JavaScript callback. */
 typedef enum {
   ESP32_PING_IDLE,
   ESP32_PING_RUNNING,
@@ -1728,6 +1731,9 @@ static TickType_t g_pingTaskReapUntil;
 static bool g_pingTaskReapPending;
 static portMUX_TYPE g_pingMux = portMUX_INITIALIZER_UNLOCKED;
 
+/* Cover the configured 1,000 ms request timeout plus one 500 ms interval while
+ * the native ping task exits. The idle handler yields during this bounded
+ * window; it does not impose a fixed delay on JavaScript. */
 #define ESP32_PING_TASK_REAP_GRACE_MS 1500
 
 static void schedulePingTaskReap(void) {
