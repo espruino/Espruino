@@ -318,17 +318,11 @@ bool utilTimerInsertTask(uint8_t taskIdx, uint32_t *timerOffset, bool firstOnly)
   }
   bool haveChangedTimer = insertPos==utilTimerTasksTail;
   //jsiConsolePrintf("Insert at %d, Tail is %d\n",insertPos,utilTimerTasksTail);
-  // shift items forward
-  int i = utilTimerTasksHead;
-  while (i != insertPos) {
-    unsigned char next = (i+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-    utilTimerTasks[i] = utilTimerTasks[next];
-    i = next;
-  }
-  // increase task list size
-  utilTimerTasksHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
-  // update timings (#2575)
-  if (haveChangedTimer) { // timer will change - update all tasks
+  // update timings (#2575). This must happen *before* shifting items forward,
+  // otherwise the slot at insertPos still holds a stale copy of the task that
+  // was there, and that task would have timePassed subtracted twice.
+  int i;
+  if (haveChangedTimer) { // timer will change - update all existing tasks
     i = utilTimerTasksTail;
     while (i != utilTimerTasksHead) {
       if (utilTimerTaskInfo[utilTimerTasks[i]].time > timePassed)
@@ -339,6 +333,15 @@ bool utilTimerInsertTask(uint8_t taskIdx, uint32_t *timerOffset, bool firstOnly)
     }
   } else // timer hasn't changed, we have to update our task's time
     task->time += timePassed;
+  // shift items forward
+  i = utilTimerTasksHead;
+  while (i != insertPos) {
+    unsigned char next = (i+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+    utilTimerTasks[i] = utilTimerTasks[next];
+    i = next;
+  }
+  // increase task list size
+  utilTimerTasksHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
   // add new item
   utilTimerTasks[insertPos] = taskIdx;
   //jsiConsolePrint("Head is %d\n", utilTimerTasksHead);
