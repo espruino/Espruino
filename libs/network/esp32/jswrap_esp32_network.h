@@ -26,3 +26,5 @@ void jswrap_ESP32_ping(
 
 void esp32_wifi_init();
 void jswrap_esp32_wifi_soft_init();
+void jswrap_esp32_network_kill();
+bool jswrap_wifi_ping_idle();

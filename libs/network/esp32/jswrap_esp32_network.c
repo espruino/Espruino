@@ -37,6 +37,7 @@
 #include "tcpip_adapter.h"
 #include "mdns.h"
 #include "ping/ping.h"
+#include "ping/ping_sock.h"
 #include "esp_ping.h"
 #include "sntp/sntp.h"
 #else
@@ -49,6 +50,7 @@
 #endif
 
 #include "lwip/dns.h"
+#include "jshardware.h"
 #include "jsinteractive.h"
 #include "network.h"
 #include "jswrap_modules.h"
@@ -343,7 +345,8 @@ bool stringToIP(ip_addr_t *ipAddr, const char *str) {
     return false;
   }
 #else
-  ((ip4_addr_t*)ipAddr)->addr = networkParseIPv4Address(str);
+  IP_SET_TYPE_VAL(*ipAddr, IPADDR_TYPE_V4);
+  return ip4addr_aton(str, ip_2_ip4(ipAddr));
 #endif
   return false;
 }
@@ -1688,56 +1691,207 @@ void jswrap_wifi_setHostname(JsVar *jsHostname, JsVar *jsCallback) {
 }
 
 static uint8_t g_seq_no;
+#define ESP32_PING_REQUEST_COUNT 5
 #if ESP_IDF_VERSION_MAJOR >= 5
-// Helper function to build the Espruino JS object from IDF5 profiles
-static void emit_espruino_ping_event(esp_ping_handle_t hdl, uint32_t elapsed_time) {
-  jsDebug(DBG_INFO, "espruino_ping_event\n");
+static esp_ping_handle_t g_pingHandle;
+static uint32_t g_pingAttemptCount;
+static uint32_t g_pingTimeoutCount;
+static uint32_t g_pingTotalBytes;
+static uint32_t g_pingTotalTime;
+static uint32_t g_pingLastBytes;
+static uint32_t g_pingLastTime;
+
+typedef struct {
+  uint32_t attempts;
+  uint32_t timeouts;
+  uint32_t totalBytes;
+  uint32_t totalTime;
+  uint32_t responseTime;
+  uint32_t bytes;
+} Esp32PingResponse;
+
+/* ENDING covers native session deletion; DRAINING retains ownership until the
+ * final queued result is delivered; CANCELLING waits for native completion
+ * after reset has discarded the JavaScript callback. */
+typedef enum {
+  ESP32_PING_IDLE,
+  ESP32_PING_RUNNING,
+  ESP32_PING_ENDING,
+  ESP32_PING_DRAINING,
+  ESP32_PING_CANCELLING
+} Esp32PingState;
+
+static Esp32PingResponse g_pingResponseQueue[ESP32_PING_REQUEST_COUNT];
+static uint8_t g_pingResponseHead;
+static uint8_t g_pingResponseTail;
+static uint8_t g_pingResponseCount;
+static bool g_pingResponseOverflow;
+static Esp32PingState g_pingState;
+static TickType_t g_pingTaskReapUntil;
+static bool g_pingTaskReapPending;
+static portMUX_TYPE g_pingMux = portMUX_INITIALIZER_UNLOCKED;
+
+/* Cover the configured 1,000 ms request timeout plus one 500 ms interval while
+ * the native ping task exits. The idle handler yields during this bounded
+ * window; it does not impose a fixed delay on JavaScript. */
+#define ESP32_PING_TASK_REAP_GRACE_MS 1500
+
+static void schedulePingTaskReap(void) {
+  TickType_t reapUntil =
+      xTaskGetTickCount() + pdMS_TO_TICKS(ESP32_PING_TASK_REAP_GRACE_MS);
+  portENTER_CRITICAL(&g_pingMux);
+  g_pingTaskReapUntil = reapUntil;
+  g_pingTaskReapPending = true;
+  portEXIT_CRITICAL(&g_pingMux);
+  jshHadEvent();
+}
+
+static void savePingResponse(void) {
+  Esp32PingResponse response = {
+    .attempts = g_pingAttemptCount,
+    .timeouts = g_pingTimeoutCount,
+    .totalBytes = g_pingTotalBytes,
+    .totalTime = g_pingTotalTime,
+    .responseTime = g_pingLastTime,
+    .bytes = g_pingLastBytes
+  };
+  bool wakeInterpreter = false;
+  portENTER_CRITICAL(&g_pingMux);
+  if (g_pingState == ESP32_PING_RUNNING &&
+      g_pingResponseCount < ESP32_PING_REQUEST_COUNT) {
+    g_pingResponseQueue[g_pingResponseHead] = response;
+    g_pingResponseHead = (g_pingResponseHead + 1) % ESP32_PING_REQUEST_COUNT;
+    g_pingResponseCount++;
+    wakeInterpreter = true;
+  } else if (g_pingState == ESP32_PING_RUNNING) {
+    /* The queue is sized for every configured request. Record any violation
+     * here because the native ping task must not manipulate JavaScript state. */
+    g_pingResponseOverflow = true;
+    wakeInterpreter = true;
+  }
+  portEXIT_CRITICAL(&g_pingMux);
+  if (wakeInterpreter) jshHadEvent();
+}
+
+static void queuePingResponse(const Esp32PingResponse *response) {
   if (g_jsPingCallback == NULL) return;
-
-  uint32_t transmitted = 0;
-  uint32_t received = 0;
-  uint32_t total_time_ms = 0;
-  uint32_t bytes_received = 0;
-
-  esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
-  esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &bytes_received, sizeof(bytes_received));
-
   JsVar *jsPingResponse = jsvNewObject();
-
-  jsvObjectSetIntChild(jsPingResponse, "totalCount", transmitted);
-  jsvObjectSetIntChild(jsPingResponse, "totalBytes", received * bytes_received);
-  jsvObjectSetIntChild(jsPingResponse, "totalTime", total_time_ms);
-  jsvObjectSetIntChild(jsPingResponse, "respTime", elapsed_time);
+  jsvObjectSetIntChild(jsPingResponse, "totalCount", response->attempts);
+  jsvObjectSetIntChild(jsPingResponse, "totalBytes", response->totalBytes);
+  jsvObjectSetIntChild(jsPingResponse, "totalTime", response->totalTime);
+  jsvObjectSetIntChild(jsPingResponse, "respTime", response->responseTime);
   jsvObjectSetIntChild(jsPingResponse, "seqNo", ++g_seq_no);
-  jsvObjectSetIntChild(jsPingResponse, "timeoutCount", (transmitted > received) ? (transmitted - received) : 0);
-  jsvObjectSetIntChild(jsPingResponse, "bytes", bytes_received);
-  jsvObjectSetIntChild(jsPingResponse, "error", (transmitted > received) ? (transmitted - received) : 0);
-
-  JsVar *params[1];
-  params[0] = jsPingResponse;
+  jsvObjectSetIntChild(jsPingResponse, "timeoutCount", response->timeouts);
+  jsvObjectSetIntChild(jsPingResponse, "bytes", response->bytes);
+  jsvObjectSetIntChild(jsPingResponse, "error", 0);
+  JsVar *params[1] = {jsPingResponse};
   jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
   jsvUnLock(jsPingResponse);
 }
 
-// IDF v5 Callback: Executed on successful ICMP Echo Reply
-static void esp5_ping_on_success(esp_ping_handle_t hdl, void *args) {
-  uint32_t elapsed_time = 0;
-  esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
-  emit_espruino_ping_event(hdl, elapsed_time);
+static void esp5PingSuccess(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  g_pingAttemptCount++;
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_SIZE, &g_pingLastBytes, sizeof(g_pingLastBytes));
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_TIMEGAP, &g_pingLastTime, sizeof(g_pingLastTime));
+  g_pingTotalBytes += g_pingLastBytes;
+  g_pingTotalTime += g_pingLastTime;
+  savePingResponse();
 }
 
-// IDF v5 Callback: Executed if a packet drops or times out
-static void esp5_ping_on_timeout(esp_ping_handle_t hdl, void *args) {
-  emit_espruino_ping_event(hdl, 0);
+static void esp5PingTimeout(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  g_pingAttemptCount++;
+  g_pingTimeoutCount++;
+  g_pingLastBytes = 0;
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_TIMEGAP, &g_pingLastTime, sizeof(g_pingLastTime));
+  savePingResponse();
 }
 
-// IDF v5 Callback: Executed when 'ping_count' runs out or session stops
-static void esp5_ping_on_end(esp_ping_handle_t hdl, void *args) {
-  esp_ping_delete_session(hdl);
+static void esp5PingEnd(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  portENTER_CRITICAL(&g_pingMux);
+  if (g_pingState == ESP32_PING_RUNNING)
+    g_pingState = ESP32_PING_ENDING;
+  portEXIT_CRITICAL(&g_pingMux);
+
+  /* Start native deletion before publishing completion. On a dual-core target
+   * the interpreter must not make the operation reusable first. */
+  esp_ping_delete_session(pingHandle);
+  schedulePingTaskReap();
+  portENTER_CRITICAL(&g_pingMux);
+  if (g_pingState == ESP32_PING_CANCELLING) {
+    g_pingHandle = NULL;
+    g_pingState = ESP32_PING_IDLE;
+  } else if (g_pingState == ESP32_PING_ENDING) {
+    g_pingState = ESP32_PING_DRAINING;
+  }
+  portEXIT_CRITICAL(&g_pingMux);
+  jshHadEvent();
+}
+
+/*JSON{
+  "type" : "idle",
+  "generate" : "jswrap_wifi_ping_idle",
+  "ifdef" : "USE_ESP32"
+}*/
+bool jswrap_wifi_ping_idle() {
+  Esp32PingResponse response = {0};
+  bool responsePending = false;
+  bool responseOverflow;
+  bool pingEnded;
+  bool pingTaskReapPending;
+  TickType_t now = xTaskGetTickCount();
+  portENTER_CRITICAL(&g_pingMux);
+  /* Keep the final response queued until IDF reports on_ping_end. This makes
+   * the final JavaScript callback a reliable indication that a new ping
+   * session may be started. */
+  if (g_pingResponseCount > 0 &&
+      (g_pingState == ESP32_PING_DRAINING || g_pingResponseCount > 1)) {
+    response = g_pingResponseQueue[g_pingResponseTail];
+    g_pingResponseTail = (g_pingResponseTail + 1) % ESP32_PING_REQUEST_COUNT;
+    g_pingResponseCount--;
+    responsePending = true;
+  }
+  responseOverflow = g_pingResponseOverflow;
+  g_pingResponseOverflow = false;
+  pingEnded = g_pingState == ESP32_PING_DRAINING && g_pingResponseCount == 0;
+  if (pingEnded) {
+    g_pingHandle = NULL;
+    g_pingState = ESP32_PING_IDLE;
+  }
+  pingTaskReapPending = g_pingTaskReapPending;
+  if (pingTaskReapPending &&
+      (int32_t)(now - g_pingTaskReapUntil) >= 0) {
+    g_pingTaskReapPending = false;
+  }
+  portEXIT_CRITICAL(&g_pingMux);
+
+  if (responsePending) queuePingResponse(&response);
+  if (responseOverflow)
+    jsError("Wifi.ping response queue overflow");
+  if (pingEnded && g_jsPingCallback != NULL) {
+    jsvUnLock(g_jsPingCallback);
+    g_jsPingCallback = NULL;
+  }
+  if (pingTaskReapPending) {
+    /* IDF deletion is asynchronous: its ping task frees resources and then
+     * self-deletes after a timed wake. On a single-core target the always-ready
+     * interpreter can otherwise starve the FreeRTOS idle task that reclaims
+     * the deleted task's stack and TCB. */
+    vTaskDelay(1);
+  }
+  return responsePending || responseOverflow || pingEnded ||
+         pingTaskReapPending;
 }
 #else
+bool jswrap_wifi_ping_idle() {
+  return false;
+}
+
 esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
 	//printf("AvgTime:%.1fmS Sent:%d Rec:%d Err:%d min(mS):%d max(mS):%d ",
   //(float)pf->total_time/pf->recv_count, pf->send_count, pf->recv_count, pf->err_count, pf->min_time, pf->max_time );
@@ -1760,7 +1914,71 @@ esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pingResp){
   }
   return ESP_OK;
 }
+
+#if ESP_IDF_VERSION_MAJOR == 4
+static void esp4PingSuccess(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  uint32_t elapsedTime = 0;
+  uint32_t receivedLength = 0;
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_SIZE, &receivedLength, sizeof(receivedLength));
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_TIMEGAP, &elapsedTime, sizeof(elapsedTime));
+  esp_ping_result(PING_RES_OK, receivedLength, elapsedTime);
+}
+
+static void esp4PingTimeout(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  uint32_t elapsedTime = 0;
+  uint32_t receivedLength = 0;
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_SIZE, &receivedLength, sizeof(receivedLength));
+  esp_ping_get_profile(
+      pingHandle, ESP_PING_PROF_TIMEGAP, &elapsedTime, sizeof(elapsedTime));
+  esp_ping_result(PING_RES_TIMEOUT, receivedLength, elapsedTime);
+}
+
+static void esp4PingEnd(esp_ping_handle_t pingHandle, void *args) {
+  UNUSED(args);
+  /* Preserve the legacy terminal result before releasing the native session.
+   * IDF4's compatibility backend has always exposed this as a sixth callback. */
+  esp_ping_result(PING_RES_FINISH, 0, 0);
+  esp_ping_delete_session(pingHandle);
+}
 #endif
+#endif
+
+/*JSON{
+  "type" : "kill",
+  "generate" : "jswrap_esp32_network_kill",
+  "ifdef" : "USE_ESP32"
+}*/
+void jswrap_esp32_network_kill() {
+#if ESP_IDF_VERSION_MAJOR >= 5
+  portENTER_CRITICAL(&g_pingMux);
+  g_pingResponseHead = 0;
+  g_pingResponseTail = 0;
+  g_pingResponseCount = 0;
+  g_pingResponseOverflow = false;
+  if (g_pingState == ESP32_PING_RUNNING) {
+    /* on_ping_end takes the same lock before deleting the native session, so
+     * the handle remains owned while stop is issued. Native completion then
+     * performs the one delete handoff and returns the operation to IDLE. */
+    esp_ping_stop(g_pingHandle);
+    g_pingState = ESP32_PING_CANCELLING;
+  } else if (g_pingState == ESP32_PING_ENDING) {
+    g_pingState = ESP32_PING_CANCELLING;
+  } else if (g_pingState == ESP32_PING_DRAINING) {
+    g_pingHandle = NULL;
+    g_pingState = ESP32_PING_IDLE;
+  }
+  portEXIT_CRITICAL(&g_pingMux);
+  if (g_jsPingCallback != NULL) {
+    jsvUnLock(g_jsPingCallback);
+    g_jsPingCallback = NULL;
+  }
+#endif
+}
 
 void jswrap_wifi_ping(
     JsVar *ipAddr,      //!< A string representation of an IP address.
@@ -1781,6 +1999,17 @@ void jswrap_wifi_ping(
   }
   jsDebug(DBG_INFO, "jswrap_wifi_ping(%q)\n", ipToString(&ip));
 
+#if ESP_IDF_VERSION_MAJOR >= 5
+  bool pingActive;
+  portENTER_CRITICAL(&g_pingMux);
+  pingActive = g_pingState != ESP32_PING_IDLE;
+  portEXIT_CRITICAL(&g_pingMux);
+  if (pingActive) {
+    jsExceptionHere(JSET_ERROR, "A ping is already in progress");
+    return;
+  }
+#endif
+
   // Validate and handle the callback binding
   if (jsvIsUndefined(pingCallback) || jsvIsNull(pingCallback)) {
     if (g_jsPingCallback != NULL) {
@@ -1800,11 +2029,11 @@ void jswrap_wifi_ping(
 
   // We now have an IP address to ping ... so ping.
 
-  uint32_t ping_count = 5;  //how many pings per report
+  uint32_t ping_count = ESP32_PING_REQUEST_COUNT;  //how many pings per report
   uint32_t ping_timeout = 1000; //mS till we consider it timed out
   uint32_t ping_delay = 500; //mS between pings
 
-#if ESP_IDF_VERSION_MAJOR < 5
+#if ESP_IDF_VERSION_MAJOR < 4
   esp_ping_set_target(PING_TARGET_IP_ADDRESS_COUNT, &ping_count, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_RCV_TIMEO, &ping_timeout, sizeof(uint32_t));
   esp_ping_set_target(PING_TARGET_DELAY_TIME, &ping_delay, sizeof(uint32_t));
@@ -1812,24 +2041,102 @@ void jswrap_wifi_ping(
   esp_ping_set_target(PING_TARGET_RES_FN, &pingResults, sizeof(pingResults));
   g_seq_no = 0;
   ping_init();
-#else
+#elif ESP_IDF_VERSION_MAJOR == 4
+  esp_ping_set_target(PING_TARGET_RES_FN, &pingResults, sizeof(pingResults));
   esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
-  // Assign the target container cleanly to the session configuration
   ping_config.target_addr = ip;
   ping_config.count = ping_count;
   ping_config.timeout_ms = ping_timeout;
   ping_config.interval_ms = ping_delay;
+  /* The single-core C3 interpreter runs at priority 5 and may remain ready
+   * while its USB console is active, so IDF4's priority-2 ping task can starve. */
+  ping_config.task_prio = 6;
   esp_ping_callbacks_t cbs = {
-    .on_ping_success = esp5_ping_on_success,
-    .on_ping_timeout = esp5_ping_on_timeout,
-    .on_ping_end = esp5_ping_on_end,
+    .on_ping_success = esp4PingSuccess,
+    .on_ping_timeout = esp4PingTimeout,
+    .on_ping_end = esp4PingEnd,
     .cb_args = NULL
   };
-  esp_ping_handle_t ping_handle;
-  if (esp_ping_new_session(&ping_config, &cbs, &ping_handle) == ESP_OK) {
-    esp_ping_start(ping_handle);
-  } else {
-    jsExceptionHere(JSET_ERROR, "Failed to initialize ping session");
+  esp_ping_handle_t pingHandle = NULL;
+  g_seq_no = 0;
+  esp_err_t err = esp_ping_new_session(&ping_config, &cbs, &pingHandle);
+  if (err != ESP_OK) {
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
+      g_jsPingCallback = NULL;
+    }
+    jsExceptionHere(JSET_ERROR, "Unable to create ping session: %s", esp_err_to_name(err));
+    return;
+  }
+  err = esp_ping_start(pingHandle);
+  if (err != ESP_OK) {
+    esp_ping_delete_session(pingHandle);
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
+      g_jsPingCallback = NULL;
+    }
+    jsExceptionHere(JSET_ERROR, "Unable to start ping session: %s", esp_err_to_name(err));
+    return;
+  }
+#else
+  esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
+  ping_config.target_addr = ip;
+  ping_config.count = ping_count;
+  ping_config.timeout_ms = ping_timeout;
+  ping_config.interval_ms = ping_delay;
+  /* The Espruino interpreter runs at priority 5. On a single-core target with
+   * an active USB console it may not sleep, so ESP-IDF's default ping task
+   * priority of 2 can be starved indefinitely. */
+  ping_config.task_prio = 6;
+  esp_ping_callbacks_t cbs = {
+    .on_ping_success = esp5PingSuccess,
+    .on_ping_timeout = esp5PingTimeout,
+    .on_ping_end = esp5PingEnd,
+    .cb_args = NULL
+  };
+
+  g_seq_no = 0;
+  g_pingAttemptCount = 0;
+  g_pingTimeoutCount = 0;
+  g_pingTotalBytes = 0;
+  g_pingTotalTime = 0;
+  g_pingLastBytes = 0;
+  g_pingLastTime = 0;
+  portENTER_CRITICAL(&g_pingMux);
+  g_pingResponseHead = 0;
+  g_pingResponseTail = 0;
+  g_pingResponseCount = 0;
+  g_pingResponseOverflow = false;
+  portEXIT_CRITICAL(&g_pingMux);
+
+  esp_ping_handle_t pingHandle = NULL;
+  esp_err_t err = esp_ping_new_session(&ping_config, &cbs, &pingHandle);
+  if (err != ESP_OK) {
+    schedulePingTaskReap();
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
+      g_jsPingCallback = NULL;
+    }
+    jsExceptionHere(JSET_ERROR, "Unable to create ping session: %s", esp_err_to_name(err));
+    return;
+  }
+  portENTER_CRITICAL(&g_pingMux);
+  g_pingHandle = pingHandle;
+  g_pingState = ESP32_PING_RUNNING;
+  portEXIT_CRITICAL(&g_pingMux);
+  err = esp_ping_start(pingHandle);
+  if (err != ESP_OK) {
+    esp_ping_delete_session(pingHandle);
+    schedulePingTaskReap();
+    portENTER_CRITICAL(&g_pingMux);
+    g_pingHandle = NULL;
+    g_pingState = ESP32_PING_IDLE;
+    portEXIT_CRITICAL(&g_pingMux);
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
+      g_jsPingCallback = NULL;
+    }
+    jsExceptionHere(JSET_ERROR, "Unable to start ping session: %s", esp_err_to_name(err));
   }
 #endif
 }
