@@ -244,6 +244,8 @@ void jshTransmitMove(IOEventFlags from, IOEventFlags to);
 bool jshHasTransmitData();
 /** Returns the number of bytes currently used in the transmit buffer */
 int jshGetTransmitBufferUsage();
+/// Is there data waiting to be transmitted on the given device?
+bool jshHasTransmitDataForDevice(IOEventFlags device);
 // Return the device at the top of the transmit queue (or EV_NONE)
 IOEventFlags jshGetDeviceToTransmit();
 /// Try and get a character for transmission - could just return -1 if nothing

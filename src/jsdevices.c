@@ -440,6 +440,20 @@ int jshGetTransmitBufferUsage() {
 }
 
 /**
+ * Determine if we have data to be transmitted on the given device.
+ * \return True if any character in the transmit buffer is for this device.
+ */
+bool jshHasTransmitDataForDevice(IOEventFlags device) {
+  unsigned char tail = txTail;
+  while (tail != txHead) {
+    if (IOEVENTFLAGS_GETTYPE(txBuffer[tail].flags) == device)
+      return true;
+    tail = (unsigned char)((tail+1)&TXBUFFERMASK);
+  }
+  return false;
+}
+
+/**
  * flag that the buffer has overflowed.
  */
 void CALLED_FROM_INTERRUPT jshIOEventOverflowed() {

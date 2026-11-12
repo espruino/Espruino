@@ -3307,6 +3307,16 @@ bool jswrap_banglejs_setGPSPower(bool isOn, JsVar *appId) {
       memset(&gpsFix,0,sizeof(gpsFix));
     }
   } else { // !isOn
+    if (wasOn) {
+      /* Serial1.write returns before the bytes are sent. Send what is still queued for the GPS (at most the TX
+      buffer, about 0.3s at 9600 baud), otherwise turning the UART off discards it, for example the end of AGPS
+      data written just before Bangle.setGPSPower(0). The timeout is a safety net. */
+      JsSysTime timeout = jshGetSystemTime() + jshGetTimeFromMilliseconds(500);
+      while (jshHasTransmitDataForDevice(GPS_UART) && jshGetSystemTime() < timeout);
+      // the last byte is still being shifted out (about 1ms at 9600 baud)
+      timeout = jshGetSystemTime() + jshGetTimeFromMilliseconds(2);
+      while (jshGetSystemTime() < timeout);
+    }
     jswrap_banglejs_pwrGPS(false); // turn off, clear JSBF_GPS_ON
     // setting pins to pullup will cause jshardware.c to disable the UART, saving power
     jshPinSetState(GPS_PIN_RX, JSHPINSTATE_GPIO_IN_PULLUP);
