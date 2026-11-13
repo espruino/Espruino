@@ -20,9 +20,3 @@ void initConsole();
 void initSerial(IOEventFlags device,JshUSARTInfo *inf);
 void uninitSerial(IOEventFlags device);
 void pollSerialDevices();
-
-#if defined(ESPR_USE_USB_SERIAL_JTAG) && ESP_IDF_VERSION_MAJOR < 5
-// not in IDF 4, make our own
-bool usb_serial_jtag_is_driver_installed();
-bool usb_serial_jtag_is_connected();
-#endif

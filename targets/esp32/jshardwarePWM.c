@@ -64,11 +64,7 @@ int getFreeChannel(Pin pin){
 
 void timerConfig(int freq,int timer){
   ledc_timer_config_t PWM_timer = {
-#if ESP_IDF_VERSION_MAJOR>=4
     .duty_resolution = LEDC_TIMER_10_BIT,
-#else
-    .bit_num = LEDC_TIMER_10_BIT,//set timer counter bit number
-#endif
 #if CONFIG_IDF_TARGET_ESP32
     .freq_hz = freq,//set frequency of pwm
     .speed_mode = LEDC_HIGH_SPEED_MODE,//timer mode,

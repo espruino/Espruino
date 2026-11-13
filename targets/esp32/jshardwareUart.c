@@ -38,20 +38,7 @@ static volatile bool uartTaskPaused;
 
 #ifdef ESPR_USE_USB_SERIAL_JTAG
 #include "driver/usb_serial_jtag.h"
-#if ESP_IDF_VERSION_MAJOR >= 5
 #include <unistd.h>
-#else // is_connected not in IDF 4, so make our own
-#include "hal/usb_serial_jtag_ll.h"
-uint16_t usb_serial_jtag_idle_counter = 0;
-uint32_t usb_serial_jtag_last_frame_counter = 0;
-bool usb_serial_initialised = false;
-bool usb_serial_jtag_is_driver_installed() {
-  return usb_serial_initialised;
-}
-bool usb_serial_jtag_is_connected() {
-  return usb_serial_jtag_idle_counter < 1000;
-}
-#endif
 #endif
 
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
@@ -151,34 +138,17 @@ void initConsole() {
     .tx_buffer_size = 256,
     .rx_buffer_size = 512
   };
-#if ESP_IDF_VERSION_MAJOR>=5
   if (!usb_serial_jtag_is_driver_installed()) {
-#else // IDF <5
-  usb_serial_initialised = true;
-  usb_serial_jtag_idle_counter = 65535;
-  usb_serial_jtag_last_frame_counter = USB_SERIAL_JTAG.fram_num.val;
-  if (true) {
-#endif
     ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb_serial_config));
   }
   jshSetDeviceInitialised(EV_USBSERIAL, true); // No need for USB flow control - backpressure is fine
   vTaskDelay(pdMS_TO_TICKS(1000)); // Now wait one second to allow USB to init if it's going to
 
-#if ESP_IDF_VERSION_MAJOR>=5
   bool usbConnected = usb_serial_jtag_is_connected();
-#else // IDF <5
-  bool usbConnected = usb_serial_jtag_last_frame_counter != USB_SERIAL_JTAG.fram_num.val;
-#endif
   if (usbConnected) {
     needUART = false;
-#if ESP_IDF_VERSION_MAJOR<5
-    usb_serial_jtag_idle_counter = 0; // ensure isconnected return true
-#endif
   } else {
     usb_serial_jtag_driver_uninstall();
-#if ESP_IDF_VERSION_MAJOR<5
-    usb_serial_initialised = false;
-#endif
   }
 #endif
 #ifdef USB
@@ -214,11 +184,7 @@ void writeSerial(IOEventFlags device, uint8_t *buf, int len){
     usb_serial_jtag_write_bytes(buf, len, pdMS_TO_TICKS(100)); // could return <0 for an error.
 /* The USB CDC UART on the C3 only writes the data to USB after a newline.
     We don't want that, so we call flush in this uart task if any data has been sent. */
-#if ESP_IDF_VERSION_MAJOR >= 5
     usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(10));
-#else
-    usb_serial_jtag_ll_txfifo_flush();
-#endif
 
   }
 #endif
@@ -248,15 +214,6 @@ void pollSerialDevices() {
   bool busy = false;
   static uint16_t idleCount = 0;
 #ifdef ESPR_USE_USB_SERIAL_JTAG
-#if ESP_IDF_VERSION_MAJOR < 5 // hack to work out if we're connected or not on IDF4
-  if (usb_serial_initialised) {
-    uint32_t frame = USB_SERIAL_JTAG.fram_num.val;
-    if (frame != usb_serial_jtag_last_frame_counter) {
-      usb_serial_jtag_idle_counter = 0;
-      usb_serial_jtag_last_frame_counter = frame;
-    } else if (usb_serial_jtag_idle_counter<65535) usb_serial_jtag_idle_counter++;
-  }
-#endif
 #endif
   // Handle transmission
   IOEventFlags device = jshGetDeviceToTransmit();

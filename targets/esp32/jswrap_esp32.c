@@ -24,17 +24,9 @@
 #include "esp_sleep.h"
 #include "esp_heap_caps.h"
 #include "esp_ota_ops.h"
-#if ESP_IDF_VERSION_MAJOR >= 4
 #include "esp_chip_info.h"
 #include "esp_flash.h"
-#else
-#include "esp_spi_flash.h"
-#endif
-#if ESP_IDF_VERSION_MAJOR >= 5
 #include "esp_private/esp_clk.h"
-#else
-#include "esp_clk.h"
-#endif
 
 
 #ifdef ESPR_USE_USB_SERIAL_JTAG
@@ -49,9 +41,6 @@
 #include "jshardwareESP32.h"
 #include "jshardwareSpi.h"
 
-#ifndef ESP_IDF_VERSION_MAJOR
-#define ESP_IDF_VERSION_MAJOR 3
-#endif
 
 #ifndef ESP_ERR_SLEEP_REJECT
 #define ESP_ERR_SLEEP_REJECT ESP_ERR_INVALID_STATE
@@ -101,20 +90,7 @@ void jswrap_ESP32_reboot() {
 static bool esp32IsValidDeepSleepWakeupPin(Pin pin) {
   gpio_num_t gpio = pinToESP32Pin(pin);
   if (gpio < 0 || gpio >= GPIO_NUM_MAX) return false;
-#if ESP_IDF_VERSION_MAJOR >= 4
   return esp_sleep_is_valid_wakeup_gpio(gpio);
-#else
-  switch (gpio) {
-    case GPIO_NUM_0: case GPIO_NUM_2: case GPIO_NUM_4:
-    case GPIO_NUM_12: case GPIO_NUM_13: case GPIO_NUM_14: case GPIO_NUM_15:
-    case GPIO_NUM_25: case GPIO_NUM_26: case GPIO_NUM_27:
-    case GPIO_NUM_32: case GPIO_NUM_33: case GPIO_NUM_34: case GPIO_NUM_35:
-    case GPIO_NUM_36: case GPIO_NUM_37: case GPIO_NUM_39:
-      return true;
-    default:
-      return false;
-  }
-#endif
 }
 
 static uint64_t esp32DeepSleepGpioMask(Pin pin) {
@@ -432,14 +408,10 @@ JsVar *jswrap_ESP32_getState() {
 
   uint32_t flash_size = 0;
 
-#if ESP_IDF_VERSION_MAJOR >= 5
   esp_err_t flash_err = esp_flash_get_size(NULL, &flash_size);
   if (flash_err != ESP_OK) {
     flash_size = 0;
   }
-#else
-  flash_size = spi_flash_get_chip_size();
-#endif
 
   bool is_emb_flash = (chip_info.features & CHIP_FEATURE_EMB_FLASH) != 0;
 
