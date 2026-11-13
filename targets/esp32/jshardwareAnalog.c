@@ -66,19 +66,11 @@ adc1_channel_t pinToAdcChannel(Pin pin){
 adc_atten_t rangeToAdcAtten(int range){
   adc_atten_t atten;
   switch (range){
-#if ESP_IDF_VERSION_MAJOR>=4
 	case 1000: atten = ADC_ATTEN_DB_0; break;
 	case 1340: atten = ADC_ATTEN_DB_2_5; break;
 	case 2000: atten = ADC_ATTEN_DB_6; break;
 	case 3600: atten = ADC_ATTEN_DB_11; break;
 	default: atten = ADC_ATTEN_DB_11; break;
-#else
-	case 1000: atten = ADC_ATTEN_0db; break;
-	case 1340: atten = ADC_ATTEN_2_5db; break;
-	case 2000: atten = ADC_ATTEN_6db; break;
-	case 3600: atten = ADC_ATTEN_11db; break;
-	default: atten = ADC_ATTEN_11db; break;
-#endif
   }
   return atten;
 }
@@ -107,17 +99,9 @@ void ADCReset(){
 void initADC(int ADCgroup){
   switch(ADCgroup){
   case 1:
-#if ESP_IDF_VERSION_MAJOR>=4
     adc1_config_width(ADC_WIDTH_BIT_12);
-#else
-    adc1_config_width(ADC_WIDTH_12Bit);
-#endif
     for(int i = 0; i < adc_channel_max; i++) {
-#if ESP_IDF_VERSION_MAJOR>=4
       adc_channel[i] = ADC_ATTEN_DB_11;
-#else
-      adc_channel[i] = ADC_ATTEN_11db;
-#endif
       adc_channel_setup[i] = false;
      }
     break;
@@ -147,15 +131,11 @@ int readADC(Pin pin){
   if(channel >= 0) {
     int idx = pinToAdcChannelIdx(pin);
     adcEnsureChannelConfigured(channel, idx);
-#if ESP_IDF_VERSION_MAJOR>=4
 	  int value=adc1_get_raw(channel);
 #if CONFIG_IDF_TARGET_ESP32C3
     // we need to call it twice to get a decent value on the C3 for some reason!
     // https://forum.espruino.com/conversations/395499/?offset=100#17482163
     value=adc1_get_raw(channel);
-#endif
-#else
-	  int value = adc1_get_voltage(channel);
 #endif
     return value;
   } else return -1;
@@ -169,14 +149,10 @@ void writeDAC(Pin pin,uint8_t value){
   }
 #if CONFIG_IDF_TARGET_ESP32
   channel = pinToDacChannel(pin);
-#if ESP_IDF_VERSION_MAJOR>=4
   if(channel >= 0) {
     dac_output_enable(channel);
     dac_output_voltage(channel, value);
   }
-#else
-  if(channel >= 0) dac_out_voltage(channel, value);
-#endif
 #elif CONFIG_IDF_TARGET_ESP32C3
   jsExceptionHere(JSET_ERROR, "not implemented\n");
 #elif CONFIG_IDF_TARGET_ESP32S3

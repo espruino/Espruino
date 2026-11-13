@@ -118,9 +118,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
   conf.master.clk_speed = info->bitrate;
   
-  #if ESP_IDF_VERSION_MAJOR >= 4
     conf.clk_flags = 0; // select the default I2C clock source
-  #endif
                     
   esp_err_t err=i2c_param_config(i2c_master_port, &conf);
   if ( err == ESP_ERR_INVALID_ARG ) {

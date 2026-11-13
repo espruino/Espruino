@@ -34,13 +34,8 @@
 #include "jshardwareSpi.h"
 #include "jsinteractive.h"
 
-#if ESP_IDF_VERSION_MAJOR >= 4     // Modified for issue #2601
 #define SPICHANNEL0_HOST SPI2_HOST // SPI1_host internal use only
   #define SPICHANNEL1_HOST SPI3_HOST
-#else // allow original ESP32 build in IDF V3
-  #define SPICHANNEL0_HOST HSPI_HOST
-  #define SPICHANNEL1_HOST VSPI_HOST
-#endif
 
 SPIChannel SPIChannels[SPIMax];   // <-- THE ONLY definition
 
@@ -91,11 +86,7 @@ void jshSPISetup(
 
   // Modified for issue #2601 - Start
   int dma_chan = 0;
-  #if ESP_IDF_VERSION_MAJOR >= 4
     dma_chan = SPI_DMA_CH_AUTO;
-  #else
-    dma_chan = (SPIChannels[channelPnt].HOST == SPICHANNEL0_HOST) ? 1 : 2;
-  #endif
 
   // Default pins as set in board.py
   JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
@@ -247,15 +238,11 @@ void jshSPIWait(IOEventFlags device) {
   if(!spi_Sending)return;
   esp_err_t ret;
 
-  #if ESP_IDF_VERSION_MAJOR>=5
   spi_transaction_t *ret_trans;
   ret = spi_device_get_trans_result(
         SPIChannels[channelPnt].spi,
         &ret_trans,
         portMAX_DELAY);
-  #else
-  ret = spi_device_get_trans_result(SPIChannels[channelPnt].spi, (spi_transaction_t **)&spi_trans, portMAX_DELAY);
-  #endif
 
 
   if (ret != ESP_OK) {

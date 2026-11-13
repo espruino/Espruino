@@ -4,12 +4,8 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_event.h"
-#if ESP_IDF_VERSION_MAJOR>=5
 #include "esp_event.h"
 #include "esp_task_wdt.h"
-#else
-#include "esp_event_loop.h"
-#endif
 
 #include "nvs_flash.h"
 
@@ -40,23 +36,15 @@ uintptr_t espruino_stackHighPtr = 0;
 #include "BLE/esp32_gatts_func.h"
 #endif
 
-#if ESP_IDF_VERSION_MAJOR>=5
 #include "esp_flash.h"
 #include "spi_flash_mmap.h"
-#else
-#include "esp_spi_flash.h"
-#endif
 #include "esp_partition.h"
 #include "esp_log.h"
 
 #include "jsvar.h"
 
 #ifdef CONFIG_ESP_TASK_WDT_EN
-#if ESP_IDF_VERSION_MAJOR>=5
 #define TWDT_TICKS 10
-#else
-#define TWDT_TICKS 1
-#endif
 #endif
 
 extern void initialise_wifi(void);
@@ -158,11 +146,7 @@ int app_main(void)
 #ifdef BLUETOOTH
   jsble_init();
 #endif
-#if ESP_IDF_VERSION_MAJOR>=5
   esp_flash_init(NULL);
-#else
-  spi_flash_init();
-#endif
   timers_Init();
   timer_Init("EspruinoTimer",0,0,0);
 
