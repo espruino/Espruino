@@ -75,7 +75,14 @@ Valid atten values are:
 * 3 - measurable input voltage range is 150 mV ~ 2450 mV (ADC_ATTEN_DB_12).
 }*/
 void jswrap_ESP32_setAtten(Pin pin,int atten){
-  printf("Atten:%d\n",atten);
+  if (!jshIsPinValid(pin)) {
+    jsExceptionHere(JSET_ERROR, "Invalid pin");
+    return;
+  }
+  if (atten < 0 || atten > 3) {
+    jsExceptionHere(JSET_ERROR, "Invalid atten value. Must be 0-3");
+    return;
+  }
   rangeADC(pin, atten);
 }
 
