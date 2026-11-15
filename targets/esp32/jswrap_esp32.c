@@ -66,8 +66,8 @@ Class containing utility functions for the
  "generate" : "jswrap_ESP32_setAtten",
  "params"   : [
    ["pin", "pin", "Pin for Analog read"],
-   ["atten", "int", "Attenuate factor"]
- ]}
+   ["atten", "int", "Attenuate factor"]]
+}
 Valid atten values are:
 * 0 - measurable input voltage range is 100 mV ~ 950 mV (ADC_ATTEN_DB_0).
 * 1 - measurable input voltage range is 100 mV ~ 1250 mV (ADC_ATTEN_DB_2_5).
