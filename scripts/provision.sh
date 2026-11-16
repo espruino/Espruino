@@ -32,8 +32,6 @@ BOARDNAME=$1
 
 if [ "$BOARDNAME" = "ALL" ]; then
   echo "Installing dev tools for all boards"
-  PROVISION_ESP32=1
-  PROVISION_ESP32_IDF4=1
   PROVISION_ESP32_IDF5=1
   PROVISION_ESP8266=1
   PROVISION_LINUX=1
@@ -77,58 +75,6 @@ else
 fi
 echo Python version "$(python --version)"
 
-if [ "$PROVISION_ESP32" = "1" ]; then
-    echo "===== ESP32"
-    # needed for esptool for merging binaries
-    if pip list 2>/dev/null | grep pyserial >/dev/null; then
-      echo pyserial installed;
-    else
-      echo Installing pyserial
-      sudo pip -q install pyserial
-    fi
-    # SDK
-    if [ ! -d "app" ]; then
-        echo installing app folder
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/app.tgz | tar xfz - --no-same-owner
-        #curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/ESP32-V3.1/esp32/deploy/app.tgz | tar xfz - --no-same-owner
-    fi
-    if [ ! -d "esp-idf" ]; then
-        echo installing esp-idf folder
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
-        #curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/ESP32-V3.1/esp32/deploy/esp-idf.tgz | tar xfz - --no-same-owner
-    fi
-    if ! type xtensa-esp32-elf-gcc 2> /dev/null > /dev/null; then
-        echo installing xtensa-esp32-elf-gcc
-        if [ ! -d "xtensa-esp32-elf" ]; then
-           #curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz | tar xfz - --no-same-owner
-           curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz | tar xfz - --no-same-owner
-        else
-           echo "Folder found"
-        fi
-    fi
-    echo "ESP_IDF_PATH=$(pwd)/esp-idf"
-    echo "ESP_APP_TEMPLATE_PATH=$(pwd)/app"
-    echo "PATH=\$PATH:$(pwd)/xtensa-esp32-elf/bin/"
-    export ESP_IDF_PATH=$(pwd)/esp-idf
-    export ESP_APP_TEMPLATE_PATH=$(pwd)/app
-    export PATH=$PATH:$(pwd)/xtensa-esp32-elf/bin/
-    echo GCC is "$(which xtensa-esp32-elf-gcc)"
-fi
-#--------------------------------------------------------------------------------
-if [ "$PROVISION_ESP32_IDF4" = "1" ]; then
-    echo "===== ESP32 IDF4"
-    # SDK
-    if [ ! -d "esp-idf-4" ]; then
-        echo installing esp-idf folder
-        mkdir esp-idf-4
-        cd esp-idf-4 || exit
-        git clone -b v4.4.8 --depth=1 --recursive --shallow-submodules https://github.com/espressif/esp-idf.git
-        esp-idf/install.sh			# RIC if not specifying the target, it installs all of them for now, selected targets are: esp32c3, esp32, esp32s2, esp32h2, esp32s3
-        cd ..
-    fi
-    source esp-idf-4/esp-idf/export.sh
-fi
-#--------------------------------------------------------------------------------
 if [ "$PROVISION_ESP32_IDF5" = "1" ]; then
     echo "===== ESP32 IDF5"
     # SDK

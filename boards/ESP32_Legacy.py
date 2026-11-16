@@ -13,9 +13,7 @@
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
 
-# ###########################################################
-# #      THIS IS BETA - IDF5 SUPPORT IS NOT READY YET       #
-# ###########################################################
+
 
 # A Note about the 'variables' parameter on ESP32 Builds
 # ------------------------------------------------------
@@ -61,18 +59,16 @@ info = {
      'ESP32',
      'NET',
      'GRAPHICS',
-     'CRYPTO', 'SHA256', 
-#    'SHA512',
+     'CRYPTO','SHA256','SHA512',
      'TLS',
      'TELNET',
      'NEOPIXEL',
-#     'FILESYSTEM',
+     'FILESYSTEM',
      'BLUETOOTH'
    ],
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1',
      'DEFINES+=-DESP_STACK_SIZE=25000',
-     'DEFINES+=-DESP_HEAP_SIZE=70000', # enough for HTTPS and IDF5 networking tasks
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
      'ESP32_FLASH_MAX=1572864'
@@ -82,14 +78,14 @@ info = {
 
 chip = {
   'part'    : "ESP32",
-  'family'  : "ESP32_IDF5",
+  'family'  : "ESP32",
   'package' : "",
   'ram'     : 512,
   'flash'   : 0,
   'speed'   : 240,
   'usart'   : 3,
   'spi'     : 2,
-  'i2c'     : 2, #2,
+  'i2c'     : 2,
   'adc'     : 2,
   'dac'     : 0,
   'saved_code' : {
@@ -173,22 +169,24 @@ def get_pins():
   pinutils.findpin(pins, "PD35", True)["functions"]["ADC1_IN7"]=0;
 
 #ADC2 not supported yet, waiting for driver from espressif
-  pinutils.findpin(pins, "PD4", True)["functions"]["ADC2_IN0"]=0;
-  pinutils.findpin(pins, "PD0", True)["functions"]["ADC2_IN1"]=0;
-  pinutils.findpin(pins, "PD2", True)["functions"]["ADC2_IN2"]=0;
-  pinutils.findpin(pins, "PD15", True)["functions"]["ADC2_IN3"]=0;
-  pinutils.findpin(pins, "PD13", True)["functions"]["ADC2_IN4"]=0;
-  pinutils.findpin(pins, "PD12", True)["functions"]["ADC2_IN5"]=0;
-  pinutils.findpin(pins, "PD14", True)["functions"]["ADC2_IN6"]=0;
-  pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
+#  pinutils.findpin(pins, "PD4", True)["functions"]["ADC2_IN0"]=0;
+#  pinutils.findpin(pins, "PD0", True)["functions"]["ADC2_IN1"]=0;
+#  pinutils.findpin(pins, "PD2", True)["functions"]["ADC2_IN2"]=0;
+#  pinutils.findpin(pins, "PD15", True)["functions"]["ADC2_IN3"]=0;
+#  pinutils.findpin(pins, "PD13", True)["functions"]["ADC2_IN4"]=0;
+#  pinutils.findpin(pins, "PD12", True)["functions"]["ADC2_IN5"]=0;
+#  pinutils.findpin(pins, "PD14", True)["functions"]["ADC2_IN6"]=0;
+#  pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
 
   pinutils.findpin(pins, "PD25", True)["functions"]["DAC_OUT1"]=0;
   pinutils.findpin(pins, "PD26", True)["functions"]["DAC_OUT2"]=0;
 
   pinutils.findpin(pins, "PD0", True)["functions"]["NEGATED"]=0; # BTN1 negate
 
-  pinutils.findpin(pins, "PD10", True)["functions"]["USART1_TX"]=0; # doesn't match jshardwareUart?
-  pinutils.findpin(pins, "PD32", True)["functions"]["USART1_RX"]=0; # doesn't match jshardwareUart?
+  pinutils.findpin(pins, "PD1", True)["functions"]["USART1_TX"]=0;
+  pinutils.findpin(pins, "PD3", True)["functions"]["USART1_RX"]=0;
+  pinutils.findpin(pins, "PD4", True)["functions"]["USART2_TX"]=0; # default is 10 but can't use this as it's on SPI flash - match what jshardwareUart used
+  pinutils.findpin(pins, "PD5", True)["functions"]["USART2_RX"]=0; # default is 9 but can't use this as it's on SPI flash
   pinutils.findpin(pins, "PD16", True)["functions"]["USART3_RX"]=0;
   pinutils.findpin(pins, "PD17", True)["functions"]["USART3_TX"]=0;
 
