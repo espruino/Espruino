@@ -345,6 +345,9 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   "generate" : "jswrap_serial_unsetup"
 }
 If the serial (or software serial) device was set up, uninitialise it.
+
+If data was waiting to be transmitted, it will be cleared. If you
+want to wait for transmission to finish, use `Serial.flush` first.
 */
 #ifndef SAVE_ON_FLASH
 void jswrap_serial_unsetup(JsVar *parent) {
@@ -374,6 +377,7 @@ void jswrap_serial_unsetup(JsVar *parent) {
   jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
 
   if (DEVICE_IS_SERIAL(device)) { // It's hardware
+    jshTransmitClearDevice(device);
     jshUSARTUnSetup(device);
     jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
   }
