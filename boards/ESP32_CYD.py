@@ -13,9 +13,9 @@
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
 
-# ESP32 CYD LCD DISPLAY
+# ESP32 CYD LCD DISPLAY - ESP32-2432S028
 # * Graphics initialised as 'g'
-# * E.on("touch", e => ...x,y,b ) for tocuh events
+# * E.on("touch", e => ...x,y,b ) for touch events
 # * CN1/P1/P3 for connectors
 # * SPK for speaker (analog)
 # * FAT Filesystem vioa require("fs")
@@ -52,7 +52,7 @@
 
 import pinutils;
 info = {
- 'name'                     : "ESP32_CYD",
+ 'name'                     : "ESP32_CYD", # Model ESP32-2432S028
  'espruino_page_link'       : 'ESP32',
  'default_console'          : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
@@ -88,7 +88,7 @@ info = {
 
 chip = {
   'part'    : "ESP32",
-  'family'  : "ESP32",
+  'family'  : "ESP32_IDF5",
   'package' : "",
   'ram'     : 512,
   'flash'   : 0,

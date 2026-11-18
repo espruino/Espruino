@@ -136,7 +136,15 @@ espruino_#v##_esp32.zip
    - The firmware image for ESP32 Devices
      See http://www.espruino.com/ESP32 for more information
 
+espruino_#v##_esp32c3.zip
+   - The firmware image for ESP32C3 Devices
 
+espruino_#v##_esp32s3.zip
+   - The firmware image for ESP32S3 Devices
+
+espruino_#v##_esp32_cyd.bin
+   - The firmware image for ESP32 'Cheap Yellow Display' Devices
+     Specifically the ESP32-2432S028
 
 
 For more information on devices, and on how to flash these binary files on to 
