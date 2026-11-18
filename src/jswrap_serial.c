@@ -377,7 +377,6 @@ void jswrap_serial_unsetup(JsVar *parent) {
   jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
 
   if (DEVICE_IS_SERIAL(device)) { // It's hardware
-    jshTransmitClearDevice(device);
     jshUSARTUnSetup(device);
     jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
   }
