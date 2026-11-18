@@ -13,10 +13,6 @@
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
 
-# ###########################################################
-# #      THIS IS BETA - IDF5 SUPPORT IS NOT READY YET       #
-# ###########################################################
-
 # A Note about the 'variables' parameter on ESP32 Builds
 # ------------------------------------------------------
 #
@@ -61,12 +57,11 @@ info = {
      'ESP32',
      'NET',
      'GRAPHICS',
-     'CRYPTO', 'SHA256', 
-#    'SHA512',
+     'CRYPTO','SHA256','SHA512',
      'TLS',
      'TELNET',
      'NEOPIXEL',
-#     'FILESYSTEM',
+     'FILESYSTEM',
      'BLUETOOTH'
    ],
    'makefile' : [
