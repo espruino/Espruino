@@ -1375,6 +1375,7 @@ void jshUSARTUnSetup(IOEventFlags device) {
 #ifdef USB
   if (device == EV_USBSERIAL) return;
 #endif
+  jshTransmitClearDevice(device);
   int idx = rpUartIndexFromDevice(device);
   if (idx < 0) return;
   rpUartUnsetupIdx(idx);

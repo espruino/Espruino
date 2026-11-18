@@ -2371,6 +2371,7 @@ void jshUSARTUnSetup(IOEventFlags device) {
   if (!DEVICE_IS_USART(device))
     return;
   jshSetDeviceInitialised(device, false);
+  jshTransmitClearDevice(device);
   jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
   JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
   if (funcType==0) return; // not a proper serial port, ignore it

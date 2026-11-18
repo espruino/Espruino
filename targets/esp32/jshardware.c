@@ -660,6 +660,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 }
 
 void jshUSARTUnSetup(IOEventFlags device) {
+  jshTransmitClearDevice(device);
   uninitSerial(device);
 }
 

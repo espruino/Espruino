@@ -651,6 +651,7 @@ void jshUSARTUnSetup(IOEventFlags device) {
   const struct device *dev = jshEventFlagsToDevice(device);
   if (!dev) return;
   pm_device_action_run(dev, PM_DEVICE_ACTION_SUSPEND);
+  jshTransmitClearDevice(device);
 }
 
 /** Kick a device into action (if required). For instance we may need

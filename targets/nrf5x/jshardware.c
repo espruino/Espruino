@@ -1904,6 +1904,9 @@ void jshUSARTUnSetup(IOEventFlags device) {
   jshTransmitClearDevice(device);
   nrf_drv_uart_rx_disable(&UART[num]);
   nrf_drv_uart_tx_abort(&UART[num]);
+  // The driver is uninitialised below, so no TX_DONE will clear this. If it stayed set, jshUSARTKick would never
+  // start sending after the next jshUSARTSetup, and jshTransmit would wait forever once the TX buffer is full.
+  uart[num].isSending = false;
 
   jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
   nrf_drv_uart_uninit(&UART[num]);
@@ -1946,6 +1949,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     return jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial stopbits length");
 
   uart[num].isInitialised = false;
+  uart[num].isSending = false; // see jshUSARTUnSetup
   if (inf->bytesize==8) {
     if (inf->parity==1)
       return jsExceptionHere(JSET_INTERNALERROR, "Odd parity not supported");
