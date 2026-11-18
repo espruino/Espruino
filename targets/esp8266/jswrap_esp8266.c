@@ -236,7 +236,7 @@ JsVar *jswrap_ESP8266_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
   // wish to return.
   JsVar *esp8266State = jsvNewObject();
-  jsvObjectSetStringChild(esp8266State, "sdkVersion", (system_get_sdk_version));
+  jsvObjectSetStringChild(esp8266State, "sdkVersion", system_get_sdk_version());
   jsvObjectSetIntChild(esp8266State, "cpuFrequency", system_get_cpu_freq());
   jsvObjectSetIntChild(esp8266State, "freeHeap", system_get_free_heap_size());
   jsvObjectSetIntChild(esp8266State, "maxCon", espconn_tcp_get_max_con());

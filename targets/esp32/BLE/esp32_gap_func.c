@@ -28,9 +28,7 @@
 #include "bluetooth_common.h"
 #include "jswrap_bluetooth.h"
 
-#if ESP_IDF_VERSION_MAJOR==5
 #include "esp_mac.h"
-#endif
 
 uint16_t blePeriphConnectionInterval = 0;
 

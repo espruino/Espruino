@@ -25,9 +25,7 @@
 
 typedef struct {
     Pin pin;
-#if ESP_IDF_VERSION_MAJOR >= 5
     void *rmt_handle;   // rmt_channel_handle_t in IDF5, stored as void* for compatibility
-#endif
 } RMTChannel;
 
 extern RMTChannel RMTChannels[RMTChannelMax];

@@ -32,9 +32,7 @@
 #include "jshardwarePWM.h"
 #include "jshardwarePulse.h"
 #include "rtosutil.h"
-#if ESP_IDF_VERSION_MAJOR>=5
 #include "driver/gptimer.h"
-#endif
 #include "driver/timer.h"
 
 #ifdef BLUETOOTH
@@ -52,11 +50,9 @@
 #ifdef USE_NET
 #include "jswrap_esp32_network.h"
 #endif
-#if ESP_IDF_VERSION_MAJOR>=4
 #include "soc/uart_reg.h"
 #include "esp_mac.h"
 #include "hal/gpio_ll.h"
-#endif
 #include "esp_attr.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
@@ -71,22 +67,14 @@
 #include "driver/usb_serial_jtag.h"
 #endif
 
-#if ESP_IDF_VERSION_MAJOR>=5
 #include "esp_flash.h"
 #include "soc/gpio_reg.h"
 #include "driver/temperature_sensor.h"
-#else
-#include "esp_spi_flash.h"
-#endif
 
 #include "jshardwareI2c.h"
 #include "jshardwareSpi.h"
 
-#if ESP_IDF_VERSION_MAJOR >= 5
 #include "esp_private/esp_clk.h"
-#else
-#include "esp_clk.h"
-#endif
 
 #define FLASH_MAX (4*1024*1024) //4MB
 #define FLASH_PAGE_SHIFT 12 // Shift is much faster than division by 4096 (size of page)
@@ -287,7 +275,6 @@ void jshHadEvent() {
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
   // we definitely don't sleep when we have an active connection...
-#if ESP_IDF_VERSION_MAJOR>=4
   double ms = jshGetMillisecondsFromTime(timeUntilWake);
   if (ms>1000) ms=1000; // hack for now - ideally jshHadEvent called from UART IRQs would break out of vTaskDelay
   if (ms<1) return false; // don't sleep as minimum tick accuracy is 1ms
@@ -296,10 +283,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
             pdTRUE,               // Clear notification count on exit
             pdMS_TO_TICKS(ms)     // Max sleep duration in ticks
         );
-#else
-  NOT_USED(timeUntilWake);
-  // we never sleep in older IDFs
-#endif
   return true;
 } // End of jshSleep
 
@@ -392,17 +375,9 @@ void jshPinSetState(
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   gpio_set_direction(gpioNum, mode);
   gpio_set_pull_mode(gpioNum, pull_mode);
-#if ESP_IDF_VERSION_MAJOR>=5
   esp_rom_gpio_pad_select_gpio(gpioNum);
-#else
-  gpio_pad_select_gpio(gpioNum);
-#endif
   if (isOutput) { // reset pin to be GPIO in case it was used as rmt or something else
-#if ESP_IDF_VERSION_MAJOR>=5
     esp_rom_gpio_connect_out_signal(gpioNum, SIG_GPIO_OUT_IDX, false, false);
-#else
-    gpio_matrix_out(gpioNum,SIG_GPIO_OUT_IDX,0,0);
-#endif
   }
   g_pinState[pin] = state; // remember what we set this to...
 }
@@ -535,16 +510,11 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 #ifdef QEMU_BUILD
 #else
   wdt_enabled = true;
-#if ESP_IDF_VERSION_MAJOR >= 5
   // ESP-IDF 5 uses a config struct
   esp_task_wdt_config_t wdt_config = {
       .timeout_ms = (int)(timeout * 1000 + 0.5), // convert seconds to milliseconds
   };
   esp_task_wdt_init(&wdt_config);
-#else
-  // ESP-IDF 4 compatibility
-  esp_task_wdt_init((int)(timeout + 0.5), true);
-#endif
   esp_task_wdt_add(NULL); // add current thread to WDT watch
 #endif
 #endif
@@ -785,7 +755,6 @@ JsVarFloat jshReadTemperature() {
   extern uint8_t temprature_sens_read(); // ESP32 uses legacy temp sensor
   return temprature_sens_read();
 #else
-#if ESP_IDF_VERSION_MAJOR>=5
   static temperature_sensor_handle_t temp_sensor = NULL;
   if (!temp_sensor) {
     temperature_sensor_config_t temp_config = {
@@ -798,10 +767,6 @@ JsVarFloat jshReadTemperature() {
   float temp;
   temperature_sensor_get_celsius(temp_sensor, &temp);
   return temp;
-#else
-  jsError(">> jshReadTemperature Not implemented");
-  return NAN;
-#endif
 #endif
 }
 
@@ -839,18 +804,10 @@ void jshFlashRead(
 
   if(len == 1){ // Can't read a single byte using the API, so read 4 and select the byte requested
     uint word;
-#if ESP_IDF_VERSION_MAJOR>=5
     esp_flash_read(NULL, &word, addr & 0xfffffffc,4);
-#else
-    spi_flash_read(addr & 0xfffffffc,&word,4);
-#endif
     *(uint8_t *)buf = (word >> ((addr & 3) << 3 )) & 255;
   } else {
-#if ESP_IDF_VERSION_MAJOR>=5
     esp_flash_read(NULL, buf, addr, len);
-#else
-    spi_flash_read(addr, buf, len);
-#endif
   }
 }
 
@@ -866,11 +823,7 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-#if ESP_IDF_VERSION_MAJOR>=5
   esp_flash_write(NULL, buf, addr, len);
-#else
-  spi_flash_write(addr, buf, len);
-#endif
 }
 
 
@@ -910,12 +863,8 @@ JsVar *jshFlashGetFree() {
 
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr) {
-#if ESP_IDF_VERSION_MAJOR>=5
   esp_err_t err = esp_flash_erase_region(esp_flash_default_chip, addr, 4096);
   assert(err == ESP_OK);
-#else
-  spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);
-#endif
 }
 
 size_t jshFlashGetMemMapAddress(size_t ptr) {

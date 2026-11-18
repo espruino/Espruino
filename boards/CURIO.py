@@ -86,7 +86,7 @@ info = {
 
 chip = {
   'part'    : "ESP32C3",
-  'family'  : "ESP32_IDF4",
+  'family'  : "ESP32_IDF5",
   'package' : "",
   'ram'     : 400,
   'flash'   : 0,

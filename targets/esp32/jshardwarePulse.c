@@ -19,23 +19,15 @@
 
 #include <stdio.h>
 
-#if ESP_IDF_VERSION_MAJOR >= 5
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <driver/rmt_tx.h>
-#else
-#include "driver/rmt.h"
-#endif
 
 RMTChannel RMTChannels[RMTChannelMax];
 
 #define RMTPinEmpty 111
 
-#if ESP_IDF_VERSION_MAJOR < 5
-rmt_item32_t items[1];
-#else
 static rmt_channel_handle_t rmt_channels[RMTChannelMax];
-#endif
 
 int getRMTIndex(Pin pin){
   for(int i = 0; i < RMTChannelMax; i++){
@@ -58,7 +50,6 @@ void RMTReset(){
   for(int i = 0; i < RMTChannelMax; i++){
     if(RMTChannels[i].pin != RMTPinEmpty){
 
-#if ESP_IDF_VERSION_MAJOR >= 5
 
       if(rmt_channels[i]){
         rmt_disable(rmt_channels[i]);
@@ -66,11 +57,6 @@ void RMTReset(){
         rmt_channels[i] = NULL;
       }
 
-#else
-
-      rmt_driver_uninstall(i);
-
-#endif
 
       RMTChannels[i].pin = RMTPinEmpty;
     }
@@ -82,9 +68,7 @@ void RMTInit(){
   for(int i = 0; i < RMTChannelMax; i++){
     RMTChannels[i].pin = RMTPinEmpty;
 
-#if ESP_IDF_VERSION_MAJOR >= 5
     rmt_channels[i] = NULL;
-#endif
 
   }
 }
@@ -96,7 +80,6 @@ int RMTInitChannel(Pin pin, bool pulsePolarity){
   if(i < 0)
     return -1;
 
-#if ESP_IDF_VERSION_MAJOR >= 5
 
   rmt_tx_channel_config_t tx_config = {
       .gpio_num = pin,
@@ -111,56 +94,10 @@ int RMTInitChannel(Pin pin, bool pulsePolarity){
 
   rmt_enable(rmt_channels[i]);
 
-#else
-
-  rmt_config_t config;
-
-  config.rmt_mode = RMT_MODE_TX;
-  config.channel = i;
-  config.gpio_num = pin;
-
-  config.mem_block_num = 1;
-
-  config.tx_config.loop_en = 0;
-  config.tx_config.carrier_en = 0;
-  config.tx_config.idle_output_en = 1;
-
-  if(pulsePolarity)
-    config.tx_config.idle_level = RMT_IDLE_LEVEL_HIGH;
-  else
-    config.tx_config.idle_level = RMT_IDLE_LEVEL_LOW;
-
-  config.tx_config.carrier_duty_percent = 50;
-  config.tx_config.carrier_freq_hz = 10000;
-  config.tx_config.carrier_level = 1;
-
-  config.clk_div = 80;
-
-  rmt_config(&config);
-  rmt_driver_install(config.channel, 0, 0);
-
-#endif
 
   return i;
 }
 
-#if ESP_IDF_VERSION_MAJOR < 5
-
-void setPulseLow(int duration){
-  items[0].duration0 = duration;
-  items[0].level0 = 0;
-  items[0].duration1 = 10;
-  items[0].level1 = 1;
-}
-
-void setPulseHigh(int duration){
-  items[0].duration0 = duration;
-  items[0].level0 = 1;
-  items[0].duration1 = 10;
-  items[0].level1 = 0;
-}
-
-#endif
 
 void sendPulse(Pin pin, bool pulsePolarity, int duration){
 
@@ -174,7 +111,6 @@ void sendPulse(Pin pin, bool pulsePolarity, int duration){
     return;
   }
 
-#if ESP_IDF_VERSION_MAJOR >= 5
 
   /* duration is µs (1MHz clock) */
 
@@ -206,20 +142,4 @@ void sendPulse(Pin pin, bool pulsePolarity, int duration){
 
   rmt_tx_wait_all_done(rmt_channels[i], portMAX_DELAY);
 
-#else
-
-  if(pulsePolarity)
-    setPulseLow(duration);
-  else
-    setPulseHigh(duration);
-
-#if ESP_IDF_VERSION_MAJOR >= 4
-  rmt_set_pin(i, RMT_MODE_TX, pin);
-#else
-  rmt_set_pin(i, RMT_MODE_TX, pin);
-#endif
-
-  rmt_write_items(i, items, 1, 1);
-
-#endif
 }
