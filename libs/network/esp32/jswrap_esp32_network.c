@@ -281,6 +281,7 @@ bool stringToIP(ip_addr_t *ipAddr, const char *str) {
   }
 #else
   ((ip4_addr_t*)ipAddr)->addr = networkParseIPv4Address(str);
+  return ((ip4_addr_t*)ipAddr)->addr!=0;
 #endif
   return false;
 }
