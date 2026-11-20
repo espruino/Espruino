@@ -1598,6 +1598,8 @@ void jswrap_wifi_ping(
   uint32_t ping_delay = 500; //mS between pings
 
   esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
+  // Run above Espruino's priority-5 interpreter on single-core targets.
+  ping_config.task_prio = 6;
   // Assign the target container cleanly to the session configuration
   ping_config.target_addr = ip;
   ping_config.count = ping_count;
