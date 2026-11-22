@@ -1,0 +1,43 @@
+--- ./targetlibs/nrf5x_15/components/libraries/fds/fds.c
++++ ./targetlibs/nrf5x_15/components/libraries/fds/fds.c
+@@ -1610,6 +1610,15 @@
+ {
+     ret_code_t ret;
+ 
++    // A retried fds_init() caller registers again; keep one entry so events are not delivered twice
++    for (uint32_t i = 0; i < m_users; i++)
++    {
++        if (m_cb_table[i] == cb)
++        {
++            return FDS_SUCCESS;
++        }
++    }
++
+     if (m_users == FDS_MAX_USERS)
+     {
+         ret = FDS_ERR_USER_LIMIT_REACHED;
+@@ -1696,6 +1705,8 @@
+     ret = flash_subsystem_init();
+     if (ret != NRF_SUCCESS)
+     {
++        // Allow fds_init() to be called again, for example after the pages were erased
++        m_flags.initializing = false;
+         return ret;
+     }
+ 
+@@ -1710,6 +1721,7 @@
+     {
+         case NO_PAGES:
+         case NO_SWAP:
++            m_flags.initializing = false;
+             return FDS_ERR_NO_PAGES;
+ 
+         case ALREADY_INSTALLED:
+@@ -1732,6 +1744,7 @@
+     fds_op_t * p_op = queue_buf_get(&iput_ctx);
+     if (p_op == NULL)
+     {
++        m_flags.initializing = false;
+         return FDS_ERR_NO_SPACE_IN_QUEUES;
+     }
+ 
