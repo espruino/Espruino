@@ -30,6 +30,8 @@ info = {
      'BLUETOOTH',
 #     'NET',
      'GRAPHICS',
+     'CRYPTO','SHA256','SHA512',
+     'AES','AES_CCM',
 #     'NFC',
      'NEOPIXEL',
      'JIT' # JIT compiler enabled
