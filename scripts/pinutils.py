@@ -83,7 +83,7 @@ DEVICES = {
  "JTAG":"JTAG",
  "ESP8266":"ESP8266",
  "MAG":"MAG",
- "IR":"IR", 
+ "IR":"IR",
  "NFC":"NFC",
  "CAPSENSE":"CAPSENSE",
  "PWR":"PWR",
@@ -102,18 +102,18 @@ for D in DEVICES:
  NAMES[D]=DEVICES[D]
 
 URLS = {
- "PWM":"/PWM",
- "SPI":"/SPI",
- "I2C":"/I2C",
- "USART":"/USART",
- "DAC":"/DAC",
- "ADC":"/ADC",
- "OSC_RTC":"/Clocks",
- "LED1":"/Flashing+Lights",
- "LED2":"/Flashing+Lights",
- "LED3":"/Flashing+Lights",
- "BLUETOOTH":"/Bluetooth",
- "JTAG":"/AdvancedDebug"
+ "PWM":"https://www.espruino.com/PWM",
+ "SPI":"https://www.espruino.com/SPI",
+ "I2C":"https://www.espruino.com/I2C",
+ "USART":"https://www.espruino.com/USART",
+ "DAC":"https://www.espruino.com/DAC",
+ "ADC":"https://www.espruino.com/ADC",
+ "OSC_RTC":"https://www.espruino.com/Clocks",
+ "LED1":"https://www.espruino.com/Flashing+Lights",
+ "LED2":"https://www.espruino.com/Flashing+Lights",
+ "LED3":"https://www.espruino.com/Flashing+Lights",
+ "BLUETOOTH":"https://www.espruino.com/Bluetooth",
+ "JTAG":"https://www.espruino.com/AdvancedDebug"
 };
 
 # LED/Button devices
@@ -285,7 +285,7 @@ def get_device_util_timer(board):
   #define UTIL_TIMER_IRQHandler TIM5_IRQHandler
   #define UTIL_TIMER_APB1 LL_APB1_GRP1_PERIPH_TIM5
   """}
-  if ((board.chip["family"]=="STM32F1") | (board.chip["family"]=="STM32F2") | 
+  if ((board.chip["family"]=="STM32F1") | (board.chip["family"]=="STM32F2") |
      (board.chip["family"]=="STM32F3") | (board.chip["family"]=="STM32F4")):
     if board.chip["part"].startswith("STM32F401") | board.chip["part"].startswith("STM32F411"):
       return { 'timer' : "TIM5", 'defines' : """
@@ -320,7 +320,7 @@ def get_device_util_timer(board):
 #define UTIL_TIMER_APB1 LL_APB1_GRP1_PERIPH_TIM5
 """}
   return False
-  
+
 # Remove any pinfunctions from the pins array that are used elsewhere the the board
 def remove_used_pinfunctions(pins, board):
   util_timer = get_device_util_timer(board)
