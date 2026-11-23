@@ -71,7 +71,7 @@ Builtin.prototype.getTernType = function() {
 exports.getWrapperFiles = function (callback) {
   var BASEDIR = path.resolve(__dirname, "..");
   require('child_process').exec("find "+BASEDIR+" -name jswrap*.c", function(error, stdout, stderr) {
-    callback(stdout.toString().trim().split("\n"));
+    callback(stdout.toString().trim().split("\n").sort());
   });
 }
 

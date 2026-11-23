@@ -1004,7 +1004,7 @@ int jswrap_graphics_getBPP(JsVar *parent) {
   "class" : "Graphics",
   "name" : "reset",
   "generate" : "jswrap_graphics_reset",
-  "params" : [["usage","JsVar","[2v30+] Optional: What we're resetting graphics for. See below. ]"]],
+  "params" : [["usage","JsVar","[optional] [2v30+] What we're resetting graphics for. See below. ]"]],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
