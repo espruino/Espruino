@@ -1,8 +1,8 @@
 # Building
 
-There are several options to building Espruino on various platforms for the OS and board versions that are avaiable.
+There are several options to building Espruino on various platforms for the OS and board versions that are available.
 
-To build and run Espruino on the OS that one is using is as simple as the following, if prerequisits are met:
+To build and run Espruino on the OS that one is using is as simple as the following, if prerequisites are met:
 
 ```bash
 make clean && make
@@ -341,7 +341,7 @@ https://github.com/espruino/EspruinoBuildTools
 
 and then replace the toolchain with what is required for your platform.
 
-You only need to use the *EspruinoBuildTools* if you want to compile esp-idf libaries
+You only need to use the *EspruinoBuildTools* if you want to compile esp-idf libraries
 
 #### Building on Eclipse
 
