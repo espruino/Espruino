@@ -405,11 +405,20 @@ void jsiMoveCursorChar(JsVar *v, size_t fromCharacter, size_t toCharacter) {
 }
 
 /// If the input line was shown in the console, remove it
+/** The line the user sees. While a packet is being received, inputLine holds
+the packet's data and the user's line is kept in PK_IL (see jsiPacketStart) */
+static JsVar *jsiGetVisibleInputLine() {
+  if (IS_PACKET_TRANSFER(inputState))
+    return jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_IL");
+  return jsvLockAgainSafe(inputLine);
+}
+
 void jsiConsoleRemoveInputLine() {
   if (!inputLineRemoved) {
     inputLineRemoved = true;
-    if (jsiEcho() && inputLine) { // intentionally not using jsiShowInputLine()
-      jsiMoveCursorChar(inputLine, inputCursorPos, 0); // move cursor to start of line
+    JsVar *line = jsiGetVisibleInputLine();
+    if (jsiEcho() && line) { // intentionally not using jsiShowInputLine()
+      jsiMoveCursorChar(line, inputCursorPos, 0); // move cursor to start of line
       jsiConsolePrintChar('\r'); // go propery to start of line - past '>'
       jsiConsoleEraseAfterCursor(); // delete all to right and down
 #ifdef USE_DEBUGGER
@@ -422,6 +431,7 @@ void jsiConsoleRemoveInputLine() {
       }
 #endif
     }
+    jsvUnLock(line);
   }
 }
 
@@ -437,8 +447,12 @@ void jsiConsoleReturnInputLine() {
       if (jsiPasswordProtected())
         jsiConsolePrint("password");
       jsiConsolePrintChar('>'); // show the prompt
-      jsiConsolePrintStringVarWithNewLineChar(inputLine, 0, ':');
-      jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos);
+      JsVar *line = jsiGetVisibleInputLine();
+      if (line) {
+        jsiConsolePrintStringVarWithNewLineChar(line, 0, ':');
+        jsiMoveCursorChar(line, jsvGetStringLength(line), inputCursorPos);
+      }
+      jsvUnLock(line);
     }
   }
 }
