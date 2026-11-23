@@ -2240,7 +2240,7 @@ static uint32_t flash_end_addr(void)
 static void peer_manager_erase_pages(){
     int i;
     for (i=1;i<=FDS_PHY_PAGES;i++)
-      jshFlashErasePage((flash_end_addr()) - i*FDS_PHY_PAGE_SIZE);
+      jshFlashErasePage((flash_end_addr()) - i*FDS_PHY_PAGE_SIZE*sizeof(uint32_t)); // FDS_PHY_PAGE_SIZE is in words
 }
 static void peer_manager_init(bool erase_bonds) {
 
@@ -2284,7 +2284,11 @@ static void peer_manager_init(bool erase_bonds) {
     peer_manager_erase_pages();
     err_code = pm_init();
   }
-  APP_ERROR_CHECK(err_code);
+  if (err_code != NRF_SUCCESS) {
+    // Storage still unusable: run without bonding rather than reboot in a loop
+    APP_ERROR_CHECK_NOT_URGENT(err_code);
+    return;
+  }
 
   if (erase_bonds)
   {
