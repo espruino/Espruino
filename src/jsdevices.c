@@ -270,7 +270,7 @@ void jshTransmit(
 #endif
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
-      if (jshIsInInterrupt() && jspIsInterrupted()) {
+      if (jshIsInInterrupt() || jspIsInterrupted()) {
         // if we're printing from an IRQ, don't wait - it's unlikely TX will ever finish
         // OR if we were blocking on sending and someone presses Ctrl-C, break out
         jsErrorFlags |= JSERR_BUFFER_FULL;

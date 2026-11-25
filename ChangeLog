@@ -64,6 +64,7 @@
             Serial: Fix issue where calling Serial.unsetup() with bytes still waiting to send could leave them in the output buffer (fix #2782)
             ESP32: Retire IDF3 and IDF4 builds and move all builds to IDF5
             nRF52: If FDS init fails, erase the bond pages and retry properly (pairing never completed with corrupt bond pages)
+            Don't wait for space in the output buffer when printing from an IRQ (2v28 regression, reset Bangle.js 2 during AGPS upload)
 
      2v29 : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes
