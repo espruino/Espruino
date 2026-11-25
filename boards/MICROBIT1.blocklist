@@ -3,5 +3,9 @@
   {"class":"Array","name":"every"},
   {"class":"Array","name":"some"},
   {"class":"SPI","name":"send4bit"},
-  {"class":"NRF","name":"getBattery"}  
+  {"class":"NRF","name":"getBattery"},
+  {"class":"Number","name":"MIN_VALUE"},
+  {"class":"Number","name":"MAX_VALUE"},  
+  {"class":"Number","name":"NEGATIVE_INFINITY"},  
+  {"class":"Number","name":"POSITIVE_INFINITY"}
 ]
