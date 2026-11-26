@@ -205,34 +205,56 @@ def getCDeclaration(jsondata, name):
     s.append(toCType(param[1]));
   return toCType(result[0])+" "+name+"("+",".join(s)+")";
 
+# All symbol names are stored in one string, jswSymbolNames, so that names used in more than one
+# symbol table (eg 'write' or 'toString') - or that are the end of a longer name - are only stored once.
+symbolNames = ""
+def symbolOffsetLimit():
+  # With ESPR_PACKED_SYMPTR, offsets are only 12 bits so must be <4096 from the start of each table's symbolChars
+  return 4096 if "ESPR_PACKED_SYMPTR" in board.defines else 65536
+
+def addSymbolNames(names):
+  """Add the names to symbolNames (reusing existing ones where we can).
+  Returns (base, [offsets]) where offsets are relative to symbolNames[base]"""
+  global symbolNames
+  total = sum(len(n)+1 for n in names)
+  # choose a base so that even if we have to append every name, all offsets are within the limit
+  base = max(0, len(symbolNames) + total - (symbolOffsetLimit()-1))
+  offsets = []
+  for name in names:
+    pos = symbolNames.find(name+"\0", base)
+    if pos < 0: # not found - add it to the end
+      pos = len(symbolNames)
+      symbolNames += name+"\0"
+    offsets.append(pos - base)
+  return base, offsets
+
 def codeOutSymbolTable(builtin):
   codeName = builtin["name"]
   # sort by name
   builtin["functions"] = sorted(builtin["functions"], key=lambda n: n["name"]);
   # output tables
   listSymbols = []
-  listChars = ""
   listCharItems = []
-  strLen = 0
   for sym in builtin["functions"]:
     symName = sym["name"];
 
     if builtin["name"]=="global" and symName in libraries:
       continue # don't include libraries on global namespace
     if "generate" in sym:
-      listSymbols.append("JSWSYMPTR_ENTRY("+", ".join([str(strLen), getArgumentSpecifier(sym), "(void*)"+sym["generate"]])+")")
       if symName in listCharItems:
         print("ERROR: duplicate symbol "+symName+" in symbol table for jswSymbols_"+codeName)
         exit(1)
-      listCharItems.append(symName);
-      listChars = listChars + symName + "\\0";
-      strLen = strLen + len(symName) + 1
+      listCharItems.append(symName)
+      listSymbols.append(sym)
     else:
       print (codeName + "." + symName+" not included in Symbol Table because no 'generate'")
-  if strLen > 4096*1024:
-    print("ERROR: strOffset is too long for packing into the function pointer")
+  base, offsets = addSymbolNames(listCharItems)
+  if any(o >= symbolOffsetLimit() for o in offsets):
+    print("ERROR: strOffset is too big ("+str(max(offsets))+") for jswSymbols_"+codeName)
     exit(1)
-  builtin["symbolTableChars"] = "\""+listChars+"\"";
+  listSymbols = ["JSWSYMPTR_ENTRY("+", ".join([str(offset), getArgumentSpecifier(sym), "(void*)"+sym["generate"]])+")"
+                 for sym, offset in zip(listSymbols, offsets)]
+  builtin["symbolTableBase"] = base
   builtin["symbolTableCount"] = str(len(listSymbols));
   codeOut("static const JswSymPtr jswSymbols_"+codeName+"[] FLASH_SECT = {\n  "+",\n  ".join(listSymbols)+"\n};");
 
@@ -512,16 +534,52 @@ for b in builtins:
 codeOut('');
 codeOut('');
 
+# Names of all built-in objects (for jswIsBuiltInObject). jswGetBasicObjectName/jswGetBasicObjectPrototypeName
+# return pointers to these too, so each name is only stored once. Normally they are inside jswSymbolNames, but
+# on ESP8266 that is in flash which needs aligned reads, so they're stored separately.
+builtinObjectNames = []
+for jsondata in jsondatas:
+  if "class" in jsondata:
+    builtinObjectName = jsondata["class"];
+    if not builtinObjectName in libraries:
+      if not builtinObjectName in builtinObjectNames:
+        builtinObjectNames.append(builtinObjectName)
+builtinObjectNameOffsets = {}
+if "ESP8266" in board.defines:
+  builtinObjectNamesVar = "jswBuiltInObjectNames"
+  builtinObjectNamesSeparate = ""
+  for name in builtinObjectNames:
+    builtinObjectNameOffsets[name] = len(builtinObjectNamesSeparate)
+    builtinObjectNamesSeparate += name+"\0"
+  builtinObjectNamesSeparate = builtinObjectNamesSeparate.replace("\0", "\\0") # escaped as C
+  builtinObjectNamesLength = sum(len(n)+1 for n in builtinObjectNames)
+else:
+  builtinObjectNamesVar = "jswSymbolNames"
+  builtinObjectNamesSeparate = None
+  for name in builtinObjectNames:
+    pos = symbolNames.find(name+"\0")
+    if pos < 0:
+      pos = len(symbolNames)
+      symbolNames += name+"\0"
+    builtinObjectNameOffsets[name] = pos
+  builtinObjectNamesLength = len(symbolNames)
+def builtinObjectNameRef(name):
+  """C expression for a pointer to the given name - sharing the copy in builtinObjectNamesVar if possible"""
+  if name in builtinObjectNameOffsets:
+    return "&"+builtinObjectNamesVar+"["+str(builtinObjectNameOffsets[name])+"]"
+  return '"'+name+'"'
+# C type big enough to store an offset to a name
+builtinObjectNameOffsetType = "unsigned char" if builtinObjectNamesLength<256 else "unsigned short"
+
 # output the strings, possibly with __attribute__ to put them into flash
-for b in builtins:
-  builtin = builtins[b]
-  codeOut("FLASH_STR(jswSymbols_"+builtin["name"]+"_str, " + builtin["symbolTableChars"] +");");
+# NUL -> \0 escape (or \000 if followed by a digit, so the escape isn't extended)
+codeOut("FLASH_STR(jswSymbolNames, \"" + re.sub(r'\0(?=[0-7])', r'\\000', symbolNames).replace("\0", "\\0") + "\");")
 codeOut('');
 # output the symbol table array referencing the above strings
 codeOut('const JswSymList jswSymbolTables[] FLASH_SECT = {');
 for b in builtins:
   builtin = builtins[b]
-  codeOut("  {"+", ".join(["jswSymbols_"+builtin["name"], "jswSymbols_"+builtin["name"]+"_str", builtin["symbolTableCount"]])+"},");
+  codeOut("  {"+", ".join(["jswSymbols_"+builtin["name"], "&jswSymbolNames["+str(builtin["symbolTableBase"])+"]", builtin["symbolTableCount"]])+"},");
 codeOut('};');
 
 codeOut('');
@@ -642,22 +700,13 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
-builtinObjectNames = []
-for jsondata in jsondatas:
-  if "class" in jsondata:
-    builtinObjectName = jsondata["class"];
-    if not builtinObjectName in libraries:
-      if not builtinObjectName in builtinObjectNames:
-        builtinObjectNames.append(builtinObjectName)
-
-
+if builtinObjectNamesSeparate:
+  codeOut('static const char jswBuiltInObjectNames[] = "'+builtinObjectNamesSeparate+'";')
+codeOut('static const '+builtinObjectNameOffsetType+' jswBuiltInObjectNameOffsets[] = { '+
+        ", ".join(str(builtinObjectNameOffsets[n]) for n in builtinObjectNames)+' };')
 codeOut('bool jswIsBuiltInObject(const char *name) {')
-codeOut('  const char *objNames = "'+"\\0".join(builtinObjectNames)+'\\0";')
-codeOut('  const char *s = objNames;')
-codeOut('  while (*s) {')
-codeOut('    if (strcmp(s, name)==0) return true;') # OPT: I bet we could do this faster if not using strcmp, but it probably doesn't matter
-codeOut('    s+=strlen(s)+1;')
-codeOut('  }')
+codeOut('  for (unsigned int i=0;i<sizeof(jswBuiltInObjectNameOffsets)/sizeof(jswBuiltInObjectNameOffsets[0]);i++)')
+codeOut('    if (strcmp(&'+builtinObjectNamesVar+'[jswBuiltInObjectNameOffsets[i]], name)==0) return true;')
 codeOut('  return false;')
 codeOut('}')
 
@@ -682,14 +731,28 @@ for jsondata in jsondatas:
 
 codeOut('/** Given a variable, return the basic object name of it */')
 codeOut('const char *jswGetBasicObjectName(JsVar *var) {')
-codeOut('  if (jsvIsArrayBuffer(var)) {')
+# ArrayBuffer checks of the form 'var->varData.arraybuffer.type==X' are done with a lookup table
+arrayBufferTypeCheck = "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type=="
+arrayBufferTypes = [] # (type, className)
+otherArrayBufferChecks = []
 for className in objectChecks.keys():
-  if objectChecks[className].startswith("jsvIsArrayBuffer(var) && "):
-    codeOut("    if ("+objectChecks[className][25:]+") return \""+className+"\";")
+  check = objectChecks[className]
+  if check.startswith(arrayBufferTypeCheck) and className in builtinObjectNameOffsets:
+    arrayBufferTypes.append((check[len(arrayBufferTypeCheck):], className))
+  elif check.startswith("jsvIsArrayBuffer(var) && "):
+    otherArrayBufferChecks.append((check[25:], className))
+codeOut('  if (jsvIsArrayBuffer(var)) {')
+if arrayBufferTypes:
+  codeOut('    static const unsigned char types[] = { '+", ".join(t for t,c in arrayBufferTypes)+' };')
+  codeOut('    static const '+builtinObjectNameOffsetType+' names[] = { '+", ".join(str(builtinObjectNameOffsets[c]) for t,c in arrayBufferTypes)+' };')
+  codeOut('    for (unsigned int i=0;i<sizeof(types);i++)')
+  codeOut('      if (var->varData.arraybuffer.type==types[i]) return &'+builtinObjectNamesVar+'[names[i]];')
+for check, className in otherArrayBufferChecks:
+  codeOut("    if ("+check+") return "+builtinObjectNameRef(className)+";")
 codeOut('  }')
 for className in objectChecks.keys():
   if not objectChecks[className].startswith("jsvIsArrayBuffer(var) && "):
-    codeOut("  if ("+objectChecks[className]+") return \""+className+"\";")
+    codeOut("  if ("+objectChecks[className]+") return "+builtinObjectNameRef(className)+";")
 codeOut('  return 0;')
 codeOut('}')
 
@@ -699,12 +762,21 @@ codeOut('')
 
 codeOut("/** Given the name of a Basic Object, eg, Uint8Array, String, etc. Return the prototype object's name - or 0. */")
 codeOut('const char *jswGetBasicObjectPrototypeName(const char *objectName) {')
+prototypes = [] # (className, prototypeName)
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="class":
     if "prototype" in jsondata:
-      #print json.dumps(jsondata, sort_keys=True, indent=2)
-      codeOut("  if (!strcmp(objectName, \""+jsondata["class"]+"\")) return \""+jsondata["prototype"]+"\";")
-codeOut('  return strcmp(objectName,"Object") ? "Object" : 0;')
+      prototypes.append((jsondata["class"], jsondata["prototype"]))
+tablePrototypes = [(c,p) for c,p in prototypes if c in builtinObjectNameOffsets and p in builtinObjectNameOffsets]
+if tablePrototypes:
+  codeOut('  static const '+builtinObjectNameOffsetType+' protos[] = { '+", ".join(
+          str(builtinObjectNameOffsets[c])+","+str(builtinObjectNameOffsets[p]) for c,p in tablePrototypes)+' };')
+  codeOut('  for (unsigned int i=0;i<sizeof(protos)/sizeof(protos[0]);i+=2)')
+  codeOut('    if (!strcmp(objectName, &'+builtinObjectNamesVar+'[protos[i]])) return &'+builtinObjectNamesVar+'[protos[i+1]];')
+for c,p in prototypes:
+  if (c,p) not in tablePrototypes:
+    codeOut("  if (!strcmp(objectName, \""+c+"\")) return "+builtinObjectNameRef(p)+";")
+codeOut('  return strcmp(objectName,"Object") ? '+builtinObjectNameRef("Object")+' : 0;')
 codeOut('}')
 
 codeOut('')
