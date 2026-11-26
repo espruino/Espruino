@@ -97,7 +97,7 @@ void graphicsFallbackBlit(JsGraphics *gfx, int x1, int y1, int w, int h, int x2,
       graphicsFallbackBlitX(gfx, x1, y+y1, w, x2, y+y2);
   } else {
     for (int y=h-1;y>=0;y--)
-      graphicsFallbackBlitX(gfx, x1, y1, w, x2, y2);
+      graphicsFallbackBlitX(gfx, x1, y+y1, w, x2, y+y2);
   }
 }
 
@@ -107,7 +107,7 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1,
   #define MAX(a,b) ((a) > (b) ? (a) : (b))
   #define MIN(a,b) ((a) < (b) ? (a) : (b))
   graphicsFallbackBlit(gfx, x1-MIN(xdir,0), y1-MIN(ydir,0),
-    x2-(x1+abs(xdir)), y2-(y1+abs(xdir)), // width/height
+    1+x2-(x1+abs(xdir)), 1+y2-(y1+abs(ydir)), // width/height (x2/y2 are inclusive)
     x1+MAX(xdir,0), y1+MAX(ydir,0));
   #undef MIN
   #undef MAX
