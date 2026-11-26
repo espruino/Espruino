@@ -81,12 +81,8 @@ static void startMDNS(char *hostname);
 static void stopMDNS();
 
 // Some common error handling
-
-FLASH_STR(expect_cb, "Expecting callback function but got %v");
-#define EXPECT_CB_EXCEPTION(jsCB) jsExceptionHere_flash(JSET_ERROR, expect_cb, jsCB)
-
-FLASH_STR(expect_opt, "Expecting options object but got %t");
-#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere_flash(JSET_ERROR, expect_opt, jsOPT)
+#define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionExpecting(JSET_ERROR, "Function", jsCB)
+#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionExpecting(JSET_ERROR, "Object", jsOPT)
 
 // #NOTE: For callback functions, be sure and unlock them in the `kill` handler.
 
@@ -327,7 +323,7 @@ void jswrap_wifi_connect(
   // Check for jsOptions
   if (jsOptions != NULL) {
     if (!jsvIsObject(jsOptions)) {
-      jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOptions);
+      jsExceptionExpecting(JSET_ERROR, "Object", jsOptions);
       return;
     } else {
 
@@ -337,7 +333,7 @@ void jswrap_wifi_connect(
 
       JsVar *jsPassword = jsvObjectGetChildIfExists(jsOptions, "password");
       if (jsPassword != NULL && !jsvIsString(jsPassword)) {
-        jsExceptionHere(JSET_ERROR, "Expecting options.password to be a string but got %t", jsPassword);
+        jsExceptionExpecting(JSET_TYPEERROR, "password String", jsPassword);
         jsvUnLock(jsPassword);
         return;
       }
@@ -379,7 +375,7 @@ void jswrap_wifi_connect(
           DBGV("channel %d\n", channel);
           wifi_set_channel(channel);
         } else  {
-          jsExceptionHere(JSET_ERROR, "Expecting options.channel to be a integer between 0 and  14, but got %t", jsChannel);
+          jsExceptionExpecting(JSET_TYPEERROR, "channel 0..14", jsChannel);
           jsvUnLock(jsChannel);
           return;
         }

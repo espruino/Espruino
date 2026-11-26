@@ -4671,7 +4671,7 @@ JsvIsInternalChecker jsvGetInternalFunctionCheckerFor(JsVar *v) {
 bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) {
   if (jsvIsUndefined(object)) return true;
   if (!jsvIsObject(object)) {
-    jsExceptionHere(JSET_ERROR, "Expecting Object or undefined, got %t", object);
+    jsExceptionExpecting(JSET_ERROR, "Object or undefined", object);
     return false;
   }
   // Ok, it's an object

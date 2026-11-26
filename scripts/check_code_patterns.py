@@ -146,6 +146,7 @@ RULES = {
   "push-string":       "jsvArrayPushAndUnLock(a,jsvNewFromString(s)) -> jsvArrayPushString(a,s)",
   "push-2int":         "jsvArrayPushAndUnLock(a,jsvNewFromInteger(x));jsvArrayPushAndUnLock(a,jsvNewFromInteger(y)); -> jsvArrayPush2Int(a,x,y)",
   "empty-string":      "jsvNewFromString(\"\") -> jsvNewFromEmptyString()",
+  "exception-expecting":"jsExceptionHere(t,\"Expecting X, got %t\",v) -> jsExceptionExpecting(t,\"X\",v) (shares the common text)",
   "merge-literals":    "consecutive jsiConsolePrint/jsiConsolePrintf/jsvAppendString/jsvAppendPrintf calls with literal text -> one call",
   "leak":              "a newly locked JsVar is passed to something that doesn't unlock it, or is discarded (a bug, not just size)",
 }
@@ -351,6 +352,12 @@ class Checker:
        call_name(args[1]) == "jsvNewFromString" and len(call_args(args[1])) == 1:
       self.add("push-string", call, "use jsvArrayPushString",
                [self.replace(call, f"jsvArrayPushString({text(args[0])}, {text(call_args(args[1])[0])})")])
+
+    if name == "jsExceptionHere" and len(args) == 3 and args[1].type == "string_literal":
+      m = re.fullmatch(r'"Expecting ([^"%\\]*), got %t"', text(args[1]))
+      if m:
+        self.add("exception-expecting", call, "use jsExceptionExpecting",
+                 [self.replace(call, f'jsExceptionExpecting({text(args[0])}, "{m.group(1)}", {text(args[2])})')])
 
     if name == "jsvNewFromString" and len(args) == 1 and text(args[0]) == '""':
       self.add("empty-string", call, "use jsvNewFromEmptyString()",

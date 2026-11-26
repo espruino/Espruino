@@ -95,8 +95,8 @@ static int g_retryCounter = 0;
 /// Should WIFI_EVENT_STA_START complete a pending Wifi.connect() request?
 static bool g_connectAfterStaStart = false;
 
-#define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
-#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOPT)
+#define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionExpecting(JSET_ERROR, "Function", jsCB)
+#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionExpecting(JSET_ERROR, "Object", jsOPT)
 
 //===== mDNS
 static bool mdns_started = 0;
@@ -715,7 +715,7 @@ void jswrap_wifi_connect(
   if (jsOptions != NULL) {
     JsVar *jsPassword = jsvObjectGetChildIfExists(jsOptions, "password");
     if (jsPassword != NULL && !jsvIsString(jsPassword)) {
-      jsExceptionHere(JSET_ERROR, "Expecting options.password to be a string but got %t", jsPassword);
+      jsExceptionExpecting(JSET_TYPEERROR, "password String", jsPassword);
       jsvUnLock(jsPassword);
       return;
     }

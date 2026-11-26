@@ -1394,7 +1394,7 @@ static void jswrap_pb_updateTheme() {
 
 void jswrap_pb_setPalette(JsVar *pal) {
   if (!jsvIsArray(pal)) {
-    jsExceptionHere(JSET_ERROR, "Expecting array of arrays");
+    jsExceptionExpecting(JSET_TYPEERROR, "Array of Arrays", pal);
     return;
   }
   for (int i=0;i<4;i++) {

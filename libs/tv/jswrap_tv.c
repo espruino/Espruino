@@ -93,7 +93,7 @@ See the [Television](/Television) page for more information.
 
 JsVar *jswrap_tv_setup(JsVar *options) {
   if (!jsvIsObject(options)) {
-    jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", options);
+    jsExceptionExpecting(JSET_ERROR, "Object", options);
     return 0;
   }
   JsVar *tvType = jsvObjectGetChildIfExists(options, "type");

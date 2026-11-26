@@ -1119,7 +1119,7 @@ size_t _jswrap_ble_getAdvertisingDataRaw(uint8_t *advdata, JsVar *data, JsVar *o
       jsvUnLock(v);
     }
   } else if (!jsvIsUndefined(options)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object or undefined, got %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object or undefined", options);
     return 0;
   }
 
@@ -1157,7 +1157,7 @@ size_t _jswrap_ble_getAdvertisingDataRaw(uint8_t *advdata, JsVar *data, JsVar *o
     }
     jsvObjectIteratorFree(&it);
   } else if (!jsvIsUndefined(data)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, Array or undefined, got %t", data);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object, Array or undefined", data);
     return 0;
   }
 
@@ -1420,7 +1420,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
       jsvUnLock(v);
     }
   } else if (!jsvIsUndefined(options)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object or undefined, got %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object or undefined", options);
     return;
   }
 
@@ -1480,7 +1480,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
     advArray = jsvLockAgain(data);
     bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
   } else
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Array or Object, got %t", data);
+    jsExceptionExpecting(JSET_TYPEERROR, "Array or Object", data);
   // Save the current service data
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, advArray);
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, options);
@@ -1595,7 +1595,7 @@ void jswrap_ble_setScanResponse(JsVar *data) {
     err_code = jsble_advertising_update_scanresponse((char *)respPtr, respLen);
     jsble_check_error(err_code);
   } else {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting array-like object or undefined, got %t", data);
+    jsExceptionExpecting(JSET_TYPEERROR, "array-like object or undefined", data);
   }
 }
 
@@ -1801,7 +1801,7 @@ mitm. See `NRF.setSecurity` for more information.
 */
 void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   if (!(jsvIsObject(data) || jsvIsUndefined(data))) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object or undefined, got %t", data);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object or undefined", data);
     return;
   }
 
@@ -2096,7 +2096,7 @@ void jswrap_ble_updateServices(JsVar *data) {
     jsvObjectIteratorFree(&it);
 
   } else if (!jsvIsUndefined(data)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object or undefined, got %t", data);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object or undefined", data);
   }
 }
 
@@ -2390,11 +2390,11 @@ void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
     filters = jsvObjectGetChildIfExists(options, "filters");
     if (filters && !jsvIsArray(filters)) {
       jsvUnLock(filters);
-      jsExceptionHere(JSET_TYPEERROR, "requestDevice expecting an array of filters, got %t", filters);
+      jsExceptionExpecting(JSET_TYPEERROR, "an array of filters", filters);
       return;
     }
   } else if (options)
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, got %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", options);
   // set the callback event variable
   if (!jsvIsFunction(callback)) callback=0;
   if (callback) {
@@ -2601,7 +2601,7 @@ void jswrap_ble_findDevices_timeout_cb() {
 void jswrap_ble_findDevices(JsVar *callback, JsVar *options) {
   JsVarFloat time = 2000;
   if (!jsvIsFunction(callback)) {
-    jsExceptionHere(JSET_ERROR, "Expecting function for first argument, got %t", callback);
+    jsExceptionExpecting(JSET_ERROR, "function for first argument", callback);
     return;
   }
   if (jsvIsNumeric(options)) {
@@ -2611,7 +2611,7 @@ void jswrap_ble_findDevices(JsVar *callback, JsVar *options) {
     JsVar *v = jsvObjectGetChildIfExists(options,"timeout");
     if (v) time = jsvGetFloatAndUnLock(v);
   } else if (options) {
-    jsExceptionHere(JSET_ERROR, "Expecting Number or object, got %t", options);
+    jsExceptionExpecting(JSET_ERROR, "Number or object", options);
     return;
   }
   if (isnan(time) || time < 10) {
@@ -2760,7 +2760,7 @@ void jswrap_nfc_URL(JsVar *url) {
   }
 
   if (!jsvIsString(url)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting String, got %t", url);
+    jsExceptionExpecting(JSET_TYPEERROR, "String", url);
     return;
   }
 
@@ -3716,13 +3716,13 @@ void jswrap_ble_requestDevice_scan(JsVar *device) {
 JsVar *jswrap_ble_requestDevice(JsVar *options) {
 #if CENTRAL_LINK_COUNT>0
   if (!(jsvIsUndefined(options) || jsvIsObject(options))) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, got %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", options);
     return 0;
   }
   JsVar *filters = jsvObjectGetChildIfExists(options, "filters");
   if (!jsvIsArray(filters)) {
     jsvUnLock(filters);
-    jsExceptionHere(JSET_TYPEERROR, "requestDevice expecting an array of filters, got %t", filters);
+    jsExceptionExpecting(JSET_TYPEERROR, "an array of filters", filters);
     return 0;
   }
   jsvUnLock(filters);
@@ -4053,7 +4053,7 @@ The default is usually to change the address every 15 minutes (or 900 seconds).
 */
 void jswrap_ble_setSecurity(JsVar *options) {
   if (!jsvIsObject(options) && !jsvIsUndefined(options))
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object or undefined, got %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object or undefined", options);
   else {
     jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, options);
     jsble_update_security();

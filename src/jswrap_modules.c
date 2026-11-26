@@ -64,7 +64,7 @@ and how you can use them.
  */
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting module name as a string, got %t", moduleName);
+    jsExceptionExpecting(JSET_TYPEERROR, "module name as a string", moduleName);
     return 0;
   }
   char moduleNameBuf[128];

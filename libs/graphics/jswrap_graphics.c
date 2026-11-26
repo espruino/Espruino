@@ -729,7 +729,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
     }
     optionalBuffer = jsvObjectGetChildIfExists(options, "buffer");
     if (optionalBuffer && !jsvIsArrayBuffer(optionalBuffer)) {
-      jsExceptionHere(JSET_ERROR, "'buffer' should be ArrayBuffer, got %t", optionalBuffer);
+      jsExceptionExpecting(JSET_TYPEERROR, "ArrauBuffer", optionalBuffer);
       jsvUnLock(optionalBuffer);
       return 0;
     }
@@ -778,12 +778,12 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   } else
     callbackSetPixel = jsvLockAgain(callback);
   if (!jsvIsFunction(callbackSetPixel)) {
-    jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackSetPixel);
+    jsExceptionExpecting(JSET_TYPEERROR, "Function or Object", callbackSetPixel);
     jsvUnLock2(callbackSetPixel, callbackFillRect);
     return 0;
   }
   if (!jsvIsUndefined(callbackFillRect) && !jsvIsFunction(callbackFillRect)) {
-    jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackFillRect);
+    jsExceptionExpecting(JSET_TYPEERROR, "Function or Object", callbackFillRect);
     jsvUnLock2(callbackSetPixel, callbackFillRect);
     return 0;
   }
@@ -890,7 +890,7 @@ be ignored. Spaces are treated as `0`, and any other character is a `1`
 */
 JsVar *jswrap_graphics_createImage(JsVar *data) {
   if (!jsvIsString(data)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting String");
+    jsExceptionExpecting(JSET_TYPEERROR, "String", data);
     return 0;
   }
   int x=0,y=0;

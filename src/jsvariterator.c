@@ -108,7 +108,7 @@ bool jsvIterateCallback(
     }
     jsvIteratorFree(&it);
   } else {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Number or iterable, got %t", data);
+    jsExceptionExpecting(JSET_TYPEERROR, "Number or iterable", data);
     ok = false;
   }
   return ok;
@@ -201,7 +201,7 @@ bool jsvIterateBufferCallback(
     }
     jsvIteratorFree(&it);
   } else {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Number or iterable, got %t", data);
+    jsExceptionExpecting(JSET_TYPEERROR, "Number or iterable", data);
     ok = false;
   }
   return ok;

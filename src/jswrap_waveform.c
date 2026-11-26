@@ -172,7 +172,7 @@ JsVar *jswrap_waveform_constructor(JsVar *_samples, JsVar *options) {
       return 0;
     } else if (bits==16) use16bit = true;
   } else if (!jsvIsUndefined(options)) {
-    jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", options);
   }
 
   JsVarDataArrayBufferViewType bufferType = use16bit ? ARRAYBUFFERVIEW_UINT16 : ARRAYBUFFERVIEW_UINT8;
@@ -216,7 +216,7 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
     repeat = jsvObjectGetBoolChild(options, "repeat");
     npin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(options, "npin"));
   } else if (!jsvIsUndefined(options)) {
-    jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", options);
   }
 
   bool is16Bit = false;

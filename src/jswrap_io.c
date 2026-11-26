@@ -298,7 +298,7 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
     }
     jsvIteratorFree(&it);
   } else {
-    jsExceptionHere(JSET_ERROR, "Expecting Number or Array, got %t", times);
+    jsExceptionExpecting(JSET_ERROR, "Number or Array", times);
   }
 }
 

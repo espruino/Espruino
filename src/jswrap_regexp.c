@@ -309,14 +309,14 @@ Creates a RegExp object, for handling Regular Expressions
  */
 JsVar *jswrap_regexp_constructor(JsVar *str, JsVar *flags) {
   if (!jsvIsString(str)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting String as first argument, got %t", str);
+    jsExceptionExpecting(JSET_TYPEERROR, "String as first argument", str);
     return 0;
   }
   JsVar *r = jspNewObject(0,"RegExp");
   jsvObjectSetChild(r, "source", str);
   if (!jsvIsUndefined(flags)) {
     if (!jsvIsString(flags))
-      jsExceptionHere(JSET_TYPEERROR, "Expecting String as first argument, got %t", str);
+      jsExceptionExpecting(JSET_TYPEERROR, "String as first argument", str);
     else
       jsvObjectSetChild(r, "flags", flags);
   }

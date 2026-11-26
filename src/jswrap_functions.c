@@ -326,7 +326,7 @@ Encode the supplied string (or array) into a base64 string
  */
 JsVar *jswrap_btoa(JsVar *binaryData) {
   if (!jsvIsIterable(binaryData)) {
-    jsExceptionHere(JSET_ERROR, "Expecting String or Array, got %t", binaryData);
+    jsExceptionExpecting(JSET_ERROR, "String or Array", binaryData);
     return 0;
   }
   size_t inputLength = (size_t)jsvGetLength(binaryData);
@@ -384,7 +384,7 @@ Decode the supplied base64 string into a normal string
  */
 JsVar *jswrap_atob(JsVar *base64Data) {
   if (!jsvIsString(base64Data)) {
-    jsExceptionHere(JSET_ERROR, "Expecting String, got %t", base64Data);
+    jsExceptionExpecting(JSET_ERROR, "String", base64Data);
     return 0;
   }
   // work out input length (ignoring whitespace)

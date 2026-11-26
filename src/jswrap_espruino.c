@@ -2513,7 +2513,7 @@ void jswrap_espruino_setUSBHID(JsVar *arr) {
     return;
   }
   if (!jsvIsObject(arr)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, got %t", arr);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", arr);
     return;
   }
 

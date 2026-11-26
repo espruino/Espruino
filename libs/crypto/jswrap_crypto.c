@@ -301,7 +301,7 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
     jsvUnLock(hashVar);
 
   } else if (!jsvIsUndefined(options))
-    jsError("Options should be an object or undefined, got %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", options);
 
   if (hasher == MBEDTLS_MD_NONE)
     return 0; // already shown an error

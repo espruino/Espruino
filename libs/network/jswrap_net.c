@@ -363,7 +363,7 @@ you can use the methods on the connection to send data. You can also add
 JsVar *jswrap_net_createServer(JsVar *callback) {
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsFunction(skippedCallback)) {
-    jsError("Expecting Callback Function but got %t", skippedCallback);
+    jsExceptionExpecting(JSET_TYPEERROR, "Function", skippedCallback);
     jsvUnLock(skippedCallback);
     return 0;
   }
@@ -394,7 +394,7 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
     unlockOptions = true;
   }
   if (!jsvIsObject(options)) {
-    jsError("Expecting Options to be an Object but it was %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", options);
     return 0;
   }
   if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
@@ -407,7 +407,7 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
 
   // Make sure we have a function as callback, or nothing (which is OK too)
   if (!jsvIsUndefined(callback) && !jsvIsFunction(callback)) {
-    jsError("Expecting Callback Function but got %t", callback);
+    jsExceptionExpecting(JSET_TYPEERROR, "Function", callback);
     return 0;
   }
 

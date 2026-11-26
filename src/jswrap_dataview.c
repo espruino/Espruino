@@ -57,7 +57,7 @@ console.log("0x"+v.getUint32(0).toString(16))
 JsVar *jswrap_dataview_constructor(JsVar *buffer, int byteOffset, int byteLength) {
   if (!jsvIsArrayBuffer(buffer) ||
       buffer->varData.arraybuffer.type!=ARRAYBUFFERVIEW_ARRAYBUFFER) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting ArrayBuffer, got %t", buffer);
+    jsExceptionExpecting(JSET_TYPEERROR, "ArrayBuffer", buffer);
     return 0;
   }
   JsVar *dataview = jspNewObject(0,"DataView");

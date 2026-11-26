@@ -124,7 +124,7 @@ Connect to a wireless network
 */
 bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
   if (!(jsvIsUndefined(callback) || jsvIsFunction(callback))) {
-    jsError("Expecting callback Function but got %t", callback);
+    jsExceptionExpecting(JSET_TYPEERROR, "Function", callback);
     return 0;
   }
 

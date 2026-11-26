@@ -502,7 +502,7 @@ Get information on all properties in the object (from `Object.getOwnPropertyDesc
  */
 JsVar *jswrap_object_getOwnPropertyDescriptors(JsVar *parent) {
   if (!jsvHasChildren(parent)) {
-    jsExceptionHere(JSET_TYPEERROR, "First argument must be Object, got %t", parent);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", parent);
     return 0;
   }
   JsVar *descriptors = jsvNewObject();
@@ -609,11 +609,11 @@ will be ignored.
  */
 JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc) {
   if (!jsvIsObject(parent) && !jsvIsFunction(parent) && !jsvIsArray(parent)) {
-    jsExceptionHere(JSET_ERROR, "First argument must be Object, Function or Array, got %t", parent);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object, Function or Array", parent);
     return 0;
   }
   if (!jsvIsObject(desc)) {
-    jsExceptionHere(JSET_ERROR, "Property description must be Object, got %t", desc);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", desc);
     return 0;
   }
 
@@ -663,11 +663,11 @@ information
  */
 JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props) {
   if (!jsvIsObject(parent)) {
-    jsExceptionHere(JSET_ERROR, "First argument must be Object, got %t", parent);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", parent);
     return 0;
   }
   if (!jsvIsObject(props)) {
-    jsExceptionHere(JSET_ERROR, "Second argument must be Object, got %t", props);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", props);
     return 0;
   }
 
@@ -752,7 +752,7 @@ JsVar *jswrap_object_assign(JsVar *args) {
     if (jsvIsUndefined(arg) || jsvIsNull(arg)) {
       // ignore
     } else if (!jsvIsObject(arg)) {
-      jsExceptionHere(JSET_TYPEERROR, "Expecting Object, got %t", arg);
+      jsExceptionExpecting(JSET_TYPEERROR, "Object", arg);
       error = true;
     } else if (!result) {
       result = jsvLockAgain(arg);
@@ -1254,7 +1254,7 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
     }
     jsvIteratorFree(&it);
   } else if (!jsvIsUndefined(argsArray)) {
-    jsExceptionHere(JSET_ERROR, "Second argument to Function.apply must be iterable, got %t", argsArray);
+    jsExceptionExpecting(JSET_TYPEERROR, "Iterable", argsArray);
     return 0;
   }
 
@@ -1278,7 +1278,7 @@ This executes the function with the supplied 'this' argument and parameters
  */
 JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
   if (!jsvIsFunction(parent)) {
-    jsExceptionHere(JSET_TYPEERROR, "Function.bind expects to be called on function, got %t", parent);
+    jsExceptionExpecting(JSET_TYPEERROR, "Function", parent);
     return 0;
   }
   JsVar *fn;

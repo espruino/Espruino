@@ -73,7 +73,7 @@ If you'd like a way to perform compression/decompression on desktop, check out h
 */
 JsVar *jswrap_heatshrink_compress(JsVar *data) {
   if (!jsvIsIterable(data)) {
-    jsExceptionHere(JSET_TYPEERROR,"Expecting something iterable, got %t",data);
+    jsExceptionExpecting(JSET_TYPEERROR, "Iterable", data);
     return 0;
   }
   JsvIterator in_it;
@@ -121,7 +121,7 @@ If you'd like a way to perform compression/decompression on desktop, check out h
 */
 JsVar *jswrap_heatshrink_decompress(JsVar *data) {
   if (!jsvIsIterable(data)) {
-    jsExceptionHere(JSET_TYPEERROR,"Expecting something iterable, got %t",data);
+    jsExceptionExpecting(JSET_TYPEERROR, "Iterable", data);
     return 0;
   }
   JsvIterator in_it;

@@ -201,12 +201,12 @@ void jswrap_ESP32_deepSleep(JsVar *us) {
     v = jsvObjectGetChildIfExists(us, "ext0");
     if (jsvIsPin(v)) {
       _jswrap_ESP32_deepSleep_ext0(jshGetPinFromVar(v), jsvObjectGetIntegerChildOr(us, "ext0Level", 1)!=0);
-    } else if (v) jsExceptionHere(JSET_ERROR, "Expecting pin, got %j", v);
+    } else if (v) jsExceptionExpecting(JSET_TYPEERROR, "Pin", v);
     jsvUnLock(v);
     v = jsvObjectGetChildIfExists(us, "ext1");
     if (jsvIsPin(v) || jsvIsArray(v)) {
       _jswrap_ESP32_deepSleep_ext1(v, jsvObjectGetIntegerChildOr(us, "ext1Level", 1));
-    } else if (v) jsExceptionHere(JSET_ERROR, "Expecting pin or array, got %j", v);
+    } else if (v) jsExceptionExpecting(JSET_TYPEERROR, "Pin or Array", v);
     jsvUnLock(v);
   } else {
     esp_sleep_enable_timer_wakeup((uint64_t)jsvGetLongInteger(us));

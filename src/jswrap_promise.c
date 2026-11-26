@@ -375,7 +375,7 @@ are resolved.
 */
 JsVar *jswrap_promise_all(JsVar *arr) {
   if (!jsvIsIterable(arr)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting something iterable, got %t", arr);
+    jsExceptionExpecting(JSET_TYPEERROR, "Iterable", arr);
     return 0;
   }
   JsVar * promise;

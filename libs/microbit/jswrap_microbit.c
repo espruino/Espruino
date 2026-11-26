@@ -311,7 +311,7 @@ void jswrap_microbit_show(JsVar *image) {
   } else if (jsvIsNumeric(image)) {
     newState = jsvGetInteger(image);
   } else {
-    jsError("Expecting Number, got %t\n", image);
+    jsExceptionExpecting(JSET_TYPEERROR, "Number", image);
     return;
   }
   jswrap_microbit_show_raw(newState);

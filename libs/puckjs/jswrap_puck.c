@@ -1217,7 +1217,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
     return;
   }
   if (!jsvIsIterable(data)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Array, got %t", data);
+    jsExceptionExpecting(JSET_TYPEERROR, "Array", data);
     return;
   }
   if (jshIsPinValid(anode) && !jshIsPinValid(cathode)) {

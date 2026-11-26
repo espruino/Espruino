@@ -512,7 +512,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     JsVar *returnVar = 0;
 
     if (!jsvIsFunction(function)) {
-      jsExceptionHere(JSET_ERROR, "Expecting function, got %t", function);
+      jsExceptionExpecting(JSET_ERROR, "function", function);
       return 0;
     }
     JsVar *thisVar = jsvLockAgainSafe(thisArg);
@@ -2066,7 +2066,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
           bool inst = false;
           JsVar *bv = jsvSkipName(b);
           if (!jsvIsFunction(bv)) {
-            jsExceptionHere(JSET_ERROR, "Expecting function on RHS, got %t", bv);
+            jsExceptionExpecting(JSET_ERROR, "function on RHS", bv);
           } else {
             if (jsvIsObject(a) || jsvIsFunction(a)) {
               JsVar *bproto = jspGetNamedField(bv, JSPARSE_PROTOTYPE_VAR, false);

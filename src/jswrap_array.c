@@ -937,7 +937,7 @@ It will cause non-spec-compliant behaviour.
  */
 JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
   if (!jsvIsUndefined(compareFn) && !jsvIsFunction(compareFn)) {
-    jsExceptionHere(JSET_ERROR, "Expecting compare function, got %t", compareFn);
+    jsExceptionExpecting(JSET_ERROR, "compare function", compareFn);
     return 0;
   }
   JsvIterator it;

@@ -371,6 +371,13 @@ NO_INLINE void jsExceptionHere_flash(JsExceptionType type, const char *ffmt, ...
 
 #endif
 
+#ifndef USE_FLASH_MEMORY // with USE_FLASH_MEMORY this is a macro
+/// Same as jsExceptionHere(type, "Expecting %s, got %t", expecting, var) - but shares the common text to save flash
+NO_INLINE void jsExceptionExpecting(JsExceptionType type, const char *expecting, JsVar *var) {
+  jsExceptionHere(type, "Expecting %s, got %t", expecting, var);
+}
+#endif
+
 NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   static bool inAssertFail = false;
   bool wasInAssertFail = inAssertFail;

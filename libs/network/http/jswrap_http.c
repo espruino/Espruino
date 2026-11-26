@@ -329,7 +329,7 @@ add `request.on('data',function() { ... })` to listen for POSTed data
 JsVar *jswrap_http_createServer(JsVar *callback) {
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsFunction(skippedCallback)) {
-    jsError("Expecting Callback Function but got %t", skippedCallback);
+    jsExceptionExpecting(JSET_TYPEERROR, "Function", skippedCallback);
     jsvUnLock(skippedCallback);
     return 0;
   }
@@ -422,7 +422,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   }
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsUndefined(skippedCallback) && !jsvIsFunction(skippedCallback)) {
-    jsError("Expecting Callback Function but got %t", skippedCallback);
+    jsExceptionExpecting(JSET_TYPEERROR, "Function", skippedCallback);
     jsvUnLock(skippedCallback);
     return 0;
   }

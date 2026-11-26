@@ -94,7 +94,7 @@ ESP8266 and on Linux **. It uses port 23 on the ESP8266 and port 2323 on Linux.
 void jswrap_telnet_setOptions(JsVar *jsOptions) {
   // Make sure jsOptions is an object
   if (!jsvIsObject(jsOptions)) {
-    jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOptions);
+    jsExceptionExpecting(JSET_ERROR, "Object", jsOptions);
     return;
   }
 

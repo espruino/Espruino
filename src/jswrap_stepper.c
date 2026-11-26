@@ -192,7 +192,7 @@ can specify different patterns, for example `[0b1100,0b1000,0b1001,0b0001,0b0011
  */
 JsVar *jswrap_stepper_constructor(JsVar *options) {
   if (!jsvIsObject(options)) {
-    jsExceptionHere(JSET_ERROR, "Expecting options to be an Object, not %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", options);
     return 0;
   }
 
@@ -291,7 +291,7 @@ JsVar *jswrap_stepper_moveTo(JsVar *stepper, int position, JsVar *options) {
     JsVarFloat t = jsvObjectGetFloatChild(options, "freq");
     if (isfinite(t)) freq = t;
   } else if (!jsvIsUndefined(options)) {
-    jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
+    jsExceptionExpecting(JSET_TYPEERROR, "Object", options);
   }
   if (freq<0.001) {
     jsExceptionHere(JSET_ERROR, "Frequency must be above 0.001Hz");

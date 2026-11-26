@@ -536,6 +536,13 @@ void jsError_flash(const char *fmt, ...);
   } while(0)
 void jsWarn_flash(const char *fmt, ...);
 #endif
+#ifndef USE_FLASH_MEMORY
+/// Same as jsExceptionHere(type, "Expecting %s, got %t", expecting, var) - but shares the common text to save flash
+void jsExceptionExpecting(JsExceptionType type, const char *expecting, JsVar *var);
+#else
+// When strings are in flash, join the strings so the whole message stays in flash and doesn't use RAM. 'expecting' must be a literal
+#define jsExceptionExpecting(type, expecting, var) jsExceptionHere(type, "Expecting " expecting ", got %t", var)
+#endif
 
 // ------------
 /// Error flags for internal errors - update jswrap_espruino_getErrorFlags if you add to this
