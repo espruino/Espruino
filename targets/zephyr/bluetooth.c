@@ -314,7 +314,7 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
 void jsble_restart_softdevice(JsVar *jsFunction){
   bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
   if (jsvIsFunction(jsFunction))
-    jspExecuteFunction(jsFunction,NULL,0,NULL);
+    jsvUnLock(jspExecuteFunction(jsFunction,NULL,0,NULL));
   jswrap_ble_reconfigure_softdevice();
 }
 

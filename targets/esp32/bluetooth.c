@@ -98,7 +98,7 @@ void jsble_restart_softdevice(JsVar *jsFunction){
     bluetooth_gap_setScan(false, false);
   }
   if (jsvIsFunction(jsFunction))
-    jspExecuteFunction(jsFunction,NULL,0,NULL);
+    jsvUnLock(jspExecuteFunction(jsFunction,NULL,0,NULL));
   jswrap_ble_reconfigure_softdevice();
 }
 
