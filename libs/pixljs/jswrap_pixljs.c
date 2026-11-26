@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains JavaScript interface for Pixl.js (http://www.espruino.com/Pixl.js)
+ * Contains JavaScript interface for Pixl.js (https://www.espruino.com/Pixl.js)
  * ----------------------------------------------------------------------------
  */
 
@@ -40,7 +40,7 @@ bool lcdIsOn;
     "class" : "Pixl"
 }
 Class containing utility functions for
-[Pixl.js](http://www.espruino.com/Pixl.js)
+[Pixl.js](https://www.espruino.com/Pixl.js)
 */
 
 /*JSON{
@@ -629,7 +629,7 @@ E.showMenu(mainmenu);
 The menu will stay onscreen and active until explicitly removed, which you can
 do by calling `E.showMenu()` without arguments (or `Bangle.setUI()` on Bangle.js).
 
-See http://www.espruino.com/graphical_menu for more detailed information. For
+See https://www.espruino.com/graphical_menu for more detailed information. For
 Bangle.js Settings Pages see https://www.espruino.com/Bangle.js+App+Settings
 */
 

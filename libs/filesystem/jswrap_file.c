@@ -142,7 +142,7 @@ E.connectSDCard(spi, C6);
 console.log(require("fs").readdirSync());
 ```
 
-See [the page on File IO](http://www.espruino.com/File+IO) for more information.
+See [the page on File IO](https://www.espruino.com/File+IO) for more information.
 
 **Note:** We'd strongly suggest you add a pullup resistor from CD/CS pin to
 3.3v. It is good practise to avoid accidental writes before Espruino is

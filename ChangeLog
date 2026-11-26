@@ -30,7 +30,7 @@
             Add Date.getUTC* methods (on all but the most flash-constrained devices - adds 300b)
             Add Graphics.setOffset (to allow subsequent draw operations to be shifted) (fix #2111)
             ESP32: Fix connected/disconnected events that were fired even for central bluetooth connections
-            BLE: switch to our own code for creating advertisement packets (shared across all platforms). 
+            BLE: switch to our own code for creating advertisement packets (shared across all platforms).
             BLE: Allow `NRF.getAdvertisingData({},{name:"foo"})` to force a name for a specific advertising packet
             BLE: Remove deprecated NRF.setLowPowerConnection (NRF.setConnectionInterval is better)
             ESP32: Remove 4092b limit on hardware SPI sends
@@ -2748,7 +2748,7 @@
             Fix recent changeInterval regression
             Making CC3000 recover properly in the case of repeated HTTP GET
             Add alternate function remapping for Serial and improve Serial.setup error reporting, fix #241
-            Added preliminary WIZnet W5500 support (see http://www.espruino.com/WIZnet)
+            Added preliminary WIZnet W5500 support (see https://www.espruino.com/WIZnet)
             Alt Enter (27 + 10) now always inserts a newline: (eg. for `if (X) \n Y`)
             Fix digitalPulse with not a number
             Make digitalPulse(... 0) wait until the last pulse is complete

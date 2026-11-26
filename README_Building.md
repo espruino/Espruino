@@ -208,7 +208,7 @@ Follow the instructions for [OpenWRT build system](https://wiki.openwrt.org/doc/
 
 After a successful OpenWRT build, [OpenWRT Espruino packages](https://github.com/vshymanskyy/OpenWRT-Espruino-packages)
 
-### for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard)
+### for STM32 Boards (incl. [Espruino Board](https://www.espruino.com/EspruinoBoard)
 
 ```bash
 make clean && BOARD=BOARDNAME RELEASE=1 make
@@ -242,7 +242,7 @@ Dependant on the board, either usb or bluetooth can be used to program the board
 * USB
   * the board appears as a drive to drop a hex on
 
-#### for [Puck.js](http://www.espruino.com/Puck.js) and [Pixl.js](http://www.espruino.com/Pixl.js)
+#### for [Puck.js](https://www.espruino.com/Puck.js) and [Pixl.js](https://www.espruino.com/Pixl.js)
 
 The Puck.js and Pixl.js are based on the nRF52
 
@@ -254,7 +254,7 @@ make clean && DFU_UPDATE_BUILD=1 BOARD=PIXLJS RELEASE=1 make
 ```
 
 The resulting file is a zip that has to be transferred via Bluetooth Low Energy.
-See the [Puck.js](http://www.espruino.com/Puck.js#firmware-updates) and [Pixl.js](http://www.espruino.com/Pixl.js#firmware-updates) pages for information concerning transferring the ZIP.
+See the [Puck.js](https://www.espruino.com/Puck.js#firmware-updates) and [Pixl.js](https://www.espruino.com/Pixl.js#firmware-updates) pages for information concerning transferring the ZIP.
 
 #### for [NRF52-DK](https://www.nordicsemi.com/eng/Products/Bluetooth-low-energy/nRF52-DK)
 
@@ -366,7 +366,7 @@ python scripts/build_docs.py
 
 ```
 
-This will create a file called ```functions.html``` that is a version of [the reference pages](http://www.espruino.com/Reference),
+This will create a file called ```functions.html``` that is a version of [the reference pages](https://www.espruino.com/Reference),
 but based on your source code.
 
 ## Virtual Machines under Windows and MacOS

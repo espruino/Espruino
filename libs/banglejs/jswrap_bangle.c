@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains JavaScript interface for Bangle.js (http://www.espruino.com/Bangle.js)
+ * Contains JavaScript interface for Bangle.js (https://www.espruino.com/Bangle.js)
  * ----------------------------------------------------------------------------
  */
 
@@ -113,7 +113,7 @@ declare const WIDGETS: { [key: string]: Widget };
   "ifdef" : "BANGLEJS"
 }
 Class containing utility functions for the [Bangle.js Smart
-Watch](http://www.espruino.com/Bangle.js)
+Watch](https://www.espruino.com/Bangle.js)
 */
 /*TYPESCRIPT{
   "class" : "Bangle"
@@ -5117,7 +5117,7 @@ bool jswrap_banglejs_gps_character(char ch) {
 }
 Reads debug info. Exposes the current values of `accHistoryIdx`, `accGestureCount`, `accIdleCount`, `pollInterval` and others.
 
-Please see the declaration of this function for more information (click the `==>` link above [this description](http://www.espruino.com/Reference#l_Bangle_dbg))
+Please see the declaration of this function for more information (click the `==>` link above [this description](https://www.espruino.com/Reference#l_Bangle_dbg))
 */
 JsVar *jswrap_banglejs_dbg() {
   JsVar *o = jsvNewObject();
@@ -6306,7 +6306,7 @@ E.showMenu(mainmenu);
 The menu will stay onscreen and active until explicitly removed, which you can
 do by calling `E.showMenu()` without arguments.
 
-See http://www.espruino.com/graphical_menu for more detailed information.
+See https://www.espruino.com/graphical_menu for more detailed information.
 
 On Bangle.js there are a few additions over the standard `graphical_menu`:
 

@@ -492,7 +492,7 @@ function buildTypes() {
 
       resolve(
         "// Type definitions for Espruino latest\n" +
-          "// Project: http://www.espruino.com/, https://github.com/espruino/espruinotools" +
+          "// Project: https://www.espruino.com/, https://github.com/espruino/espruinotools" +
           "// Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped\n\n" +
           '/// <reference path="other.d.ts" />\n\n' +
           getTypeDeclarations(types) +

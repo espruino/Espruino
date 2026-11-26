@@ -29,7 +29,7 @@
   "ifdef" : "JOLTJS"
 }
 Class containing utility functions for the Qwiic connectors
-on the [Jolt.js Smart Bluetooth driver](http://www.espruino.com/Jolt.js).
+on the [Jolt.js Smart Bluetooth driver](https://www.espruino.com/Jolt.js).
 
 Each class (available from `Jolt.Q0`/`Jolt.Q1`/`Jolt.Q2`/`Jolt.Q3`)
 has `sda` and `scl` fields with the pins for SDA and SCL on them.

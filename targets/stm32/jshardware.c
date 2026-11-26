@@ -1447,7 +1447,7 @@ void jshInit() {
 
   // don't disable this when compiling with DEBUG=1, because we need SWD
   // for in-circuit debugging and we probably don't care about the LEDs
-  // see http://www.espruino.com/AdvancedDebug
+  // see https://www.espruino.com/AdvancedDebug
 
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available for LEDs
 #endif

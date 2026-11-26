@@ -224,7 +224,7 @@ Bluetooth/Serial/USB when there is space in the buffer.
 
 Memory units are specified in 'blocks', which are around 16 bytes each
 (depending on your device). The actual size is available in `blocksize`. See
-http://www.espruino.com/Performance for more information.
+https://www.espruino.com/Performance for more information.
 
 **Note:** To find free areas of flash memory, see `require('Flash').getFree()`
  */

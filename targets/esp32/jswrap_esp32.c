@@ -55,7 +55,7 @@
   "ifdef" : "ESP32"
 }
 Class containing utility functions for the
-[ESP32](http://www.espruino.com/ESP32)
+[ESP32](https://www.espruino.com/ESP32)
 */
 
 /*JSON{

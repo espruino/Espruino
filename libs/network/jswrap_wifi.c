@@ -24,9 +24,9 @@ starting an access point, etc.
 
 It is available on these devices:
 
-* [Espruino WiFi](http://www.espruino.com/WiFi#using-wifi)
-* [ESP8266](http://www.espruino.com/EspruinoESP8266)
-* [ESP32](http://www.espruino.com/ESP32)
+* [Espruino WiFi](https://www.espruino.com/WiFi#using-wifi)
+* [ESP8266](https://www.espruino.com/EspruinoESP8266)
+* [ESP32](https://www.espruino.com/ESP32)
 
 **Certain features may or may not be implemented on your device** however we
 have documented what is available and what isn't.
@@ -35,11 +35,11 @@ If you're not using one of the devices above, a separate WiFi library is
 provided. For instance:
 
 * An [ESP8266 connected to an Espruino
-  board](http://www.espruino.com/ESP8266#software)
-* An [CC3000 WiFi Module](http://www.espruino.com/CC3000)
+  board](https://www.espruino.com/ESP8266#software)
+* An [CC3000 WiFi Module](https://www.espruino.com/CC3000)
 
 [Other ways of connecting to the
-net](http://www.espruino.com/Internet#related-pages) such as GSM, Ethernet and
+net](https://www.espruino.com/Internet#related-pages) such as GSM, Ethernet and
 LTE have their own libraries.
 
 You can use the WiFi library as follows:

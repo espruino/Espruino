@@ -439,7 +439,7 @@ NRF.on("passkey", key => print("Enter PIN: ",passkey));
 It is also possible to specify a static passkey with `NRF.setSecurity({passkey:"123456", mitm:1, display:1});`
 in which case no `passkey` event handler is needed (this method works on Espruino 2v02 and later)
 
-**Note:** A similar event, [`BluetoothDevice.on("passkey", ...)`](http://www.espruino.com/Reference#l_BluetoothDevice_passkey) is available
+**Note:** A similar event, [`BluetoothDevice.on("passkey", ...)`](https://www.espruino.com/Reference#l_BluetoothDevice_passkey) is available
 for when Espruino is connecting *to* another device (central mode).
 */
 /*JSON{
@@ -2749,7 +2749,7 @@ static void nfc_raw_data_start(uint8_t *dataPtr, size_t dataLen){
 Enables NFC and starts advertising the given URL. For example:
 
 ```
-NRF.nfcURL("http://espruino.com");
+NRF.nfcURL("https://espruino.com");
 ```
 */
 void jswrap_nfc_URL(JsVar *url) {
@@ -2958,7 +2958,7 @@ Enables NFC and starts advertising with Raw data. For example:
 
 ```
 NRF.nfcRaw(new Uint8Array([193, 1, 0, 0, 0, 13, 85, 3, 101, 115, 112, 114, 117, 105, 110, 111, 46, 99, 111, 109]));
-// same as NRF.nfcURL("http://espruino.com");
+// same as NRF.nfcURL("https://espruino.com");
 ```
 */
 void jswrap_nfc_raw(JsVar *payload) {

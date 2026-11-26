@@ -58,7 +58,7 @@ pins = board.get_pins()
 pins = pinutils.append_devices_to_pin_list(pins, board)
 pins = pinutils.remove_used_pinfunctions(pins, board)
 
-#if not embeddable and  "link" in board.info and board.info["link"][0].startswith("http://www.espruino.com"):
+#if not embeddable and  "link" in board.info and board.info["link"][0].startswith("https://www.espruino.com"):
 #  writeHTML('<html><head><meta http-equiv="refresh" content="0; url="'+board.info["link"][0]+'"></head><body>Please wait. redirecting...</body></html>');
 #  exit(0);
 
@@ -373,7 +373,7 @@ if not embeddable:
   writeHTML('   <TR><TH>DACs</TH><TD>'+(str(board.chip['dac']) if board.chip['dac']>0 else "No")+'</TD></TR>')
   writeHTML('   <TR><TH>SD Card</TH><TD>'+("Yes" if "SD" in board.devices else "No")+'</TD></TR>')
   writeHTML('  </TABLE>')
-  writeHTML('  <P>Like this? Please tell your friends, blog, or <a href="http://www.espruino.com/Order">support us by buying our boards</a>!</P>')
+  writeHTML('  <P>Like this? Please tell your friends, blog, or <a href="https://www.espruino.com/Order">support us by buying our boards</a>!</P>')
   # only output pinout if we have pin info
   if hasattr(board, 'boards') or board.board:
     writeHTML('  <H2>Pinout</H2>')

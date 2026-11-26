@@ -1,34 +1,34 @@
- _____                 _                                                        
-|   __|___ ___ ___ _ _|_|___ ___                                                
-|   __|_ -| . |  _| | | |   | . |                                               
-|_____|___|  _|_| |___|_|_|_|___|                                               
-          |_|                                                               
+ _____                 _
+|   __|___ ___ ___ _ _|_|___ ___
+|   __|_ -| . |  _| | | |   | . |
+|_____|___|  _|_| |___|_|_|_|___|
+          |_|
    Copyright 2015 Gordon Williams
-                                               
-http://www.espruino.com
+
+https://www.espruino.com
 
 --------------------------------------------------------------
 
 There are a few different binaries in this ZIP file, for different
 types of Microcontroller:
 
-espruino_#v##_pico_1r3.bin 
+espruino_#v##_pico_1r3.bin
    - AT command WiFi support (includes all features)
-espruino_#v##_pico_1r3_cc3000.bin 
+espruino_#v##_pico_1r3_cc3000.bin
    - CC3000 WiFi networking (without debugger, AT Command WiFi, vector font)
-espruino_#v##_pico_1r3_wiznet.bin  
+espruino_#v##_pico_1r3_wiznet.bin
    - WIZNET W5500 ethernet (without debugger, AT Command WiFi, vector font)
- 
+
    - The firmware image for Espruino Pico Boards.
      We'd strongly suggest that you use the Web IDE to flash this.
      Each image is for a different type of networking device.
      If you don't need networking, use espruino_#v##_pico_1r3.bin
 
-espruino_#v##_espruino_1r3.bin  
+espruino_#v##_espruino_1r3.bin
    - No networking, includes all other features
-espruino_#v##_espruino_1r3_at.bin  
+espruino_#v##_espruino_1r3_at.bin
    - AT command WiFi (without vector font)
-espruino_#v##_espruino_1r3_wiznet.bin   
+espruino_#v##_espruino_1r3_wiznet.bin
    - WIZNET W5500 ethernet (without crypto lib, debugger, vector font)
 
    - The firmware image for Original Espruino Boards
@@ -36,43 +36,43 @@ espruino_#v##_espruino_1r3_wiznet.bin
      Each image is for a different type of networking device.
      If you don't need networking, use espruino_#v##_espruino_1r3.bin
 
-espruino_#v##_wifi.bin  
+espruino_#v##_wifi.bin
    - The firmware image for Espruino WiFi Boards
      We'd strongly suggest that you use the Web IDE to flash this.
 
 espruino_#v##_puckjs.zip
    - The firmware image for Espruino Puck.js Devices (no networking)
-     See http://www.espruino.com/Puck.js#firmware-updates for more information
-     
+     See https://www.espruino.com/Puck.js#firmware-updates for more information
+
 espruino_#v##_puckjs_minimal.zip
    - The firmware image for Espruino Puck.js Devices
-       Networking, graphics and crypto are removed which frees up roughly 60kB extra 
+       Networking, graphics and crypto are removed which frees up roughly 60kB extra
        Flash memory which can be used for Storage, bringing the total to 98kB.
-     See http://www.espruino.com/Puck.js#firmware-updates for more information     
-     
+     See https://www.espruino.com/Puck.js#firmware-updates for more information
+
 espruino_#v##_puckjs_network.zip
    - The firmware image for Espruino Puck.js Devices (with networking, but not JIT or Graphics)
-     See http://www.espruino.com/Puck.js#firmware-updates for more information     
+     See https://www.espruino.com/Puck.js#firmware-updates for more information
 
 espruino_#v##_pixljs.zip
    - The firmware image for Espruino Pixl.js Devices
-     See http://www.espruino.com/Pixl.js#firmware-updates for more information
+     See https://www.espruino.com/Pixl.js#firmware-updates for more information
 
 espruino_#v##_pixljs_wiznet.zip
    - The firmware image for Espruino Pixl.js Devices (with support for WIZnet W5100 Ethernet)
-     See http://www.espruino.com/Pixl.js#firmware-updates for more information
+     See https://www.espruino.com/Pixl.js#firmware-updates for more information
 
 espruino_#v##_banglejs.zip
    - The firmware image for Espruino Bangle.js 1 Devices
-     See http://www.espruino.com/Bangle.js#firmware-updates for more information
+     See https://www.espruino.com/Bangle.js#firmware-updates for more information
 
 espruino_#v##_banglejs2.zip
    - The firmware image for Espruino Bangle.js 2 Devices
-     See http://www.espruino.com/Bangle.js2#firmware-updates for more information
+     See https://www.espruino.com/Bangle.js2#firmware-updates for more information
 
 espruino_#v##_mdbt42q.zip
    - The firmware image for Espruino MDBT42Q modules
-     See http://www.espruino.com/MDBT42Q#firmware-updates for more information
+     See https://www.espruino.com/MDBT42Q#firmware-updates for more information
 
 espruino_#v##_stm32l496gdiscovery.bin
    - STM32F496GDISCOVERY board
@@ -95,28 +95,28 @@ espruino_#v##_microbit1/2.hex
 
 espruino_#v##_Wio_LTE.zip
    - The firmware image for Seed Wio LTE Devices
-     See http://www.espruino.com/WioLTE for more information
+     See https://www.espruino.com/WioLTE for more information
 
 espruino_#v##stm32l496gdiscovery.bin
    - The firmware image for the STM32L496G Discovery Board
-     See http://www.espruino.com/STM32L496GDISCOVERY for more information
+     See https://www.espruino.com/STM32L496GDISCOVERY for more information
 
 espruino_#v##rak8211.hex
    - The firmware image for the RAK8211 iTracker
-     See http://www.espruino.com/RAK8211 for more information
+     See https://www.espruino.com/RAK8211 for more information
 
 espruino_#v##rak8212.hex
    - The firmware image for the RAK8212 iTracker
-     See http://www.espruino.com/RAK8212 for more information
+     See https://www.espruino.com/RAK8212 for more information
 
 espruino_#v##smartibot.zip
    - The firmware image for the Smartibot robot board
-     See http://www.espruino.com/Smartibot for more information
+     See https://www.espruino.com/Smartibot for more information
 
 ESP8266 / ESP32
 ---------------
 
-See http://www.espruino.com/EspruinoESP8266 for more info
+See https://www.espruino.com/EspruinoESP8266 for more info
 
 espruino_#v##_esp8266_combined_512.bin
    - ESP8266 'combined' port for 512k devices like ESP01
@@ -134,7 +134,7 @@ espruino_#v##_esp8266_4mb
 
 espruino_#v##_esp32.zip
    - The firmware image for ESP32 Devices
-     See http://www.espruino.com/ESP32 for more information
+     See https://www.espruino.com/ESP32 for more information
 
 espruino_#v##_esp32c3.zip
    - The firmware image for ESP32C3 Devices
@@ -147,8 +147,8 @@ espruino_#v##_esp32_cyd.bin
      Specifically the ESP32-2432S028
 
 
-For more information on devices, and on how to flash these binary files on to 
-each device, please see our website, http://www.espruino.com
+For more information on devices, and on how to flash these binary files on to
+each device, please see our website, https://www.espruino.com
 
 NOTES:
 

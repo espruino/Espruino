@@ -41,7 +41,7 @@ typedef long long int64_t;
   "ifdef" : "ESP8266"
 }
 Class containing utility functions for the
-[ESP8266](http://www.espruino.com/EspruinoESP8266)
+[ESP8266](https://www.espruino.com/EspruinoESP8266)
 */
 
 // ESP8266.reboot

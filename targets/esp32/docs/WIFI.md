@@ -5,7 +5,7 @@ the creation of a new source file called `jswrap_esp32_network.c` which will liv
 
 The majority of the WiFi API is documented in the Espruino docs here:
 
-http://www.espruino.com/Reference#Wifi
+https://www.espruino.com/Reference#Wifi
 
 This will expose a module called `Wifi` which will have the following static methods defined
 upon it:
@@ -17,7 +17,7 @@ upon it:
 * `getDetails`
 * `getHostByName`
 * `getHostname`
-* `getIP` 
+* `getIP`
 * `getStatus`
 * `ping`
 * `restore`

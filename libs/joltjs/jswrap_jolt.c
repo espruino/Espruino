@@ -61,7 +61,7 @@ JoltDriverMode driverMode[DRIVERCOUNT];
   "class" : "Jolt",
   "ifdef" : "JOLTJS"
 }
-Class containing utility functions for the [Jolt.js Smart Bluetooth driver](http://www.espruino.com/Jolt.js)
+Class containing utility functions for the [Jolt.js Smart Bluetooth driver](https://www.espruino.com/Jolt.js)
 */
 
 void setJoltProperty(const char *name, JsVar* prop) {

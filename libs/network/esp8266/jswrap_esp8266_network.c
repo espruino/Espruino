@@ -13,7 +13,7 @@
  * Contains ESP8266 and Wifi library specific functions.
  *
  * FOR DESCRIPTIONS OF THE WIFI FUNCTIONS IN THIS FILE, SEE
- * libs/network/jswrap_wifi.c (or http://www.espruino.com/Reference#Wifi)
+ * libs/network/jswrap_wifi.c (or https://www.espruino.com/Reference#Wifi)
  *
  * IMPORTANT: the functions in this file have tests in ./tests/wifi-test-mode.js
  * please maintain these tests if you make functional changes!

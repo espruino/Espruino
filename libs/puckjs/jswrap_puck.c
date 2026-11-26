@@ -704,7 +704,7 @@ one argument which is an object of the form `{x,y,z}` containing magnetometer
 readings as integers (for more information see `Puck.mag()`).
 
 Check out [the Puck.js page on the
-magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+magnetometer](https://www.espruino.com/Puck.js#on-board-peripherals) for more
 information.
 
 ```
@@ -742,7 +742,7 @@ Puck.on('accel', function(e) {
 
 The data is as it comes off the accelerometer and is not scaled to 1g. For more
 information see `Puck.accel()` or [the Puck.js page on the
-magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals).
+magnetometer](https://www.espruino.com/Puck.js#on-board-peripherals).
  */
 
 /*JSON{
@@ -790,7 +790,7 @@ magnetometer may stop sampling without warning, even while other Puck functions
 continue uninterrupted.
 
 Check out [the Puck.js page on the
-magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+magnetometer](https://www.espruino.com/Puck.js#on-board-peripherals) for more
 information.
 
 */
@@ -862,7 +862,7 @@ Writes a register on the LIS3MDL / MAX3110 Magnetometer. Can be used for
 configuring advanced functions.
 
 Check out [the Puck.js page on the
-magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+magnetometer](https://www.espruino.com/Puck.js#on-board-peripherals) for more
 information and links to modules that use this function.
 */
 void jswrap_puck_magWr(JsVarInt reg, JsVarInt data) {
@@ -888,7 +888,7 @@ Reads a register from the LIS3MDL / MAX3110 Magnetometer. Can be used for
 configuring advanced functions.
 
 Check out [the Puck.js page on the
-magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+magnetometer](https://www.espruino.com/Puck.js#on-board-peripherals) for more
 information and links to modules that use this function.
 */
 int jswrap_puck_magRd(JsVarInt reg) {
@@ -991,7 +991,7 @@ Puck.accelOn();
 ```
 
 Check out [the Puck.js page on the
-accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+accelerometer](https://www.espruino.com/Puck.js#on-board-peripherals) for more
 information.
 
 **Note:** Puck.js cannot currently read every sample from the
@@ -1035,7 +1035,7 @@ void jswrap_puck_accelOn(JsVarFloat hz) {
 Turn the accelerometer off after it has been turned on by `Puck.accelOn()`.
 
 Check out [the Puck.js page on the
-accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+accelerometer](https://www.espruino.com/Puck.js#on-board-peripherals) for more
 information.
 */
 void jswrap_puck_accelOff() {
@@ -1107,7 +1107,7 @@ Writes a register on the LSM6DS3TR-C Accelerometer. Can be used for configuring
 advanced functions.
 
 Check out [the Puck.js page on the
-accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+accelerometer](https://www.espruino.com/Puck.js#on-board-peripherals) for more
 information and links to modules that use this function.
 */
 void jswrap_puck_accelWr(JsVarInt reg, JsVarInt data) {
@@ -1143,7 +1143,7 @@ advanced functions.
 If the amount of data to read is too large to fit on the stack, `undefined` is returned.
 
 Check out [the Puck.js page on the
-accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+accelerometer](https://www.espruino.com/Puck.js#on-board-peripherals) for more
 information and links to modules that use this function.
 */
 JsVar *jswrap_puck_accelRd(JsVarInt reg, JsVarInt cnt) {
@@ -1180,7 +1180,7 @@ JsVar *jswrap_puck_accelRd(JsVarInt reg, JsVarInt cnt) {
 Transmit the given set of IR pulses - data should be an array of pulse times in
 milliseconds (as `[on, off, on, off, on, etc]`).
 
-For example `Puck.IR(pulseTimes)` - see http://www.espruino.com/Puck.js+Infrared
+For example `Puck.IR(pulseTimes)` - see https://www.espruino.com/Puck.js+Infrared
 for a full example.
 
 You can also attach an external LED to Puck.js, in which case you can just

@@ -1795,7 +1795,7 @@ But `E.getSizeOf(function(a,b) { }, 1)` returns:
 In this case setting depth to `2` will make no difference as there are no more
 children to traverse.
 
-See http://www.espruino.com/Internals for more information
+See https://www.espruino.com/Internals for more information
  */
 JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
   if (depth>0 && jsvHasChildren(v)) {
@@ -1843,7 +1843,7 @@ Return the address in memory of the given variable. This can then be used with
 This functions exists to allow embedded targets to set up peripherals such as
 DMA so that they write directly to JS variables.
 
-See http://www.espruino.com/Internals for more information
+See https://www.espruino.com/Internals for more information
  */
 JsVarInt jswrap_espruino_getAddressOf(JsVar *v, bool flatAddress) {
   if (flatAddress) {
@@ -2393,7 +2393,7 @@ Provide assembly to Espruino.
 Espruino IDE (or command-line tools) at upload time and is replaced with machine
 code and an `E.nativeCall` call.
 
-See [the documentation on the Assembler](http://www.espruino.com/Assembler) for
+See [the documentation on the Assembler](https://www.espruino.com/Assembler) for
 more information.
 */
 void jswrap_espruino_asm(JsVar *callspec, JsVar *args) {
@@ -2419,7 +2419,7 @@ Provides the ability to write C code inside your JavaScript file.
 Espruino IDE (or command-line tools) at upload time, is sent to our web service
 to be compiled, and is replaced with machine code and an `E.nativeCall` call.
 
-See [the documentation on Inline C](http://www.espruino.com/InlineC) for more
+See [the documentation on Inline C](https://www.espruino.com/InlineC) for more
 information and examples.
 */
 void jswrap_espruino_compiledC(JsVar *code) {

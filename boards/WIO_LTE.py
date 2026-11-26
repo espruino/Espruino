@@ -16,8 +16,8 @@
 import pinutils;
 info = {
  'name' : "WIO TRACKER LTE",
- 'link' :  [ "http://www.espruino.com/WioLTE" ],
- 'espruino_page_link' : 'WioLTE', 
+ 'link' :  [ "https://www.espruino.com/WioLTE" ],
+ 'espruino_page_link' : 'WioLTE',
  'default_console' : "EV_SERIAL2", # FIXME: This was S2 because of pin conflict. Not sure if it's really an issue?
  'variables' : 5450,
  'binary_name' : 'espruino_%v_Wio_LTE.bin',
@@ -72,7 +72,7 @@ devices = {
         'pin_CK' : 'A14',
         #'pin_DI' : 'A15'
           },
-  'PWR' : { 
+  'PWR' : {
             'pin_dtr' : 'A1',
             'pin_neopixel_pwr' : 'A8',
             'pin_sdcard_pwr' : 'A15',
@@ -86,7 +86,7 @@ devices = {
             'pin_wakeup_disable' : 'C2',
             'pin_lte_reset' : 'C3',
             'pin_pwr_key' : 'C4',
-            'pin_codec_i2c_pwr' : 'C5' },              
+            'pin_codec_i2c_pwr' : 'C5' },
 };
 
 # left-right, or top-bottom order

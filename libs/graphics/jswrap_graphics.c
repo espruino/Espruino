@@ -1888,7 +1888,7 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) 
   "typescript" : "setFontCustom(bitmap: ArrayBuffer, firstChar: number, width: number | string, height: number): Graphics;"
 }
 Make subsequent calls to `drawString` use a Custom Font of the given height. See
-the [Fonts page](http://www.espruino.com/Fonts) for more information about
+the [Fonts page](https://www.espruino.com/Fonts) for more information about
 custom fonts and how to create them.
 
 For examples of use, see the [font
@@ -2892,7 +2892,7 @@ g.drawString("Hello World", 10, 10);
 
 Images may also be embedded inside strings (e.g. to render Emoji or characters
 not in the current font). To do this, just add `0` then the image string ([about
-Images](http://www.espruino.com/Graphics#images-bitmaps)) For example:
+Images](https://www.espruino.com/Graphics#images-bitmaps)) For example:
 
 ```
 g.drawString("Hi \0\7\5\1\x82 D\x17\xC0");
@@ -4157,7 +4157,7 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
 }
 Return this `Graphics` object as an Image that can be used with
 `Graphics.drawImage`. Check out [the Graphics reference
-page](http://www.espruino.com/Graphics#images-bitmaps) for more information on
+page](https://www.espruino.com/Graphics#images-bitmaps) for more information on
 images.
 
 Will return undefined if data can't be allocated for the image.
@@ -4179,7 +4179,7 @@ The image data itself will be referenced rather than copied if:
 Otherwise data will be copied, which takes up more space and may be quite slow.
 
 If the `Graphics` object contains `transparent` or `palette` fields,
-[as you might find in an image](http://www.espruino.com/Graphics#images-bitmaps),
+[as you might find in an image](https://www.espruino.com/Graphics#images-bitmaps),
 those will be included in the generated image too.
 
 ```
@@ -4267,7 +4267,7 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *options) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, buffer, 0);
   if (!isObject) { // if not an object, add the header
-    // info on image format at http://www.espruino.com/Graphics#images-bitmaps
+    // info on image format at https://www.espruino.com/Graphics#images-bitmaps
     jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)w);
     jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)h);
     jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)(bpp | ((transparent>=0)?128:0)) | (palette?64:0));

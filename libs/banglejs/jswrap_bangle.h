@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains JavaScript interface for Bangle.js (http://www.espruino.com/Bangle.js)
+ * Contains JavaScript interface for Bangle.js (https://www.espruino.com/Bangle.js)
  * ----------------------------------------------------------------------------
  */
 #ifndef JSWRAP_BANGLE

@@ -33,7 +33,7 @@ import pinutils;
 boardname = ""
 for i in range(1,len(sys.argv)):
   arg = sys.argv[i]
-  if arg[0]=="-" and arg[1]=="B": 
+  if arg[0]=="-" and arg[1]=="B":
     boardname = arg[2:]
 
 # Now scan AF file
@@ -57,10 +57,10 @@ pins = pinutils.append_devices_to_pin_list(pins, board)
 # Documentation/functions
 jsondatas = common.get_jsondata(False) # use command-line args
 # -----------------------------------------------------------------------------------------
-board.info["image_url"] = "http://www.espruino.com/img/"+boardname+".jpg"
-board.info["thumb_url"] = "http://www.espruino.com/img/"+boardname+"_thumb.jpg"
+board.info["image_url"] = "https://www.espruino.com/img/"+boardname+".jpg"
+board.info["thumb_url"] = "https://www.espruino.com/img/"+boardname+"_thumb.jpg"
 board.info["binary_version"] = common.get_version();
-board.info["binary_url"] = "http://www.espruino.com/binaries/"+common.get_board_binary_name(board)
+board.info["binary_url"] = "https://www.espruino.com/binaries/"+common.get_board_binary_name(board)
 # -----------------------------------------------------------------------------------------
 # Built-in modules
 
@@ -80,18 +80,18 @@ for pin in pins:
   pin["simplefunctions"] = {};
   pinfuncs = pin["simplefunctions"]
   for func in sorted(pin["functions"]):
-    if func in pinutils.CLASSES:       
+    if func in pinutils.CLASSES:
       name = pinutils.CLASSES[func]
-   
+
       # list for individual pin
       if name in pinfuncs:
         pinfuncs[name].append(func)
       else:
         pinfuncs[name] = [ func ];
-   
+
       # now handle more detailed
       if name=="SPI" or name=="I2C" or name=="USART":
-        fs = pinutils.ALLOWED_FUNCTIONS[func].split("|")        
+        fs = pinutils.ALLOWED_FUNCTIONS[func].split("|")
         periph = fs[0][4:]
         periphpin = fs[1][fs[1].rfind("_")+1:]
         if not periph in pinperipherals: pinperipherals[periph]={}
@@ -101,7 +101,7 @@ for pin in pins:
         if not name in pinperipherals: pinperipherals[name]={}
         if not "" in pinperipherals[name]: pinperipherals[name][""]=[]
         pinperipherals[name][""].append(pin["name"]);
-  
+
 boarddata = {
  "info" : board.info,
  "chip" : board.chip,

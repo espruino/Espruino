@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
-* Contains JavaScript interface for Pixl.js (http://www.espruino.com/Pixl.js)
+* Contains JavaScript interface for Pixl.js (https://www.espruino.com/Pixl.js)
  * ----------------------------------------------------------------------------
  */
 #include "jspin.h"

@@ -412,7 +412,7 @@ for jsondata in detail:
     html_description(desc, jsondata["name"])
 
 
-  url = "http://www.espruino.com/Reference#"+get_link(jsondata)
+  url = "https://www.espruino.com/Reference#"+get_link(jsondata)
   if url in code_uses:
     uses = code_uses[url]
     html("  <h4>Examples</h4>")

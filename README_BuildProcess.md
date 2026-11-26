@@ -84,8 +84,8 @@ The board definition files are `.py` files that reside in the [`boards`](boards)
 * To create `gen/platform_config.h` via [`scripts/build_playform_config.py`](scripts/build_playform_config.py)
 * To generate the linker file `gen/linker.ld` using [`scripts/build_linker.py`](scripts/build_linker.py). Mainly STM32-based targets only.
 * To create [the pin definitions](#pindefinitions)
-* To create the HTML page on each individual board (referenced from [the top of the Reference](http://www.espruino.com/Reference)) using [`scripts/build_board_docs.py`](scripts/build_board_docs.py)
-* Converted to JSON (along with the pin declarations) and put [on espruino.com](http://www.espruino.com/json/PICO_R1_3.json) to help with autocomplete in the Web IDE (and auto-population of dropdowns in the Blockly editor). Converted by [`scripts/build_board_json.py`](scripts/build_board_json.py)
+* To create the HTML page on each individual board (referenced from [the top of the Reference](https://www.espruino.com/Reference)) using [`scripts/build_board_docs.py`](scripts/build_board_docs.py)
+* Converted to JSON (along with the pin declarations) and put [on espruino.com](https://www.espruino.com/json/PICO_R1_3.json) to help with autocomplete in the Web IDE (and auto-population of dropdowns in the Blockly editor). Converted by [`scripts/build_board_json.py`](scripts/build_board_json.py)
 
 To create a custom board based on one of the distributed board file copy e.g. `PICO_P1_3.py` to `PICO_P1_3_CUSTOM.py` and change the content of `PICO_P1_3_CUSTOM.py` as required for the planed project. The new board file name is than
 `PICO_P1_3_CUSTOM`. All created boards with the suffix `_CUSTOM.py` are ignored by git.
@@ -192,7 +192,7 @@ These are used for ESP32:
 * `ESP_HEAP_SIZE=40000` - how much free heap to leave (ESP32 builds change the amount of variables depending on free RAM, but leave enough heap eg for HTTPS)
 * `-DESPR_USE_USB_SERIAL_JTAG -DUSB` - On ESP32 This supports the case where the USB connector on the board is wired directly to the D+ and D- pins (ESP32C3 and S3). If set:
   * A new EV_USBSERIAL device is added (`USB` from JS) and the console is put on that if USB is connected 1 second after the ESP32 boots.
-  * If USB is not connected when the ESP32 boots (and `'default_console'/DEFAULT_CONSOLE_DEVICE` is not `EV_USBSERIAL`, USB serial will not be disabled and `SERIAL1` enabled. 
+  * If USB is not connected when the ESP32 boots (and `'default_console'/DEFAULT_CONSOLE_DEVICE` is not `EV_USBSERIAL`, USB serial will not be disabled and `SERIAL1` enabled.
   * However if `DEFAULT_CONSOLE_DEVICE==EV_USBSERIAL` then USB serial will be kept powered and `SERIAL1` will not be enabled.
   * If the board uses a USB-to-UART converter and does not have USB connected to the chip, you can avoid `ESPR_USE_USB_SERIAL_JTAG`. See issue #2609 and #2730
 
@@ -304,7 +304,7 @@ Some info about this class
   "generate" : "jswrap_hello_world"
 }
 We can write simple markdown-formatted comments in here. These
-then get scanned and turned into the Espruino [Reference](http://www.espruino.com/Reference)
+then get scanned and turned into the Espruino [Reference](https://www.espruino.com/Reference)
 
  * Bulletted
  * List
@@ -320,5 +320,5 @@ In the build process, [`scripts/build_jswrapper.py`](scripts/build_jswrapper.py)
 
 The wrapper files are also parsed by:
 
-* [`scripts/build_docs.py`](scripts/build_docs.py), which builds the HTML file used for the Espruino [Reference](http://www.espruino.com/Reference).
-* [`scripts/build_tern_json.js`](scripts/build_tern_json.js), which generates a JSON description of all functions (along with their documentation) which is used for code completion in the Web IDE *and to parse all code examples in order to produce the 'Examples' links in the [Reference](http://www.espruino.com/Reference)*.
+* [`scripts/build_docs.py`](scripts/build_docs.py), which builds the HTML file used for the Espruino [Reference](https://www.espruino.com/Reference).
+* [`scripts/build_tern_json.js`](scripts/build_tern_json.js), which generates a JSON description of all functions (along with their documentation) which is used for code completion in the Web IDE *and to parse all code examples in order to produce the 'Examples' links in the [Reference](https://www.espruino.com/Reference)*.

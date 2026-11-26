@@ -11,13 +11,13 @@ fs.readdirSync();
 fs.mkdir("node_modules");
 
 var http = require("http");
-http.get("http://www.espruino.com/modules/DS18B20.min.js", function(res) {
+http.get("https://www.espruino.com/modules/DS18B20.min.js", function(res) {
 var contents = "";
   res.on('data', function(data) { contents += data; });
   res.on('close', function() { console.log(contents);
          fs.writeFileSync("node_modules/DS18B20.js", contents );});
   res.on('data', function(data) {
-    
+
   });
 });
 

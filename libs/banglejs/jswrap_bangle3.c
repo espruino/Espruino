@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains JavaScript interface for Bangle.js 3 (http://www.espruino.com/Bangle.js)
+ * Contains JavaScript interface for Bangle.js 3 (https://www.espruino.com/Bangle.js)
  * ----------------------------------------------------------------------------
  */
 #include "jsutils.h"

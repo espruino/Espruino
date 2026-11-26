@@ -17,7 +17,7 @@ import pinutils;
 
 info = {
  'name' : "Espruino Bangle.js",
- 'link' :  [ "http://www.espruino.com/Bangle.js" ],
+ 'link' :  [ "https://www.espruino.com/Bangle.js" ],
  'espruino_page_link' : 'Bangle.js',
  'default_console' : "EV_BLUETOOTH",
  'variables' : 2100, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.

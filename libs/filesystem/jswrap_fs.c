@@ -44,7 +44,7 @@ for compatibility.
 To use this, you must type ```var fs = require('fs')``` to get access to the
 library
 
-See [the page on File IO](http://www.espruino.com/File+IO) for more information,
+See [the page on File IO](https://www.espruino.com/File+IO) for more information,
 and for examples on wiring up an SD card if your device doesn't come with one.
 
 **Note:** If you want to remove an SD card after you have started using it, you

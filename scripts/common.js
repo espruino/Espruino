@@ -31,7 +31,7 @@ Builtin.prototype.getURL = function() {
     anchor = "l_"+this.class+"_"+this.name;
   else
     anchor = "l__global_"+this.name;
-  return "http://www.espruino.com/Reference#"+anchor;
+  return "https://www.espruino.com/Reference#"+anchor;
 };
 
 /// Tern types - for tern.js json format

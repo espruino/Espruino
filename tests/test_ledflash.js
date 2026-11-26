@@ -1,4 +1,4 @@
-// From http://www.espruino.com/Flashing+Lights
+// From https://www.espruino.com/Flashing+Lights
 
 Pin.prototype.startFlashing = function(period) {
   if (Pin.intervals==undefined) Pin.intervals = [];
