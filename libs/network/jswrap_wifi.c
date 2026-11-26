@@ -69,7 +69,7 @@ On ESP32/ESP8266 there is a `details` parameter which includes:
 
 * ssid - The SSID of the access point to which the association was established
 * mac - The BSSID/mac address of the access point
-* channel - The wifi channel used (an integer, typ 1..14)
+* channel - The wifi channel used (an integer, 1..14)
 
 */
 
@@ -248,7 +248,7 @@ The options properties may contain:
 * `allChannels` - [2v30+ ESP32] if true, scans all Wifi channels for the AP (the default is a 'fast scan')
 * `dnsServers` (array of String) - An array of up to two DNS servers in dotted
   decimal format string.
-* `channel` - Wifi channel of the access point (integer, typ 0..14, 0 means any
+* `channel` - Wifi channel of the access point (integer, 0..14, 0 means any
   channel), only on ESP8266.
 * `bssid` - Mac address of the access point (string, type "00:00:00:00:00:00"),
   only on ESP8266.
@@ -390,9 +390,9 @@ available are:
   * `min`
   * `max`
 
-Note: esp8266 SDK programmers may be missing an "opmode" option to set the
+Note: esp8266 SDK programmers may be missing an `"opmode"` option to set the
 sta/ap/sta+ap operation mode. Please use connect/scan/disconnect/startAP/stopAP,
-which all set the esp8266 opmode indirectly.
+which all set the esp8266 `opmode` indirectly.
 */
 
 /*JSON{
@@ -523,7 +523,7 @@ Note that the `ip`, `netmask`, and `gw` fields are omitted if no connection is e
 }
 Return the access point IP information in an object which contains:
 
-* ip - IP address as string (typ "192.168.4.1")
+* ip - IP address as string (eg "192.168.4.1")
 * netmask - The interface netmask as string
 * gw - The network gateway as string
 * mac - The MAC address as string of the form 00:00:00:00:00:00

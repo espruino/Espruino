@@ -190,7 +190,7 @@ E.on('packetUpload', e => {
 internal Espruino JavaScript variables such as lists
 of timers and watches.
 
-On earlier firmwares this was accessible via `global["\xff"]`
+On earlier firmware this was accessible via `global["\xff"]`
 */
 
 /*JSON{
@@ -2092,7 +2092,7 @@ JsVar *jswrap_espruino_CRC32(JsVar *data) {
     ["hue","float","The hue, as a value between 0 and 1"],
     ["sat","float","The saturation, as a value between 0 and 1"],
     ["bri","float","The brightness, as a value between 0 and 1"],
-    ["format","int","If `true` or `1`, return an array of [R,G,B] values betwen 0 and 255. If `16`, return a 16 bit number. `undefined`/`24` is the same as normal (returning a 24 bit number)"]
+    ["format","int","If `true` or `1`, return an array of [R,G,B] values between 0 and 255. If `16`, return a 16 bit number. `undefined`/`24` is the same as normal (returning a 24 bit number)"]
   ],
   "return" : ["JsVar","A 24 bit number containing bytes representing red, green, and blue `0xBBGGRR`. Or if `asArray` is true, an array `[R,G,B]`"],
   "typescript" : [

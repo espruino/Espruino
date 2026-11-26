@@ -280,14 +280,14 @@ void swdPY32FlashErase() {
 // Initialise PY32 flash write registers
 void swdPY32FlashWriteInit() {
 #if 0
-  swdWriteMem(0x40022030/*FLASH_TPS*/,  16); // 16 mhz
+  swdWriteMem(0x40022030/*FLASH_TPS*/,  16); // 16 MHz
   swdWriteMem(0x4002201C/*FLASH_TS0*/,  0x00000078);
   swdWriteMem(0x40022020/*FLASH_TS1*/,  0x0000002B);
   swdWriteMem(0x40022024/*FLASH_TS2P*/, 0x00000078);
   swdWriteMem(0x40022028/*FLASH_TS3P*/, 0x00000035);
   swdWriteMem(0x4002202C/*FLASH_PERT*/, 0x00001388);
 #else
-  swdWriteMem(0x40022030/*FLASH_TPS*/, 24); // 24 mhz
+  swdWriteMem(0x40022030/*FLASH_TPS*/, 24); // 24 MHz
   swdWriteMem(0x4002201C/*FLASH_TS0*/,  0x000000B4);
   swdWriteMem(0x40022020/*FLASH_TS1*/,  0x00000040);
   swdWriteMem(0x40022024/*FLASH_TS2P*/, 0x000000B4);

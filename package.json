@@ -1,7 +1,7 @@
 {
   "name": "Espruino",
   "description": "Espruino JavaScript Interpreter",
-  "author": "Gordon Williams <gw@pur3.co.uk> (http://espruino.com)",
+  "author": "Gordon Williams <gw@pur3.co.uk> (https://espruino.com)",
   "license": "MPLv2",
   "repository": "https://github.com/espruino/Espruino",
   "scripts": {
@@ -11,6 +11,6 @@
     "highlight.js": "^11.6.0",
     "marked": "^4.0.18",
     "btoa": "^1.2.1",
-    "pngjs": "^7.0.0"    
+    "pngjs": "^7.0.0"
   }
 }

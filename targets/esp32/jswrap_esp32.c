@@ -167,7 +167,7 @@ void _jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
   "ifdef" : "ESP32",
   "name"     : "deepSleep",
   "generate" : "jswrap_ESP32_deepSleep",
-  "params"   : [ ["us", "JsVar", "Sleeptime in us, or an object (see below)"] ]
+  "params"   : [ ["us", "JsVar", "Sleep time in us, or an object (see below)"] ]
 }
 Put device in deepsleep state for "us" microseconds. This is the lowest
 power sleep state. When it wakes, it reboots as if powered on again -
@@ -190,7 +190,7 @@ In 2v30 and later `us` can also be an object with the following fields:
 On ESP32-C3, valid wakeup pins are GPIO 0–5 (e.g. `D3` for the power button).
 On other ESP32 variants, pins must be [RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
 
-On 2v29 and earlier firmwares `us` was 32 bits, so delays of much over 35 minutes would roll over and not wake the device. This is now fixed.
+On 2v29 and earlier firmware `us` was 32 bits, so delays of much over 35 minutes would roll over and not wake the device. This is now fixed.
 */
 void jswrap_ESP32_deepSleep(JsVar *us) {
   if (jsvIsObject(us)) {

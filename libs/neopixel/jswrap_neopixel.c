@@ -212,9 +212,9 @@ bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
 
   // values for 160Mhz clock
-  uint8_t tOne =  90;  // one bit, high typ 800ns
-  uint8_t tZero = 40;  // zero bit, high typ 300ns
-  uint8_t tLow = 170;  // total cycle, typ 1.2us
+  uint8_t tOne =  90;  // one bit, high eg 800ns
+  uint8_t tZero = 40;  // zero bit, high eg 300ns
+  uint8_t tLow = 170;  // total cycle, eg 1.2us
   if (system_get_cpu_freq() < 100) {
     tOne = 56;  // 56 cyc = 700ns
     tZero = 14; // 14 cycl = 175ns
@@ -274,8 +274,8 @@ bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
   // iterate through all bits
   while(1) {
     uint32_t t;
-    if (pix & mask) t = 56; // one bit, high typ 800ns (56 cyc = 700ns)
-    else            t = 14; // zero bit, high typ 300ns (14 cycl = 175ns)
+    if (pix & mask) t = 56; // one bit, high eg 800ns (56 cyc = 700ns)
+    else            t = 14; // zero bit, high eg 300ns (14 cycl = 175ns)
     GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);  // Set high
     start = _getCycleCount();                        // get start time of this bit
     while (_getCycleCount()-start < t) ;             // busy-wait

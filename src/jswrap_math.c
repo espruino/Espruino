@@ -238,7 +238,7 @@ double jswrap_math_atan(double x) {
     ["y","float","The Y-part of the angle to get the arc tangent of"],
     ["x","float","The X-part of the angle to get the arc tangent of"]
   ],
-  "return" : ["float","The arctangent of Y/X, between -PI and PI"]
+  "return" : ["float","The arc-tangent of Y/X, between -PI and PI"]
 }*/
 double jswrap_math_atan2(double y, double x) {
 #ifdef SAVE_ON_FLASH_MATH

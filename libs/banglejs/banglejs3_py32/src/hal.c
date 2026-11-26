@@ -112,7 +112,7 @@ void APP_GPIO_Config(void) {
   hrtc.Init.AsynchPrediv   = RTC_AUTO_1_SECOND;   // Default prediv values for 32.768kHz LSE/LSI
   // AsynchPrediv doesn't seem to have an effect on RTC_OUT
   // RTC_OUTPUTSOURCE_CALIBCLOCK outputs 512hz square wave
-  // RTC_OUTPUTSOURCE_SECOND outpus 1 second pulse (not square wave)
+  // RTC_OUTPUTSOURCE_SECOND outputs 1 second pulse (not square wave)
   hrtc.Init.OutPut         = RTC_OUTPUTSOURCE_CALIBCLOCK;          // Clear default alarm/tamper output routing
   int e;
 

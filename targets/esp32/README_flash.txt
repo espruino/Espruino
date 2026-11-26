@@ -15,4 +15,4 @@ python ${ESP_IDF_PATH}/components/esptool_py/esptool/esptool.py \
 	0x8000 partitions_espruino.bin
 
 On windows, its an option to use flash tools from espressif found here:
-http://espressif.com/sites/default/files/tools/flash_download_tools_v3.4.4.zip
+https://espressif.com/sites/default/files/tools/flash_download_tools_v3.4.4.zip

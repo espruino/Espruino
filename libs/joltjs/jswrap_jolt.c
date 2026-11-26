@@ -290,7 +290,7 @@ turn the driver on with a high output, `H0.reset()` will pull the output to GND 
 turn the motor driver off.
 * `true` / `"output"` - **[recommended]** driver is set to "Independent bridge" mode. All 4 outputs in the bank are enabled
 * `"motor"` - driver is set to "4 pin interface" mode where pins are paired up (H0+H1, H2+H3, etc). If both
-in a pair are 0 the output is open circuit (motor coast), if both are 1 both otputs are 0 (motor brake), and
+in a pair are 0 the output is open circuit (motor coast), if both are 1 both outputs are 0 (motor brake), and
 if both are different, those values are on the output:
 
 `output`/`auto` mode:

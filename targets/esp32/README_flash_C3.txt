@@ -13,4 +13,4 @@ esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset  \
 ```
 
 On Windows, you can use the flash tools from espressif found here:
-http://espressif.com/sites/default/files/tools/flash_download_tools_v3.4.4.zip
+https://espressif.com/sites/default/files/tools/flash_download_tools_v3.4.4.zip

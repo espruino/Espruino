@@ -371,7 +371,7 @@ Receive infrared signals that the watch has received.
 Waits at most 1s for signals
 */
 JsVar *jswrap_banglejs3_receiveIR() {
-  /* FIXME: This is just for debugging at the moment. Evantually
+  /* FIXME: This is just for debugging at the moment. Eventually
   we will want to analyse the raw signal and return just the pulse periods
   such that they can be passed into Bangle.IR(...). It might even make sense to
   do that analysis on the PY32. */
@@ -602,17 +602,4 @@ void jswrap_banglejs_lcdUpdateFirmware() {
   // Force a redraw next time around idle loop
   graphicsSetModified(&graphicsInternal,0,0,LCD_WIDTH-1,LCD_HEIGHT-1);
   jsiConsolePrintf("Done\n");
-
-  /* pyocd
-0000301 I DP IDR = 0x0bc11477 (v1 MINDP rev0) [dap]
-0000323 I AHB-AP#0 IDR = 0x04770031 (AHB-AP var3 rev0) [discovery]
-0000337 I AHB-AP#0 Class 0x1 ROM table #0 @ 0xe00ff000 (designer=43b:Arm part=4c0) [rom_table]
-0000348 I [0]<e000e000:SCS v6-M class=14 designer=43b:Arm part=008> [rom_table]
-0000354 I [1]<e0001000:DWT v6-M class=14 designer=43b:Arm part=00a> [rom_table]
-0000360 I [2]<e0002000:BPU v6-M class=14 designer=43b:Arm part=00b> [rom_table]
-0000365 I debugvar 'DbgMCU_APB_Fz1' = 0x0 (0) [pack_target]
-0000365 I debugvar 'DbgMCU_APB_Fz2' = 0x0 (0) [pack_target]
-0000365 I debugvar 'DbgMCU_CR' = 0x2 (2) [pack_target]
-0000389 I CPU core #0: Cortex-M0+ r0p1, v6.0-M architecture [cortex_m]
-  */
 }

@@ -461,7 +461,7 @@ Emitted when a 'gesture' (fast movement) is detected
   "type" : "event",
   "class" : "Bangle",
   "name" : "aiGesture",
-  "params" : [["gesture","JsVar","The name of the gesture (if '.tfnames' exists, or the index. 'undefined' if not matching"],
+  "params" : [["gesture","JsVar","The name of the gesture (if `'.tfnames'` exists, or the index. 'undefined' if not matching"],
               ["weights","JsVar","An array of floating point values output by the model"]],
   "ifdef" : "BANGLEJS",
   "typescript" : "on(event: \"aiGesture\", callback: (gesture: string | undefined, weights: number[]) => void): void;"
@@ -745,7 +745,7 @@ JshI2CInfo i2cInternal;
 #ifdef TOUCH_DEVICE
 short touchX, touchY; ///< current touch event coordinates
 short lastTouchX, lastTouchY; ///< last touch event coordinates - updated when JSBT_DRAG is fired
-bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
+bool touchPts, lastTouchPts; ///< whether a finger is currently touching or not
 unsigned char touchType; ///< variable to differentiate press, long press, double press
 short touchMinX = 0, touchMinY = 0, touchMaxX = TOUCH_DEVICE_RANGE, touchMaxY = TOUCH_DEVICE_RANGE; ///< touchscreen calibration values (what we expect from hardware, then we map this to LCD_WIDTH/HEIGHT)
 #ifdef TOUCH_SOFTWARE_GESTURES
@@ -802,7 +802,7 @@ JsVar *jswrap_banglejs_getBarometerObject();
 #include "vc31_binary/algo.h"
 /// The sport mode we're giving to the HRM algorithm. -1 = auto, >=0 = forced
 int8_t hrmSportMode;
-/// Running average of acceleration difference - if this goes above a certain level we assive we're doing sports
+/// Running average of acceleration difference - if this goes above a certain level we assume we're doing sports
 unsigned int hrmSportActivity;
 #define HRM_SPORT_ACTIVITY_THRESHOLD 2000 ///< value in hrmSportActivity before we assume we're in sport mode
 #define HRM_SPORT_ACTIVITY_TIMEOUT 20000 ///< millisecs after sport activity detected to stay in sport mode
@@ -920,7 +920,7 @@ unsigned int accDiff;
 int8_t accHistory[ACCEL_HISTORY_LEN*3];
 /// Index in accelerometer history of the last sample
 volatile uint8_t accHistoryIdx;
-/// How many samples have we been recording a gesture for? If 0, we're not recoding a gesture
+/// How many samples have we been recording a gesture for? If 0, we're not recording a gesture
 volatile uint8_t accGestureCount;
 /// How many samples have been recorded? Used when putting data into an array
 volatile uint8_t accGestureRecordedCount;
@@ -1724,7 +1724,7 @@ bool hasAccelData;
 
     // checking for gestures
     if (accGestureCount==0) { // no gesture yet
-      // if movement is eniugh, start one
+      // if movement is enough, start one
       if (accDiff > accelGestureStartThresh) {
         accIdleCount = 0;
         accGestureCount = 1;
@@ -1900,7 +1900,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
       but tells a Bangle.js-specific ifdef to not call user code. */
       flags |= EV_EXTI_DATA_PIN_HIGH;
     } else {
-      /* if the next event is a 'down', > 100ms after the last event, we propogate it
+      /* if the next event is a 'down', > 100ms after the last event, we propagate it
        and subsequent events */
       lcdWakeButton = 0;
       lcdWakeButtonTime = 0;
@@ -2168,7 +2168,7 @@ static void jswrap_banglejs_setLCDPowerController(bool isOn) {
   } else { // sleep
     lcdCmd_SPILCD(0x28, 0, NULL); // DISPOFF
     jshDelayMicroseconds(20);
-    lcdCmd_SPILCD(0x10, 0, NULL); // SLPIN - for GC9A01, it takeds 120ms to get into sleep mode after sending SPLIN
+    lcdCmd_SPILCD(0x10, 0, NULL); // SLPIN - for GC9A01, it takes 120ms to get into sleep mode after sending SPLIN
   }
 #endif
 #ifdef LCD_EN
@@ -2241,12 +2241,9 @@ void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
   }
 
   if (isOn) {
-    // programatically on counts as wake
     if (backlightTimeout > 0) inactivityTimer = 0;
     bangleFlags |= JSBF_LCD_BL_ON;
-  }
-  else {
-    // ensure screen locks if programatically switch off
+  } else { // ensure screen locks if explicitly switch off
     if (lockTimeout > 0 && lockTimeout <= backlightTimeout) _jswrap_banglejs_setLocked(true, "backlight");
     bangleFlags &= ~JSBF_LCD_BL_ON;
   }
@@ -2330,13 +2327,10 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
   }
 
   if (isOn) {
-    // programatically on counts as wake
     if (lcdPowerTimeout > 0 || backlightTimeout > 0) inactivityTimer = 0;
     bangleFlags |= JSBF_LCD_ON;
-  }
-  else {
+  } else { // ensure screen locks if explicitly switched off
     bangleFlags &= ~JSBF_LCD_ON;
-    // ensure screen locks if programatically switch off
     if (lockTimeout > 0 && lockTimeout <= lcdPowerTimeout) _jswrap_banglejs_setLocked(true, "lcd");
   }
 }
@@ -2421,7 +2415,7 @@ This function can be used to change the way graphics is handled on Bangle.js.
 * `Bangle.setLCDMode()` or `Bangle.setLCDMode("direct")` (the default) - The
   drawable area is the system's default (176x176 on Bangle.js 2 or 240x240 on Bangle.js 3).
 * `Bangle.setLCDMode("176x176")` - make the drawable area 176x176 for
-compatability with Bangle.js 2 (this has no effect on Bangle.js 2)
+compatibility with Bangle.js 2 (this has no effect on Bangle.js 2)
 
 */
 void jswrap_banglejs_setLCDMode(JsVar *mode) {
@@ -4330,7 +4324,7 @@ NO_INLINE void jswrap_banglejs_init() {
     jswrap_banglejs_accelWr(0x1f,0); // INC4 disabled
     jswrap_banglejs_accelWr(0x20,0); // INC5 disabled
     jswrap_banglejs_accelWr(0x21,0); // INC6 disabled
-    jswrap_banglejs_accelWr(0x23,3); // WUFC wakeupi detect counter
+    jswrap_banglejs_accelWr(0x23,3); // WUFC wakeup detect counter
     jswrap_banglejs_accelWr(0x24,3); // TDTRC Tap detect enable
     jswrap_banglejs_accelWr(0x25, 0x78); // TDTC Tap detect double tap (0x78 default)
     jswrap_banglejs_accelWr(0x26, 0xCB); // TTH Tap detect threshold high (0xCB default)
@@ -5124,7 +5118,7 @@ JsVar *jswrap_banglejs_dbg() {
   if (!o) return 0;
   jsvObjectSetIntChild(o,"accHistoryIdx", accHistoryIdx);
   jsvObjectSetIntChild(o,"accGestureCount", accGestureCount);
-  jsvObjectSetIntChild(o,"accIdleCount", accIdleCount); // How many acceleromneter samples have we not been moving for?
+  jsvObjectSetIntChild(o,"accIdleCount", accIdleCount); // How many accelerometer samples have we not been moving for?
   jsvObjectSetIntChild(o,"pollInterval", pollInterval); // How fast is the accelerometer running (in ms)
 #ifdef HEARTRATE_VC31_BINARY
   jsvObjectSetIntChild(o,"hrmSportTimer", hrmSportTimer); // how long since we were sure we were doing sport?

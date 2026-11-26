@@ -331,7 +331,7 @@ right-hand side of the array of pins). This means you can use the same pin
 multiple times, for example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0
 followed by A1.
 
-In 2v22 and later firmwares, using a boolean for the value will set *all* pins in
+In 2v22 and later firmware, using a boolean for the value will set *all* pins in
 the array to the same value, eg `digitalWrite(pins, value?0xFFFFFFFF:0)`. Previously
 digitalWrite with a boolean behaved like `digitalWrite(pins, value?1:0)` and would
 only set the first pin.

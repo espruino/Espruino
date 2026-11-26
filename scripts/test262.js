@@ -4,7 +4,7 @@
 Runs Test262 Ecmascript tests on Espruino.
 
 This expects that you've cloned https://github.com/tc39/test262 at the same
-level as the Espruino directory. 
+level as the Espruino directory.
 
 */
 
@@ -16,7 +16,7 @@ var testFails = [];
 var assertFails = [];
 var commonFailures = {};
 
-var wrapBegin = 
+var wrapBegin =
 'var $HADERROR = false;\n'+
 'function $ERROR(txt) {\n'+
 '  console.log("ERROR: ",txt);\n'+
@@ -35,7 +35,7 @@ var linesToIgnore = [
 "|   __|___ ___ ___ _ _|_|___ ___",
 "|   __|_ -| . |  _| | | |   | . |",
 "|_____|___|  _|_| |___|_|_|_|___|",
-"|_| http://espruino.com",
+"|_| https://espruino.com",
 "Uncaught FAIL"];
 
 function getTest(path) {
@@ -47,11 +47,11 @@ function runTest(path, callback) {
   var test = getTest(path);
 
   if (test.indexOf("\\u")>=0) {
-    console.log("Not run because of Unicode");    
+    console.log("Not run because of Unicode");
     return callback();
   }
   if (test.indexOf("es6id:")>=0) {
-    console.log("Not run because for ES6");    
+    console.log("Not run because for ES6");
     return callback();
   }
 
@@ -65,24 +65,24 @@ function runTest(path, callback) {
     }
   }
 
-  require("fs").writeFileSync("test.js", test); 
+  require("fs").writeFileSync("test.js", test);
   var result = require('child_process').exec('../espruino test.js', { timeout : 10 }, function (error, stdout, stderr) {
-    require("fs").unlinkSync("test.js"); 
+    require("fs").unlinkSync("test.js");
     if (error) {
       (stdout+"\n"+stderr).split("\n").forEach(function(l) {
         if (!error) return;
         l = l.trim();
-        if (l.indexOf("Copyright")>=0 || linesToIgnore.indexOf(l)>=0) return;        
+        if (l.indexOf("Copyright")>=0 || linesToIgnore.indexOf(l)>=0) return;
         console.log(l);
         if (negative && l.indexOf(negative>=0)) {
           console.log("NEGATIVE PASS");
           error = false;
         }
-        if (l.indexOf("ASSERT")==0) assertFails.push([path, l]);        
+        if (l.indexOf("ASSERT")==0) assertFails.push([path, l]);
         if (commonFailures[l]===undefined) commonFailures[l]=1;
         else commonFailures[l]++;
-      });      
-    } 
+      });
+    }
     if (!error) {
       console.log("PASS");
       testPasses.push(path);
@@ -123,10 +123,10 @@ if (process.argv.length==2) {
     console.log("------------------------------------------");
     console.log("Done! "+testPasses.length+" passes, "+testFails.length+" fails");
     console.log("------------------------------------------");
-    console.log("Assertion failures:"); 
+    console.log("Assertion failures:");
     assertFails.forEach(function(s) { console.log(s); });
     console.log("------------------------------------------");
-    console.log("Common failures:"); 
+    console.log("Common failures:");
     var fails = Object.keys(commonFailures);
     fails.sort(function(a,b) { return commonFailures[b]-commonFailures[a]; });
     for (var i=0;i<50 && i<fails.length;i++) {

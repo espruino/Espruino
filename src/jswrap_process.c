@@ -215,7 +215,7 @@ memory usage.
   advertised.
 * `rx` : [2v30+] `{ used : int, total : int }` bytes of data that are in the
 receive buffer. This buffer is used to handle incoming character data and events
-from devices that comes in asyncronously (e.g. Bluetooth, Serial, USB, GPIO interrupts, etc).
+from devices that comes in asynchronously (e.g. Bluetooth, Serial, USB, GPIO interrupts, etc).
 If the buffer is getting full, it means that JS code isn't executing fast enough to handle
 the data, and you may receive a `FIFO_FULL` error in `E.getErrorFlags()` if it gets completely full.
 * `tx` : [2v30+] `{ used : int, total : int }` bytes of data that are in the

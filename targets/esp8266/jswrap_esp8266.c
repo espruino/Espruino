@@ -224,7 +224,7 @@ Returns an object that contains details about the state of the ESP8266 with the
 following fields:
 
 * `sdkVersion` - Version of the SDK.
-* `cpuFrequency` - CPU operating frequency in Mhz.
+* `cpuFrequency` - CPU operating frequency in MHz.
 * `freeHeap` - Amount of free heap in bytes.
 * `maxCon` - Maximum number of concurrent connections.
 * `flashMap` - Configured flash size&map: '512KB:256/256' .. `'4MB:512/512'`
@@ -324,8 +324,8 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
 // Good article on timing requirements:
 // http://wp.josh.com/2014/05/13/ws2812-neo­pixels-are-not-so-finicky-once-you-get-t­o-know-them/
 // Summary:
-// zero: high typ 350ns, max 500ns; low typ 600ns, max 5us
-// one : high typ 700ns, min 500ns; low typ 600ns, max 5us
+// zero: high 350ns, max 500ns; low 600ns, max 5us
+// one : high 700ns, min 500ns; low 600ns, max 5us
 // latch: low min 6us
 
 /*JSON{
@@ -356,7 +356,7 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   "generate" : "jswrap_ESP8266_deepSleep",
   "params"   : [
     ["micros", "JsVar", "Number of microseconds to sleep."],
-    ["option", "JsVar", "posible values are 0, 1, 2 or 4"]
+    ["option", "JsVar", "possible values are 0, 1, 2 or 4"]
   ]
 }
 Put the ESP8266 into 'deep sleep' for the given number of microseconds, reducing

@@ -582,7 +582,7 @@ Called when an NFC field is no longer detected
   "class" : "NRF",
   "name" : "NFCrx",
   "params" : [
-    ["arr","JsVar","An ArrayBuffer containign the received data"]
+    ["arr","JsVar","An ArrayBuffer containing the received data"]
   ],
   "#if" : "defined(NRF52_SERIES) && defined(USE_NFC)"
 }
@@ -1362,7 +1362,7 @@ On NRF52833/NRF52840 based devices you can specify `phy` (the physical connectio
 * `phy:"coded,1mbps"` - both long range and normal, but advertisements sent on the `coded` phy
 * `phy:"1mbps,coded"` - both long range and normal, but advertisements sent on the `1mbps` phy - this allows for long range connections while also being compatible with everything
 
-If you wish to have the best of both world (long range advertising and compatiblity) then
+If you wish to have the best of both world (long range advertising and compatibility) then
 Nordic suggest changing advertising between `coded,1mbps` and `1mbps,coded` every 500ms
 
 */
@@ -3459,13 +3459,13 @@ JsVar *jswrap_ble_amsGetTrackInfo(JsVar *id) {
     "ifdef" : "ESPR_BLUETOOTH_ANCS",
     "generate" : "jswrap_ble_amsCommand",
     "params" : [
-      ["id","JsVar","For example, 'play', 'pause', 'volup' or 'voldown'"]
+      ["id","JsVar","For example, `'play'`, `'pause'`, `'volup'` or `'voldown'`"]
     ]
 }
 Send an AMS command to an Apple Media Service device to control music playback
 
-Command is one of play, pause, playpause, next, prev, volup, voldown, repeat,
-shuffle, skipforward, skipback, like, dislike, bookmark
+Command is one of `play`, `pause`, `playpause`, `next`, `prev`, `volup`, `voldown`, `repeat`,
+`shuffle`, `skipforward`, `skipback`, `like`, `dislike`, `bookmark`
 */
 void jswrap_ble_amsCommand(JsVar *id) {
 #if ESPR_BLUETOOTH_ANCS

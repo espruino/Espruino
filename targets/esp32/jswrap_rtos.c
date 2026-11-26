@@ -203,7 +203,7 @@ JsVar *jswrap_Timer_constructor(JsVar *timerName,int group, int index, int isrIn
   "type"     : "method",
   "class"    : "Timer",
   "name"     : "start",
-  "params"   : [["duration","int","duration of timmer in micro secs"]],
+  "params"   : [["duration","int","duration of timer in micro secs"]],
   "generate" : "jswrap_Timer_start"
 }
 Starts a timer
@@ -216,7 +216,7 @@ void jswrap_Timer_start(JsVar *parent, int duration){
   "type"     : "method",
   "class"    : "Timer",
   "name"     : "reschedule",
-  "params"   : [["duration","int","duration of timmer in micro secs"]],
+  "params"   : [["duration","int","duration of trimmer in micro secs"]],
   "generate" : "jswrap_Timer_reschedule"
 }
 Reschedules a timer, needs to be started at least once

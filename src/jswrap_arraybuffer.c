@@ -1030,7 +1030,7 @@ Return a copy of a portion of this array (in a new array).
   "return" : ["JsVar","A boolean containing the result"],
   "typescript" : "some(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean;"
 }
-Return 'true' if the callback returns 'true' for any of the elements in thearray
+Return 'true' if the callback returns 'true' for any of the elements in the array
 */
 /*JSON{
   "type" : "method",

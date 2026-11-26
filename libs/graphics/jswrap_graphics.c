@@ -1437,7 +1437,7 @@ JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_toColor",
   "params" : [
-    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#rrggbb'` or `'#rgb'`"],
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexadecimal color string of the form `'#rrggbb'` or `'#rgb'`"],
     ["g","JsVar","Green (between 0 and 1)"],
     ["b","JsVar","Blue (between 0 and 1)"]
   ],
@@ -1635,7 +1635,7 @@ unsigned int jswrap_graphics_blendColor(JsVar *parent, JsVar *ca, JsVar *cb, JsV
   "name" : "setColor",
   "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
   "params" : [
-    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexadecimal color string of the form `'#012345'`"],
     ["g","JsVar","[optional] Green (between 0 and 1)"],
     ["b","JsVar","[optional] Blue (between 0 and 1)"]
   ],
@@ -1670,7 +1670,7 @@ be a floating point value, and `g` and `b` are ignored.
   "name" : "setBgColor",
   "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false)",
   "params" : [
-    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexadecimal color string of the form `'#012345'`"],
     ["g","JsVar","Green (between 0 and 1)"],
     ["b","JsVar","Blue (between 0 and 1)"]
   ],
@@ -1826,7 +1826,7 @@ JsVar *jswrap_graphics_setOffset(JsVar *parent, int x, int y) {
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmapped Font
+Make subsequent calls to `drawString` use the built-in 4x6 pixel bitmap Font
 
 It is recommended that you use `Graphics.setFont("4x6")` for more flexibility.
 */
@@ -4748,8 +4748,8 @@ void jswrap_graphics_saveScreenshot(JsVar *parent, JsVar *fileNameVar) {
   "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_quadraticBezier",
   "params" : [
-    ["arr","JsVar","An array of three vertices, six enties in form of ```[x0,y0,x1,y1,x2,y2]```"],
-    ["options","JsVar","number of points to calulate"]
+    ["arr","JsVar","An array of three vertices, six entries in form of ```[x0,y0,x1,y1,x2,y2]```"],
+    ["options","JsVar","number of points to calculate"]
   ],
   "return" : ["JsVar", "Array with calculated points" ],
   "typescript" : "quadraticBezier(arr: [number, number, number, number, number, number], options?: number): number[];"
