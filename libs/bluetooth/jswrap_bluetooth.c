@@ -301,12 +301,12 @@ void jswrap_ble_kill() {
   // stop any BLE tasks
   bleTask = BLETASK_NONE;
 #if ESPR_NO_PROMISES!=1
-  if (blePromise) jsvUnLock(blePromise);
+  jsvUnLock(blePromise);
   blePromise = 0;
 #endif
-  if (bleTaskInfo) jsvUnLock(bleTaskInfo);
+  jsvUnLock(bleTaskInfo);
   bleTaskInfo = 0;
-  if (bleTaskInfo2) jsvUnLock(bleTaskInfo2);
+  jsvUnLock(bleTaskInfo2);
   bleTaskInfo2 = 0;
   // if we were scanning, make sure we stop
   jsble_set_scanning(false, NULL);
@@ -2338,8 +2338,7 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
             }
             jsvUnLock(childName);
           } else if (field_type == BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA) {
-            jsvObjectSetChildAndUnLock(device, "manufacturer",
-                            jsvNewFromInteger((dPtr[i+3]<<8) | dPtr[i+2]));
+            jsvObjectSetIntChild(device, "manufacturer", (dPtr[i+3]<<8) | dPtr[i+2]);
             jsvObjectSetChildAndUnLock(device, "manufacturerData",
                 jsvNewArrayBufferWithData(field_length-3, (unsigned char*)&dPtr[i+4]));
           } // or unknown...
@@ -2381,7 +2380,7 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
   }
 
   if (deviceMatchedFilters)
-    jspExecuteFunction(callback, 0, 1, &device);
+    jsvUnLock(jspExecuteFunction(callback, 0, 1, &device));
   jsvUnLock2(deviceAddr, device);
 }
 
@@ -2403,8 +2402,7 @@ void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
     if (fn) {
       jsvAddFunctionParameter(fn, 0, filters); // bind param 1
       jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, callback); // bind 'this'
-      jsvObjectSetChild(execInfo.root, BLE_SCAN_EVENT, fn);
-      jsvUnLock(fn);
+      jsvObjectSetChildAndUnLock(execInfo.root, BLE_SCAN_EVENT, fn);
     }
   } else {
     jsvObjectRemoveChild(execInfo.root, BLE_SCAN_EVENT);
@@ -3016,8 +3014,7 @@ JsVar *jswrap_nfc_start(JsVar *payload) {
       jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
       return 0;
     }
-    jsvObjectSetChild(execInfo.hiddenRoot, "NfcEnabled", flatStr);
-    jsvUnLock(flatStr);
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "NfcEnabled", flatStr);
     uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
     memcpy(flatStrPtr, dataPtr, dataLen);
   } else {
@@ -3027,8 +3024,7 @@ JsVar *jswrap_nfc_start(JsVar *payload) {
       jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
       return 0;
     }
-    jsvObjectSetChild(execInfo.hiddenRoot, "NfcEnabled", flatStr);
-    jsvUnLock(flatStr);
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "NfcEnabled", flatStr);
   }
 
   /* start nfc */

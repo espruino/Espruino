@@ -281,9 +281,8 @@ void jswrap_interface_edit(JsVar *funcName) {
           jsvAppendStringVarComplete(newLine, funcData);
           jsvAppendString(newLine, ");");
         }
-        jsvUnLock(funcData);
         jsiReplaceInputLine(newLine);
-        jsvUnLock(newLine);
+        jsvUnLock2(funcData, newLine);
       }
     } else {
       jsExceptionHere(JSET_ERROR, "Edit should be called with the name of a function");

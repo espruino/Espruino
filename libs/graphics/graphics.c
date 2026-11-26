@@ -237,15 +237,14 @@ void graphicsSetVarInitial(JsGraphics *gfx) {
     data = jsvNewStringOfLength(sizeof(JsGraphicsData), NULL);
     jsvSetValueOfName(dataname, data);
   }
-  jsvUnLock(dataname);
   assert(data);
   jsvSetString(data, (char*)&gfx->data, sizeof(JsGraphicsData));
-  jsvUnLock(data);
+  jsvUnLock2(dataname, data);
 }
 
 // Set the data variable for graphics - graphics data must exist
 void graphicsSetVar(JsGraphics *gfx) {
-  JsVar *data = jsvSkipNameAndUnLock(jsvFindChildFromString(gfx->graphicsVar, JS_HIDDEN_CHAR_STR"gfx"));
+  JsVar *data = jsvObjectGetChildIfExists(gfx->graphicsVar, JS_HIDDEN_CHAR_STR"gfx");
 #if ESPR_GRAPHICS_INTERNAL
   if (!data) {
     graphicsInternal = *gfx;

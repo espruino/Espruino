@@ -564,8 +564,8 @@ void jsiSoftInit(bool hasBeenReset) {
       JsVar *watch = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChildIfExists(watch, "pin");
       bool highAcc = jsvObjectGetBoolChild(watch, "hispeed");
-      jshPinWatch(jshGetPinFromVar(watchPin), true, highAcc?JSPW_HIGH_SPEED:JSPW_NONE);
-      jsvUnLock2(watchPin, watch);
+      jshPinWatch(jshGetPinFromVarAndUnLock(watchPin), true, highAcc?JSPW_HIGH_SPEED:JSPW_NONE);
+      jsvUnLock(watch);
       jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
@@ -825,8 +825,8 @@ void jsiSoftKill() {
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChildIfExists(watchPtr, "pin");
-      jshPinWatch(jshGetPinFromVar(watchPin), false, JSPW_NONE);
-      jsvUnLock2(watchPin, watchPtr);
+      jshPinWatch(jshGetPinFromVarAndUnLock(watchPin), false, JSPW_NONE);
+      jsvUnLock(watchPtr);
       jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
@@ -844,8 +844,7 @@ void jsiSoftKill() {
     jsvStringIteratorNew(&it, initCode, 0);
     jsiDumpHardwareInitialisation((vcbprintf_callback)&jsvStringIteratorPrintfCallback, &it, false/*human readable*/);
     jsvStringIteratorFree(&it);
-    jsvObjectSetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, initCode);
-    jsvUnLock(initCode);
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, initCode);
   }
   // If we're here we're loading, saving or resetting - board is no longer at power-on state
   jsiStatus &= ~JSIS_COMPLETELY_RESET; // loading code, remove this flag
@@ -2395,7 +2394,7 @@ void jsiIdle() {
             JsVar *timeout = jsvObjectGetChildIfExists(watchPtr, "timeout");
             if (timeout) { // if we had a timeout, update the callback time
               JsSysTime timeoutTime = jsiLastIdleTime + (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChildIfExists(timeout, "time"));
-              jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce)));
+              jsvObjectSetChildAndUnLock(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce));
               jsvObjectSetBoolChild(timeout, "state", pinIsHigh);
               if (ignoreEvent || ((eventTime > timeoutTime) && (pinIsHigh!=oldWatchState))) {
                 // timeout should have fired, but we didn't get around to executing it!

@@ -1994,7 +1994,7 @@ static void gap_params_init() {
 
     memset(&gap_conn_params, 0, sizeof(gap_conn_params));
 
-    BLEFlags flags = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_FLAGS));
+    BLEFlags flags = jsvObjectGetIntegerChild(execInfo.hiddenRoot, BLE_NAME_FLAGS);
     if (flags & BLE_FLAGS_LOW_POWER) {
       gap_conn_params.min_conn_interval = MSEC_TO_UNITS(500, UNIT_1_25_MS);   // Minimum acceptable connection interval (500 ms)
       gap_conn_params.max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS);    // Maximum acceptable connection interval (1000 ms)
@@ -2498,9 +2498,9 @@ static void services_init() {
     jsvUnLock(hidReport);
 #endif
 #if ESPR_BLUETOOTH_ANCS
-    bool useANCS = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_ANCS));
-    bool useAMS = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_AMS));
-    bool useCTS = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_CTS));
+    bool useANCS = jsvObjectGetBoolChild(execInfo.hiddenRoot, BLE_NAME_ANCS);
+    bool useAMS = jsvObjectGetBoolChild(execInfo.hiddenRoot, BLE_NAME_AMS);
+    bool useCTS = jsvObjectGetBoolChild(execInfo.hiddenRoot, BLE_NAME_CTS);
     if (useANCS || useAMS || useCTS) {
       if (useANCS) bleStatus |= BLE_ANCS_INITED;
       if (useAMS) bleStatus |= BLE_AMS_INITED;
@@ -2965,7 +2965,7 @@ void jsble_restart_softdevice(JsVar *jsFunction) {
   JsSysTime lastTime = jshGetSystemTime();
   if (jsble_kill()) {
     if (jsvIsFunction(jsFunction))
-      jspExecuteFunction(jsFunction,NULL,0,NULL);
+      jsvUnLock(jspExecuteFunction(jsFunction,NULL,0,NULL));
     jsble_init();
     // reinitialise everything
     jswrap_ble_reconfigure_softdevice();
@@ -3465,7 +3465,7 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
 
   ble_gap_conn_params_t   gap_conn_params;
   memset(&gap_conn_params, 0, sizeof(gap_conn_params));
-  BLEFlags flags = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_FLAGS));
+  BLEFlags flags = jsvObjectGetIntegerChild(execInfo.hiddenRoot, BLE_NAME_FLAGS);
   if (flags & BLE_FLAGS_LOW_POWER) {
     gap_conn_params.min_conn_interval = MSEC_TO_UNITS(500, UNIT_1_25_MS);    // Minimum acceptable connection interval (500 ms)
     gap_conn_params.max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS);   // Maximum acceptable connection interval (1000 ms)

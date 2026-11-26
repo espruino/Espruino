@@ -198,8 +198,7 @@ bool run_test(const char *filename) {
     isBusy = jsiLoop();
 
   JsVar *result = jsvObjectGetChildIfExists(execInfo.root, "result");
-  bool pass = jsvGetBool(result);
-  jsvUnLock(result);
+  bool pass = jsvGetBoolAndUnLock(result);
 
   if (pass)
     warning("----------------------------- PASS %s", filename);

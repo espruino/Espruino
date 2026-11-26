@@ -297,9 +297,8 @@ JsVar *tv_setup_pal(tv_info_pal *inf) {
   if (!gfx) return 0;
   JsVar *buffer = jsvObjectGetChildIfExists(gfx, "buffer");
   JsVar *ab = jsvGetArrayBufferBackingString(buffer, NULL);
-  jsvUnLock(buffer);
   tvPixelPtr = (char*)(ab+1);
-  jsvUnLock(ab);
+  jsvUnLock2(buffer, ab);
 
   dma_setup(tvWidth * 1000000 / 52); // 52uS of picture
 
@@ -348,9 +347,8 @@ JsVar *tv_setup_vga(tv_info_vga *inf) {
   if (!gfx) return 0;
   JsVar *buffer = jsvObjectGetChildIfExists(gfx, "buffer");
   JsVar *ab = jsvGetArrayBufferBackingString(buffer, NULL);
-  jsvUnLock(buffer);
   tvPixelPtr = (char*)(ab+1);
-  jsvUnLock(ab);
+  jsvUnLock2(buffer, ab);
 
   dma_setup(tvWidth * 1000000 / 25); // 25uS of picture
   jshPinSetState(tvPinVideo, JSHPINSTATE_AF_OUT); // enable output for SPI

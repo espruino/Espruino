@@ -53,8 +53,7 @@ reads one character from queue, if available
 void jswrap_Queue_read(JsVar *parent) {
   char data;
   JsVar *idx = jsvObjectGetChildIfExists(parent,"index");
-  queue_read(jsvGetInteger(idx));
-  jsvUnLock(idx);
+  queue_read(jsvGetIntegerAndUnLock(idx));
   return;
 }
 /*JSON{

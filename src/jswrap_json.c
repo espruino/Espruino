@@ -124,8 +124,7 @@ JsVar *jswrap_json_parse_internal(JSONFlags flags) {
         jsvUnLock2(value, arr);
         return 0;
       }
-      jsvArrayPush(arr, value);
-      jsvUnLock(value);
+      jsvArrayPushAndUnLock(arr, value);
     }
     if (!jslMatch(']')) {
       jsvUnLock(arr);

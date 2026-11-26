@@ -239,7 +239,7 @@ void jswrap_wifi_disconnect(JsVar *jsCallback) {
   DBGV("> Wifi.disconnect\n");
 
   // Free any existing callback, then register new callback
-  if (g_jsDisconnectCallback != NULL) jsvUnLock(g_jsDisconnectCallback);
+  jsvUnLock(g_jsDisconnectCallback);
   g_jsDisconnectCallback = NULL;
   if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
     EXPECT_CB_EXCEPTION(jsCallback);
@@ -312,9 +312,7 @@ void jswrap_wifi_connect(
   }
 
   // Check callback
-  if (g_jsGotIpCallback != NULL) {
-    jsvUnLock(g_jsGotIpCallback);
-  }
+  jsvUnLock(g_jsGotIpCallback);
   g_jsGotIpCallback = NULL;
   if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
     EXPECT_CB_EXCEPTION(jsCallback);
@@ -322,7 +320,7 @@ void jswrap_wifi_connect(
   }
 
   // Clear disconnect callback to prevent disconnection from disabling station mode
-  if (g_jsDisconnectCallback != NULL) jsvUnLock(g_jsDisconnectCallback);
+  jsvUnLock(g_jsDisconnectCallback);
   g_jsDisconnectCallback = NULL;
   g_disconnecting = false; // we're gonna be connecting...
 
@@ -663,18 +661,12 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
   if (conn < 0) conn = 0;
 
   JsVar *jsWiFiStatus = jsvNewObject();
-  jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode",
-    jsvNewFromString(wifiMode[opMode]));
-  jsvObjectSetChildAndUnLock(jsWiFiStatus, "station",
-    jsvNewFromString((opMode&STATION_MODE) ? wifiConn[conn] : "off"));
-  jsvObjectSetChildAndUnLock(jsWiFiStatus, "ap",
-    jsvNewFromString((opMode & SOFTAP_MODE) ? "enabled" : "disabled"));
-  jsvObjectSetChildAndUnLock(jsWiFiStatus, "phy",
-    jsvNewFromString(wifiPhy[phy]));
-  jsvObjectSetChildAndUnLock(jsWiFiStatus, "powersave",
-    jsvNewFromString(sleep == NONE_SLEEP_T ? "none" : "ps-poll"));
-  jsvObjectSetChildAndUnLock(jsWiFiStatus, "savedMode",
-    jsvNewFromString(wifiMode[savedMode]));
+  jsvObjectSetStringChild(jsWiFiStatus, "mode", wifiMode[opMode]);
+  jsvObjectSetStringChild(jsWiFiStatus, "station", (opMode&STATION_MODE) ? wifiConn[conn] : "off");
+  jsvObjectSetStringChild(jsWiFiStatus, "ap", (opMode & SOFTAP_MODE) ? "enabled" : "disabled");
+  jsvObjectSetStringChild(jsWiFiStatus, "phy", wifiPhy[phy]);
+  jsvObjectSetStringChild(jsWiFiStatus, "powersave", sleep == NONE_SLEEP_T ? "none" : "ps-poll");
+  jsvObjectSetStringChild(jsWiFiStatus, "savedMode", wifiMode[savedMode]);
 
   // Schedule callback if a function was provided
   if (jsvIsFunction(jsCallback)) {
@@ -713,7 +705,7 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
       return;
     }
   }
-  if (jsPhy != NULL) jsvUnLock(jsPhy);
+  jsvUnLock(jsPhy);
 
   // powersave setting
   JsVar *jsPowerSave = jsvObjectGetChildIfExists(jsSettings, "powersave");
@@ -728,7 +720,7 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
       return;
     }
   }
-  if (jsPowerSave != NULL) jsvUnLock(jsPowerSave);
+  jsvUnLock(jsPowerSave);
 
   DBGV("< Wifi.setConfig\n");
 }
@@ -798,8 +790,7 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
 
   JsVar *jsDetails = jsvNewObject();
 
-  jsvObjectSetChildAndUnLock(jsDetails, "status",
-    jsvNewFromString(opMode & SOFTAP_MODE ? "enabled" : "disabled"));
+  jsvObjectSetStringChild(jsDetails, "status", opMode & SOFTAP_MODE ? "enabled" : "disabled");
 
   struct softap_config config;
   wifi_softap_get_config(&config);
@@ -830,8 +821,7 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
         station->bssid[0], station->bssid[1], station->bssid[2],
         station->bssid[3], station->bssid[4], station->bssid[5]);
       jsvObjectSetStringChild(jsSta, "mac", macAddrString);
-      jsvArrayPush(jsArray, jsSta);
-      jsvUnLock(jsSta);
+      jsvArrayPushAndUnLock(jsArray, jsSta);
       station = STAILQ_NEXT(station, next);
     }
     wifi_softap_free_station_info();
@@ -906,17 +896,14 @@ void jswrap_wifi_restore(void) {
 
   JsVar *v;
   v = jsvObjectGetChildIfExists(o,"mode");
-  savedMode = jsvGetInteger(v);
-  jsvUnLock(v);
+  savedMode = jsvGetIntegerAndUnLock(v);
   wifi_set_opmode_current(savedMode);
 
   v = jsvObjectGetChildIfExists(o,"phyMode");
-  wifi_set_phy_mode(jsvGetInteger(v));
-  jsvUnLock(v);
+  wifi_set_phy_mode(jsvGetIntegerAndUnLock(v));
 
   v = jsvObjectGetChildIfExists(o,"sleepType");
-  wifi_set_sleep_type(jsvGetInteger(v));
-  jsvUnLock(v);
+  wifi_set_sleep_type(jsvGetIntegerAndUnLock(v));
 
   if (savedMode & SOFTAP_MODE) {
 
@@ -924,12 +911,10 @@ void jswrap_wifi_restore(void) {
     os_memset(&ap_config, 0, sizeof(ap_config));
 
     v = jsvObjectGetChildIfExists(o,"authmodeAP");
-    ap_config.authmode =jsvGetInteger(v);
-    jsvUnLock(v);
+    ap_config.authmode =jsvGetIntegerAndUnLock(v);
 
     v = jsvObjectGetChildIfExists(o,"hiddenAP");
-    ap_config.ssid_hidden = jsvGetInteger(v);
-    jsvUnLock(v);
+    ap_config.ssid_hidden = jsvGetIntegerAndUnLock(v);
 
     v = jsvObjectGetChildIfExists(o,"ssidAP");
     jsvGetString(v, (char *)ap_config.ssid, sizeof(ap_config.ssid));
@@ -942,8 +927,7 @@ void jswrap_wifi_restore(void) {
     jsvUnLock(v);
 
     v = jsvObjectGetChildIfExists(o,"channelAP");
-    ap_config.channel = jsvGetInteger(v);
-    jsvUnLock(v);
+    ap_config.channel = jsvGetIntegerAndUnLock(v);
 
     ap_config.max_connection = 4;
     ap_config.beacon_interval = 100;
@@ -1087,7 +1071,7 @@ void jswrap_wifi_getHostByName(
     return;
   }
   // Save the callback unlocking an old callback if needed.
-  if (g_jsHostByNameCallback != NULL) jsvUnLock(g_jsHostByNameCallback);
+  jsvUnLock(g_jsHostByNameCallback);
   g_jsHostByNameCallback = jsCallback;
   jsvLockAgainSafe(g_jsHostByNameCallback);
 
@@ -1304,17 +1288,13 @@ void jswrap_wifi_ping(
   }
 
   if (jsvIsUndefined(pingCallback) || jsvIsNull(pingCallback)) {
-    if (g_jsPingCallback != NULL) {
-      jsvUnLock(g_jsPingCallback);
-    }
+    jsvUnLock(g_jsPingCallback);
     g_jsPingCallback = NULL;
   } else if (!jsvIsFunction(pingCallback)) {
       jsExceptionHere(JSET_ERROR, "Callback is not a function");
     return;
   } else {
-    if (g_jsPingCallback != NULL) {
-      jsvUnLock(g_jsPingCallback);
-    }
+    jsvUnLock(g_jsPingCallback);
     g_jsPingCallback = pingCallback;
     jsvLockAgainSafe(g_jsPingCallback);
   }
@@ -1517,8 +1497,7 @@ static void scanCB(void *arg, STATUS status) {
     jsvObjectSetStringChild(jsCurrentAccessPoint, "mac", macAddrString);
 
     // Add the new record to the array
-    jsvArrayPush(jsAccessPointArray, jsCurrentAccessPoint);
-    jsvUnLock(jsCurrentAccessPoint);
+    jsvArrayPushAndUnLock(jsAccessPointArray, jsCurrentAccessPoint);
     count++;
 
     DBGV(" - ssid: %s\n", bssInfo->ssid);
@@ -1603,8 +1582,7 @@ static void wifiEventHandler(System_Event_t *evt) {
     os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     jsvObjectSetStringChild(jsDetails, "mac", macAddrString);
     // channel
-    jsvObjectSetChildAndUnLock(jsDetails, "channel",
-        jsvNewFromInteger(evt->event_info.connected.channel));
+    jsvObjectSetIntChild(jsDetails, "channel", evt->event_info.connected.channel);
     sendWifiEvent(evt->event, jsDetails);
     break;
 
@@ -1670,10 +1648,8 @@ static void wifiEventHandler(System_Event_t *evt) {
       wifiAuth[evt->event_info.auth_change.old_mode],
       wifiAuth[evt->event_info.auth_change.new_mode]);
 
-    jsvObjectSetChildAndUnLock(jsDetails, "oldMode",
-      jsvNewFromString(wifiAuth[evt->event_info.auth_change.old_mode]));
-    jsvObjectSetChildAndUnLock(jsDetails, "newMode",
-      jsvNewFromString(wifiAuth[evt->event_info.auth_change.new_mode]));
+    jsvObjectSetStringChild(jsDetails, "oldMode", wifiAuth[evt->event_info.auth_change.old_mode]);
+    jsvObjectSetStringChild(jsDetails, "newMode", wifiAuth[evt->event_info.auth_change.new_mode]);
     sendWifiEvent(evt->event, jsDetails);
     break;
 

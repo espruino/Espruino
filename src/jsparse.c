@@ -1667,8 +1667,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
   if (classFunction) {
     JsVar *prototypeName = jsvFindOrAddChildFromString(classFunction, JSPARSE_PROTOTYPE_VAR);
     jspEnsureIsPrototype(classFunction, prototypeName); // make sure it's an object
-    classPrototype = jsvSkipName(prototypeName);
-    jsvUnLock(prototypeName);
+    classPrototype = jsvSkipNameAndUnLock(prototypeName);
   }
   if (lex->tk==LEX_R_EXTENDS) {
     JSP_ASSERT_MATCH(LEX_R_EXTENDS);
@@ -2124,8 +2123,7 @@ NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
       JSP_MATCH(':');
       jsvUnLock(jspeAssignmentExpression());
     } else {
-      bool first = jsvGetBoolAndUnLock(jsvGetValueOfAndUnLock(jsvSkipName(lhs)));
-      jsvUnLock(lhs);
+      bool first = jsvGetBoolAndUnLock(jsvGetValueOfAndUnLock(jsvSkipNameAndUnLock(lhs)));
       if (first) {
         lhs = jsvSkipNameAndUnLock(jspeAssignmentExpression());
         JSP_MATCH(':');
@@ -2790,8 +2788,7 @@ NO_INLINE JsVar *jspeStatementFor() {
         loopCond = true;
       } else {
         JsVar *cond = jspeExpression();
-        loopCond = jsvGetBoolAndUnLock(jsvSkipName(cond));
-        jsvUnLock(cond);
+        loopCond = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(cond));
       }
       if (JSP_SHOULD_EXECUTE && loopCond) {
         jslSeekToP(&forBodyStart);

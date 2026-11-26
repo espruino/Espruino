@@ -351,10 +351,9 @@ void ssl_freeSocketData(int sckt) {
   if (!ssl) return;
   JsVar *scktVar = jsvNewFromInteger(sckt);
   JsVar *sslDataVar = jsvFindChildFromVar(ssl, scktVar, false);
-  jsvUnLock(scktVar);
   JsVar *sslData = jsvSkipName(sslDataVar);
   jsvRemoveChildAndUnLock(ssl, sslDataVar);
-  jsvUnLock(ssl);
+  jsvUnLock2(scktVar, ssl);
   SSLSocketData *sd = 0;
   if (jsvIsFlatString(sslData)) {
     sd = (SSLSocketData *)jsvGetFlatStringPointer(sslData);
@@ -466,9 +465,7 @@ bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
 
 
   }
-  jsvUnLock(buffer);
-
-  jsvUnLock(keyVar);
+  jsvUnLock2(buffer, keyVar);
   if (ret != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
     jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_pk_parse_key: %v", e);
@@ -491,9 +488,7 @@ bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
   if (certLen && certPtr) {
     ret = mbedtls_x509_crt_parse(&sd->owncert, (const unsigned char *)certPtr, certLen);
   }
-  jsvUnLock(buffer);
-
-  jsvUnLock(certVar);
+  jsvUnLock2(buffer, certVar);
   if (ret != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
     jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_x509_crt_parse of 'cert': %v", e);
@@ -515,9 +510,7 @@ bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
   if (caLen && caPtr) {
     ret = mbedtls_x509_crt_parse(&sd->cacert, (const unsigned char *)caPtr, caLen);
   }
-  jsvUnLock(buffer);
-
-  jsvUnLock(caVar);
+  jsvUnLock2(buffer, caVar);
   if (ret != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
     jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_x509_crt_parse of 'ca': %v", e);

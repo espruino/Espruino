@@ -415,7 +415,7 @@ void lcdInit_SPILCD(JsGraphics *gfx) {
 #if LCD_BPP==12 || LCD_BPP==16
 // Enable overlay mode (to overlay a graphics instance on top of the LCD contents)
 void lcdSetOverlay_SPILCD(JsVar *imgVar, int x, int y) {
-  if (lcdOverlayImage) jsvUnLock(lcdOverlayImage);
+  jsvUnLock(lcdOverlayImage);
   if (imgVar) {
     lcdOverlayImage = jsvLockAgain(imgVar);
     lcdOverlayX = (short)x;

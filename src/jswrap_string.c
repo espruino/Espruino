@@ -614,8 +614,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 
       JsVar *part = jsvNewFromStringVar(parent, (size_t)jsvConvertFromUTF8Index(parent, last), (size_t)(jsvConvertFromUTF8Index(parent, idx)-jsvConvertFromUTF8Index(parent, last)));
       if (!part) break; // out of memory
-      jsvArrayPush(array, part);
-      jsvUnLock(part);
+      jsvArrayPushAndUnLock(array, part);
       last = idx+splitlen;
     }
   }

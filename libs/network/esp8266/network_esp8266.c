@@ -1099,12 +1099,11 @@ int net_ESP8266_BOARD_createSocket(
       char ipStr[18];
 
       jsvGetString(mgrpVar, ipStr, sizeof(ipStr));
-      jsvUnLock(mgrpVar);
       uint32_t grpip = networkParseIPv4Address(ipStr);
 
       JsVar *ipVar = jsvObjectGetChildIfExists(options, "multicastIp");
       jsvGetString(ipVar, ipStr, sizeof(ipStr));
-      jsvUnLock(ipVar);
+      jsvUnLock2(mgrpVar, ipVar);
       uint32_t ip = networkParseIPv4Address(ipStr);
 
       pSocketData->multicastGrpIp = grpip;

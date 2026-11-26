@@ -3643,8 +3643,7 @@ JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue) {
   JsVarInt index = initialValue;
   if (jsvGetLastChild(arr)) {
     JsVar *last = jsvLock(jsvGetLastChild(arr));
-    index = jsvGetInteger(last)+1;
-    jsvUnLock(last);
+    index = jsvGetIntegerAndUnLock(last)+1;
   }
 
   JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), value);

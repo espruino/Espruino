@@ -178,8 +178,7 @@ bool jsserialGetSendFunction(JsVar *serialDevice, serial_sender *serialSend, ser
     JsVar *baud = jsvObjectGetChildIfExists(serialDevice, USART_BAUDRATE_NAME);
     JsVar *options = jsvObjectGetChildIfExists(serialDevice, DEVICE_OPTIONS_NAME);
     jsserialPopulateUSARTInfo(&inf, baud, options);
-    jsvUnLock(options);
-    jsvUnLock(baud);
+    jsvUnLock2(options, baud);
 
     *serialSend = jsserialSoftwareFunc;
     *serialSendData = inf;

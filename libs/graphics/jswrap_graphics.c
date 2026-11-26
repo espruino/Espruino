@@ -2219,8 +2219,7 @@ void jswrap_graphics_getFonts_callback(void *cbdata, JsVar *key) {
         jsvIsStringEqual(key,"setFontPBF") ||
         jsvIsStringEqual(key,"setFontCustom")) return; // throw away non-font functions
     JsVar *n = jsvNewFromStringVar(key, 7, JSVAPPENDSTRINGVAR_MAXLENGTH);
-    jsvArrayPush(result, n);
-    jsvUnLock(n);
+    jsvArrayPushAndUnLock(result, n);
   }
 }
 
@@ -2265,7 +2264,7 @@ static void _jswrap_graphics_getFontInfo(JsGraphics *gfx, JsGraphicsFontInfo *in
   }
 #ifndef SAVE_ON_FLASH
   if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-    info->customFirstChar = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR));
+    info->customFirstChar = (unsigned char)jsvObjectGetIntegerChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR);
     info->widths = jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_WIDTH);
     info->bitmap = jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_BMP);
 #ifdef ESPR_PBF_FONTS
@@ -2384,7 +2383,7 @@ static int _jswrap_graphics_getFontHeightInternal(JsGraphics *gfx, JsGraphicsFon
     if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_PBF)
       return info->scaley*info->pbfInfo.lineHeight;
 #endif
-    return info->scaley*(int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT));
+    return info->scaley*(int)jsvObjectGetIntegerChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT);
 #endif
   }
   return 0;
@@ -2638,8 +2637,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           if (jsvIsUTF8String(str))
             currentLine = jsvNewUTF8StringAndUnLock(currentLine);
 #endif
-          jsvArrayPush(lines, currentLine);
-          jsvUnLock(currentLine);
+          jsvArrayPushAndUnLock(lines, currentLine);
         }
         // Add the remaining bit of word
         currentLine = jsvNewWritableStringFromStringVar(str, (size_t)wordStartIdx, currentPos-((size_t)wordStartIdx+1));

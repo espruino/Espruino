@@ -2196,7 +2196,7 @@ void jswrap_espruino_setPassword(JsVar *pwd) {
 #ifndef ESPR_NO_PASSWORD
   if (pwd)
     pwd = jsvAsString(pwd);
-  jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, pwd));
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, pwd);
 #endif
 }
 
@@ -2244,8 +2244,7 @@ void jswrap_espruino_setTimeZone(JsVarFloat zone) {
   jswrap_espruino_setDST(0); // disable DST
 #endif
   // update the timezone var
-  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_TIMEZONE_VAR,
-      jsvNewFromInteger((int)(zone*60)));
+  jsvObjectSetIntChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR, (int)(zone*60));
 }
 
 #ifndef ESPR_NO_DAYLIGHT_SAVING

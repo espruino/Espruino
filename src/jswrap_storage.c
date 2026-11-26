@@ -814,8 +814,7 @@ operation.
 int jswrap_storagefile_getLength(JsVar *f) {
   // Get name and position of name digit
   JsVar *n = jsvObjectGetChildIfExists(f,"name");
-  JsfFileName fname = jsfNameFromVar(n);
-  jsvUnLock(n);
+  JsfFileName fname = jsfNameFromVarAndUnLock(n);
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
   int chunk = 1;

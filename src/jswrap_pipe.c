@@ -273,8 +273,7 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
           JsVar *c;
           c = jsvObjectGetChildIfExists(options, "complete");
           if (c) {
-            jsvObjectSetChild(pipe, JS_EVENT_PREFIX"complete", c);
-            jsvUnLock(c);
+            jsvObjectSetChildAndUnLock(pipe, JS_EVENT_PREFIX"complete", c);
           }
           c = jsvObjectGetChildIfExists(options, "end");
           if (c) callEnd = jsvGetBoolAndUnLock(c);

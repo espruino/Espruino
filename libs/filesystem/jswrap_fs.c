@@ -134,8 +134,7 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
 #endif
           JsVar *fnVar = jsvNewFromString(fn);
           if (fnVar) {// out of memory?
-            jsvArrayPush(arr, fnVar);
-            jsvUnLock(fnVar);
+            jsvArrayPushAndUnLock(arr, fnVar);
           }
         }
       }

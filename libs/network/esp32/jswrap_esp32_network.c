@@ -330,8 +330,7 @@ static void event_handler_scan_done() {
       // Detect hidden SSIDs (length 0 or first byte is empty)
       bool isHidden = (list[i].ssid[0] == '\0');
       jsvObjectSetBoolChild(jsCurrentAccessPoint, "isHidden", isHidden);
-      jsvArrayPush(jsAccessPointArray, jsCurrentAccessPoint);
-      jsvUnLock(jsCurrentAccessPoint);
+      jsvArrayPushAndUnLock(jsAccessPointArray, jsCurrentAccessPoint);
     }
     free(list);
   } // Number of access points > 0
@@ -340,8 +339,7 @@ static void event_handler_scan_done() {
   JsVar *params[1] = { jsAccessPointArray };
   jsiQueueEvents(NULL, g_jsScanCallback, params, 1);
 
-  jsvUnLock(jsAccessPointArray);
-  jsvUnLock(g_jsScanCallback);
+  jsvUnLock2(jsAccessPointArray, g_jsScanCallback);
   g_jsScanCallback = NULL;
 }
 
@@ -611,9 +609,7 @@ void jswrap_wifi_disconnect(JsVar *jsCallback) {
   //
   esp_err_t err;
   // Free any existing callback, then register new callback
-  if (g_jsDisconnectCallback != NULL) {
-    jsvUnLock(g_jsDisconnectCallback);
-  }
+  jsvUnLock(g_jsDisconnectCallback);
   g_jsDisconnectCallback = NULL;
 
   // Check that the callback is a good callback if supplied.
@@ -701,9 +697,7 @@ void jswrap_wifi_connect(
   }
 
   // Check callback
-  if (g_jsGotIpCallback != NULL) {
-    jsvUnLock(g_jsGotIpCallback);
-  }
+  jsvUnLock(g_jsGotIpCallback);
   g_jsGotIpCallback = NULL;
   if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
     EXPECT_CB_EXCEPTION(jsCallback);
@@ -711,9 +705,7 @@ void jswrap_wifi_connect(
   }
 
   // Clear disconnect callback to prevent disconnection from disabling station mode
-  if (g_jsDisconnectCallback != NULL) {
-    jsvUnLock(g_jsDisconnectCallback);
-  }
+  jsvUnLock(g_jsDisconnectCallback);
   g_jsDisconnectCallback = NULL;
 
   // Get the optional password
@@ -933,9 +925,7 @@ void jswrap_wifi_startAP(
   }
 
   // Check callback
-  if (g_jsAPStartedCallback != NULL) {
-    jsvUnLock(g_jsAPStartedCallback);
-  }
+  jsvUnLock(g_jsAPStartedCallback);
   g_jsAPStartedCallback = NULL;
   if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
     EXPECT_CB_EXCEPTION(jsCallback);
@@ -1110,12 +1100,10 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
       jsvObjectSetIntChild(jsWiFiStatus, "rssi", ap_info.rssi);
 
       // HT mode
-      jsvObjectSetChildAndUnLock(jsWiFiStatus, "htMode",
-        jsvNewFromString(htModeToString(ap_info.second)));
+      jsvObjectSetStringChild(jsWiFiStatus, "htMode", htModeToString(ap_info.second));
 
       // Auth mode
-      jsvObjectSetChildAndUnLock(jsWiFiStatus, "authMode",
-        jsvNewFromString(authModeToString(g_lastEventStaConnected.authmode)));
+      jsvObjectSetStringChild(jsWiFiStatus, "authMode", authModeToString(g_lastEventStaConnected.authmode));
 
       /* Later version
        * // Pairwise cipher
@@ -1129,8 +1117,7 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
     }
 
   } else {
-    jsvObjectSetChildAndUnLock(jsWiFiStatus, "station",
-        jsvNewFromString(wifiReasonToString(g_lastEventStaDisconnected.reason)));
+    jsvObjectSetStringChild(jsWiFiStatus, "station", wifiReasonToString(g_lastEventStaDisconnected.reason));
   }
   // if wifi hasn't started, return NULL
   if (!g_isAPStarted && !g_isStaConnected)
@@ -1164,7 +1151,7 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
       return;
     }
   }
-  if (jsPhy != NULL) jsvUnLock(jsPhy);
+  jsvUnLock(jsPhy);
 
   // powersave setting
   // Call esp_wifi_set_ps(WIFI_PS_MIN_MODEM) to enable Modem-sleep minimum power save mode or esp_wifi_set_ps(WIFI_PS_MAX_MODEM)
@@ -1182,7 +1169,7 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
       return;
     }
   }
-  if (jsPowerSave != NULL) jsvUnLock(jsPowerSave);
+  jsvUnLock(jsPowerSave);
 }
 
 JsVar *jswrap_wifi_getDetails(JsVar *jsCallback) {
@@ -1212,12 +1199,10 @@ JsVar *jswrap_wifi_getDetails(JsVar *jsCallback) {
     jsvObjectSetStringChild(jsDetails, "status", "connected");
 
     // Authmode
-    jsvObjectSetChildAndUnLock(jsDetails, "authMode",
-        jsvNewFromString(authModeToString(g_lastEventStaConnected.authmode)));
+    jsvObjectSetStringChild(jsDetails, "authMode", authModeToString(g_lastEventStaConnected.authmode));
   } else {
     // Status
-    jsvObjectSetChildAndUnLock(jsDetails, "status",
-        jsvNewFromString(wifiReasonToString(g_lastEventStaDisconnected.reason)));
+    jsvObjectSetStringChild(jsDetails, "status", wifiReasonToString(g_lastEventStaDisconnected.reason));
   }
 
   // Schedule callback if a function was provided
@@ -1576,17 +1561,13 @@ void jswrap_wifi_ping(
 
   // Validate and handle the callback binding
   if (jsvIsUndefined(pingCallback) || jsvIsNull(pingCallback)) {
-    if (g_jsPingCallback != NULL) {
-      jsvUnLock(g_jsPingCallback);
-    }
+    jsvUnLock(g_jsPingCallback);
     g_jsPingCallback = NULL;
   } else if (!jsvIsFunction(pingCallback)) {
     jsExceptionHere(JSET_ERROR, "Callback is not a function");
     return;
   } else {
-    if (g_jsPingCallback != NULL) {
-      jsvUnLock(g_jsPingCallback);
-    }
+    jsvUnLock(g_jsPingCallback);
     g_jsPingCallback = pingCallback;
     jsvLockAgainSafe(g_jsPingCallback);
   }
@@ -1681,8 +1662,7 @@ void jswrap_wifi_getHostByName(
     return;
   }
   // Save the callback, unlocking an old one if needed.
-  if (g_jsHostByNameCallback != NULL)
-    jsvUnLock(g_jsHostByNameCallback);
+  jsvUnLock(g_jsHostByNameCallback);
   g_jsHostByNameCallback = jsCallback;
   jsvLockAgainSafe(g_jsHostByNameCallback);
 
@@ -1712,8 +1692,7 @@ void jswrap_wifi_getHostByName(
     if (g_jsHostByNameCallback != NULL) {
       JsVar *params[1] = { jsvNewNull() };
       jsiQueueEvents(NULL, g_jsHostByNameCallback, params, 1);
-      jsvUnLock(params[0]);
-      jsvUnLock(g_jsHostByNameCallback);
+      jsvUnLock2(params[0], g_jsHostByNameCallback);
       g_jsHostByNameCallback = NULL;
     }
   }

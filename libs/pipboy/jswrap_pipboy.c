@@ -186,7 +186,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
       if (jsvGetBoolAndUnLock(v)) debugInfo = true;
       else debugInfo = false;
     }
-    videoRepeats = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "repeat"));
+    videoRepeats = jsvObjectGetBoolChild(options, "repeat");
   }
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
@@ -321,7 +321,7 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
       if (jsvGetBoolAndUnLock(v)) debugInfo = true;
       else debugInfo = false;
     }
-    audioRepeats = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "repeat"));
+    audioRepeats = jsvObjectGetBoolChild(options, "repeat");
   }
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
@@ -1260,9 +1260,9 @@ void jswrap_pb_blitImage(JsVar *image, int x, int y, JsVar *options) {
   int scale = 1, height = 0;
   bool noScanlineEffect = false;
   if (jsvIsObject(options)) {
-    scale = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "scale"));
-    noScanlineEffect = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "noScanEffect"));
-    height = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "height"));
+    scale = jsvObjectGetIntegerChild(options, "scale");
+    noScanlineEffect = jsvObjectGetBoolChild(options, "noScanEffect");
+    height = jsvObjectGetIntegerChild(options, "height");
   } else
     scale = jsvGetInteger(options);
   if (scale<1) scale=1;

@@ -60,8 +60,7 @@ JsVar *jswrap_array_constructor(JsVar *args) {
     JsVar *firstArg = jsvSkipNameAndUnLock(jsvGetArrayItem(args,0));
     if (jsvIsNumeric(firstArg)) {
       JsVarFloat f = jsvGetFloat(firstArg);
-      JsVarInt count = jsvGetInteger(firstArg);
-      jsvUnLock(firstArg);
+      JsVarInt count = jsvGetIntegerAndUnLock(firstArg);
       if (f!=count || count<0) {
         jsExceptionHere(JSET_ERROR, "Invalid array length");
         return 0;
@@ -217,8 +216,7 @@ JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
   jsvObjectIteratorNew(&it, args);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *el = jsvObjectIteratorGetValue(&it);
-    len = jsvArrayPush(parent, el);
-    jsvUnLock(el);
+    len = jsvArrayPushAndUnLock(parent, el);
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);

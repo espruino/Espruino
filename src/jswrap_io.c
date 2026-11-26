@@ -403,8 +403,7 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
     jsvObjectIteratorNew(&it, pinVar);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *pinPtr = jsvObjectIteratorGetValue(&it);
-      value = (value<<1) | (JsVarInt)jshPinInput(jshGetPinFromVar(pinPtr));
-      jsvUnLock(pinPtr);
+      value = (value<<1) | (JsVarInt)jshPinInput(jshGetPinFromVarAndUnLock(pinPtr));
       jsvObjectIteratorNext(&it);
       pins++;
     }

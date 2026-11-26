@@ -164,12 +164,11 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
 
         uint32_t grpip;
         jsvGetString(mgrpVar, ipStr, sizeof(ipStr));
-        jsvUnLock(mgrpVar);
         net_esp32_gethostbyname(net, ipStr, &grpip);
 
         JsVar *ipVar = jsvObjectGetChildIfExists(options, "multicastIp");
         jsvGetString(ipVar, ipStr, sizeof(ipStr));
-        jsvUnLock(ipVar);
+        jsvUnLock2(mgrpVar, ipVar);
         uint32_t ip;
         net_esp32_gethostbyname(net, ipStr, &ip);
 
